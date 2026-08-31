@@ -8,6 +8,8 @@ SET SERVEROUTPUT ON SIZE UNLIMITED
 -- Schema : ADMIN (ORDS metadata). OWN SQLcl session -- must not follow anything
 --          that set CURRENT_SCHEMA=PROD or the synonyms self-reference (ORA-01471).
 -- Run    : AFTER db/v2/63 (engine), 64 (views), 65 (compat).
+-- ⚠ RE-RUN COUPLING: this script DELETE_MODULEs wf.rest, wiping the ADDITIVE
+--          route scripts. After ANY re-run of 67, re-run: 96, 97, 98, 113, 114.
 --
 -- WHAT THIS SERVES
 --   the cross-module worklist, task actions with CUSTOM OUTCOMES, the request
@@ -435,7 +437,7 @@ BEGIN
   -- actual parameter to APEX_JSON.write parses as an ORDS 555 -- which is
   -- uncatchable, because it never reaches the EXCEPTION block.
   FOR p IN (SELECT p.process_id, p.process_code, p.source_module, p.name_en, p.name_ar,
-                   p.is_active, p.requires_final_callback,
+                   p.is_active, p.requires_final_callback, p.test_mode,
                    v.version_no AS pub_ver,
                    v.version_id AS pub_vid,
                    r.engine     AS engine,
@@ -458,6 +460,7 @@ BEGIN
     APEX_JSON.write('versionId',   p.pub_vid);
     APEX_JSON.write('routedTo',    NVL(p.engine, 'LEGACY'));
     APEX_JSON.write('steps',       NVL(p.step_count, 0));
+    APEX_JSON.write('testMode',    NVL(p.test_mode, 'N'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;

@@ -6,11 +6,14 @@
  * boot from secure store, login, logout, and the 401 expiry path.
  */
 import { create } from 'zustand';
-import { login as apiLogin, logout as apiLogout } from '@/api/auth';
+import { boot, login as apiLogin, logout as apiLogout } from '@/api/auth';
 import { setAuthToken, setOnExpire } from '@/api/client';
 import { registerDevice, unregisterDevice } from '@/api/devices';
 import { clearSession, loadSession, saveSession } from '@/services/secureStore';
 import { getPushToken, platformTag } from '@/services/push';
+import { clearServerState } from '@/state/queryClient';
+import { useWriteQueue } from '@/state/writeQueue';
+import { setMonitoringUser } from '@/services/monitoring';
 import type { Session } from '@/api/types';
 
 interface SessionState {
@@ -22,6 +25,7 @@ interface SessionState {
   signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   unlock: () => void;
+  lock: () => void;
   expire: () => void;
   patchSession: (fields: Partial<Session>) => void;
   /** Obtain the push token and register the device (idempotent; safe to call
@@ -38,6 +42,18 @@ export const useSession = create<SessionState>((set, get) => ({
     const s = await loadSession();
     if (s?.sessionId) {
       setAuthToken(s.sessionId);
+      // /boot is protected and gives us a cheap token-validity check.
+      const valid = await boot().then((v) => Object.keys(v).length > 0);
+      if (!valid) {
+        await clearSession();
+        setAuthToken(null);
+        await clearServerState();
+        useWriteQueue.getState().clearMemory();
+        set({ session: null, status: 'anon', locked: false });
+        return;
+      }
+      if (s.userId) await useWriteQueue.getState().hydrate(s.userId);
+      setMonitoringUser(s.userId);
       // Existing session → require a biometric unlock before showing data.
       set({ session: s, status: 'authed', locked: true });
     } else {
@@ -49,17 +65,26 @@ export const useSession = create<SessionState>((set, get) => ({
     const s = await apiLogin(username, password);
     setAuthToken(s.sessionId);
     await saveSession(s);
+    await clearServerState();
+    if (s.userId) await useWriteQueue.getState().hydrate(s.userId);
+    setMonitoringUser(s.userId);
     set({ session: s, status: 'authed', locked: false });
     void useSession.getState().ensurePushRegistered();
   },
 
   signOut: async () => {
-    const token = await getPushToken().catch(() => null);
-    if (token) await unregisterDevice(token);
-    await apiLogout();
-    await clearSession();
-    setAuthToken(null);
-    set({ session: null, status: 'anon', locked: false });
+    try {
+      const token = await getPushToken().catch(() => null);
+      if (token) await unregisterDevice(token);
+      await apiLogout();
+    } finally {
+      await clearSession();
+      await clearServerState();
+      useWriteQueue.getState().clearMemory();
+      setMonitoringUser();
+      setAuthToken(null);
+      set({ session: null, status: 'anon', locked: false });
+    }
   },
 
   ensurePushRegistered: async () => {
@@ -73,9 +98,15 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   unlock: () => set({ locked: false }),
+  lock: () => {
+    if (get().status === 'authed') set({ locked: true });
+  },
 
   expire: () => {
     void clearSession();
+    void clearServerState();
+    useWriteQueue.getState().clearMemory();
+    setMonitoringUser();
     setAuthToken(null);
     set({ session: null, status: 'anon', locked: false });
   },

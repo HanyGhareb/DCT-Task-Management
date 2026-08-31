@@ -9,6 +9,7 @@
  *   DELETE /runners/:id         delete
  *   PUT    /runners/:id/file    raw-binary stored-copy upload
  *   GET    /runners/:id/file    stored-copy download (media)
+ *   GET    /scheduler/jobs      PROD DBMS_SCHEDULER health (SYS_ADMIN)
  * All methods return Promises.
  */
 define(['services/api'], function (api) {
@@ -25,6 +26,10 @@ define(['services/api'], function (api) {
   }
 
   return {
+    schedulerHealth: function () {
+      return api.get('/scheduler/jobs', { silent: true });
+    },
+
     /* list -> { items, total, limit, offset } */
     list: function (opts) {
       opts = opts || {};

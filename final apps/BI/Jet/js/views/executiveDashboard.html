@@ -1,0 +1,154 @@
+<div class="page-wrap page-wrap--full exec-page">
+  <div class="exec-mast">
+    <div>
+      <div class="exec-kicker" data-bind="text:$root.t('exec.kicker')"></div>
+      <h1 data-bind="text:$root.t('exec.title')"></h1>
+      <p data-bind="text:$root.t('exec.subtitle')"></p>
+    </div>
+    <div class="exec-actions">
+      <button class="btn btn-secondary" data-bind="click:generateBriefing,disable:briefingBusy,text:briefingBusy()?$root.t('exec.briefingBusy'):$root.t('exec.briefing')"></button>
+      <button class="btn btn-secondary" data-bind="click:exportCsv,text:$root.t('exec.export')"></button>
+      <button class="btn btn-primary" data-bind="click:refresh,text:$root.t('exec.refresh')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading --><list-skeleton params="rows:8"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError --><div class="alert-banner alert-banner--danger" data-bind="text:$root.t('exec.loadError')"></div><!-- /ko -->
+  <!-- ko if: data -->
+  <section class="exec-search exec-panel">
+    <button class="exec-search-head" data-bind="click:function(){searchOpen(!searchOpen());}"><span data-bind="text:$root.t('exec.searchTitle')"></span><span data-bind="text:searchOpen()?'⌃':'⌄'"></span></button>
+    <div class="exec-search-body" data-bind="visible:searchOpen">
+      <label><span data-bind="text:$root.t('exec.businessUnit')"></span><select class="form-control" data-bind="value:selectedBu"><option value="" data-bind="text:$root.t('exec.allUnits')"></option><!-- ko foreach: businessUnits --><option data-bind="value:$data,text:$data"></option><!-- /ko --></select></label>
+      <label><span data-bind="text:$root.t('exec.agingBucket')"></span><select class="form-control" data-bind="value:selectedAging"><option value="" data-bind="text:$root.t('exec.allBuckets')"></option><option value="CURRENT" data-bind="text:$root.t('exec.bucket.current')"></option><option value="D1_30" data-bind="text:$root.t('exec.bucket.1_30')"></option><option value="D31_60" data-bind="text:$root.t('exec.bucket.31_60')"></option><option value="D61_90" data-bind="text:$root.t('exec.bucket.61_90')"></option><option value="D91_180" data-bind="text:$root.t('exec.bucket.91_180')"></option><option value="D180P" data-bind="text:$root.t('exec.bucket.180p')"></option></select></label>
+      <label><span data-bind="text:$root.t('exec.supplier')"></span><input class="form-control" data-bind="textInput:selectedSupplier,attr:{placeholder:$root.t('exec.supplierPlaceholder')},event:{keydown:function(d,e){if(e.key==='Enter')applySearch();return true;}}"></label>
+      <label><span data-bind="text:$root.t('exec.figuresIn')"></span><select class="form-control" data-bind="options:displayUnitOptions,optionsText:'label',optionsValue:'value',value:displayUnit"></select></label>
+      <div class="exec-search-actions"><button class="btn btn-primary" data-bind="click:applySearch,text:$root.t('exec.search')"></button><button class="btn btn-secondary" data-bind="click:resetSearch,text:$root.t('exec.reset')"></button></div>
+    </div>
+  </section>
+  <div class="exec-asof">
+    <span class="exec-live-dot"></span><span data-bind="text:$root.t('exec.asOf')+' '+data().asOf"></span>
+    <span>·</span><span data-bind="text:$root.t('exec.apSource')+' '+(data().ap.sourceUpdatedAt||'—')"></span>
+    <span class="exec-trust" data-bind="css:{'exec-trust--ok':reconciled,'exec-trust--bad':!reconciled()}">
+      <span data-bind="text:reconciled()?$root.t('exec.reconciled'):$root.t('exec.notReconciled')"></span>
+      <span class="exec-recon-hint" tabindex="0" role="button" data-bind="attr:{'aria-label':$root.t('exec.reconHintTitle')}">i
+        <span class="exec-recon-tip" role="tooltip">
+          <b data-bind="text:$root.t('exec.reconHintTitle')"></b>
+          <span data-bind="text:$root.t('exec.reconHintFormula')"></span>
+          <span><strong data-bind="text:$root.t('exec.reconHintIncludesLabel')"></strong> <span data-bind="text:$root.t('exec.reconHintIncludes')"></span></span>
+          <span><strong data-bind="text:$root.t('exec.reconHintExcludesLabel')"></strong> <span data-bind="text:$root.t('exec.reconHintExcludes')"></span></span>
+          <em data-bind="text:$root.t('exec.reconHintNote')"></em>
+        </span>
+      </span>
+    </span>
+  </div>
+
+  <section class="exec-kpis">
+    <article class="exec-kpi exec-kpi--hero exec-drillable" role="button" tabindex="0" data-bind="click:function(){$vm.openDrill('outstanding');},event:{keydown:function(d,e){if(e.key==='Enter'||e.key===' '){e.preventDefault();$vm.openDrill('outstanding');}}}">
+      <span class="exec-kpi-icon exec-kpi-icon--ap" aria-hidden="true">AP</span>
+      <div class="exec-kpi-label" data-bind="text:$root.t('exec.apOutstanding')"></div>
+      <div class="exec-kpi-value" data-bind="text:fmtAmt(data().ap.grossOutstandingAed),attr:{title:fmtFull(data().ap.grossOutstandingAed)}"></div>
+      <div class="exec-kpi-foot" data-bind="text:kpiMeta(data().ap.openCount,100)"></div>
+    </article>
+    <article class="exec-kpi exec-kpi--risk exec-drillable" role="button" tabindex="0" data-bind="click:function(){$vm.openDrill('overdue');}">
+      <span class="exec-kpi-icon exec-kpi-icon--risk" aria-hidden="true">!</span>
+      <div class="exec-kpi-label" data-bind="text:$root.t('exec.apOverdue')"></div>
+      <div class="exec-kpi-value" data-bind="text:fmtAmt(data().ap.overdueAed),attr:{title:fmtFull(data().ap.overdueAed)}"></div>
+      <div class="exec-kpi-foot" data-bind="text:kpiMeta(data().ap.overdueCount,data().ap.overduePct)"></div>
+    </article>
+    <article class="exec-kpi exec-drillable" role="button" tabindex="0" data-bind="click:function(){$vm.openDrill('credits');}">
+      <span class="exec-kpi-icon exec-kpi-icon--credit" aria-hidden="true">CR</span>
+      <div class="exec-kpi-label" data-bind="text:$root.t('exec.openCredits')"></div>
+      <div class="exec-kpi-value" data-bind="text:fmtAmt(data().ap.openCreditsAed),attr:{title:fmtFull(data().ap.openCreditsAed)}"></div>
+      <div class="exec-kpi-foot" data-bind="text:kpiMeta(data().ap.creditCount,data().ap.creditPct)"></div>
+    </article>
+    <article class="exec-kpi exec-drillable" role="button" tabindex="0" data-bind="click:function(){$vm.openDrill('net');}">
+      <span class="exec-kpi-icon exec-kpi-icon--net" aria-hidden="true">Σ</span>
+      <div class="exec-kpi-label" data-bind="text:$root.t('exec.netExposure')"></div>
+      <div class="exec-kpi-value" data-bind="text:fmtAmt(data().ap.netExposureAed),attr:{title:fmtFull(data().ap.netExposureAed)}"></div>
+      <div class="exec-kpi-foot" data-bind="text:kpiMeta(data().ap.netDocumentCount,data().ap.netPct)"></div>
+      <button class="exec-subdrill" data-bind="click:function(d,e){$vm.openDrill('partial',{},e);}"><b data-bind="text:fmtInt(data().ap.partialCount)"></b> <span data-bind="text:$root.t('exec.partialIncluded')"></span></button>
+    </article>
+    <article class="exec-kpi exec-kpi--gap exec-drillable" role="button" tabindex="0" data-bind="click:openArInfo">
+      <span class="exec-kpi-icon exec-kpi-icon--ar" aria-hidden="true">AR</span>
+      <div class="exec-kpi-label" data-bind="text:$root.t('exec.arOutstanding')"></div>
+      <div class="exec-kpi-value">—</div>
+      <div class="exec-kpi-foot"><span class="exec-gap-tag" data-bind="text:$root.t('exec.dataGap')"></span></div>
+    </article>
+  </section>
+
+  <section class="exec-grid">
+    <article class="exec-panel exec-panel--wide" data-bind="css:{'exec-region--max':regionMax()==='aging'}">
+      <div class="exec-panel-head"><div><h2 data-bind="text:$root.t('exec.agingTitle')"></h2><p data-bind="text:$root.t('exec.agingSub')"></p></div>
+        <div class="exec-region-actions"><span class="exec-region-hint" tabindex="0">i<span class="exec-region-tip"><b data-bind="text:$root.t('exec.hint.aging.title')"></b><strong data-bind="text:agingHintStats()"></strong><span data-bind="text:$root.t('exec.hint.aging.body')"></span><em data-bind="text:$root.t('exec.hint.aging.basis')"></em></span></span><button class="exec-region-max" data-bind="click:function(){$vm.toggleRegionMax('aging');},text:regionMax()==='aging'?'⤡':'⤢',attr:{title:regionMax()==='aging'?$root.t('exec.restore'):$root.t('exec.maximize')}"></button></div>
+      </div>
+      <div class="exec-chart exec-chart--aging"><canvas id="execAgingChart"></canvas></div>
+    </article>
+    <article class="exec-panel exec-cash-window" data-bind="css:{'exec-region--max':regionMax()==='cash'}">
+      <div class="exec-panel-head"><div><h2 data-bind="text:$root.t('exec.cashTitle')"></h2><p data-bind="text:$root.t('exec.cashSub')"></p></div>
+        <div class="exec-region-actions"><span class="exec-region-hint" tabindex="0">i<span class="exec-region-tip"><b data-bind="text:$root.t('exec.hint.cash.title')"></b><span data-bind="text:$root.t('exec.hint.cash.body')"></span><em data-bind="text:$root.t('exec.hint.cash.basis')"></em></span></span><button class="exec-region-max" data-bind="click:function(){$vm.toggleRegionMax('cash');},text:regionMax()==='cash'?'⤡':'⤢',attr:{title:regionMax()==='cash'?$root.t('exec.restore'):$root.t('exec.maximize')}"></button></div>
+      </div>
+      <button class="exec-due-row exec-drillable" data-bind="click:function(){$vm.openDrill('due7');}"><span data-bind="text:$root.t('exec.next7')"></span><b data-bind="text:fmtAmt(data().ap.upcoming.days7)"></b></button>
+      <button class="exec-due-row exec-drillable" data-bind="click:function(){$vm.openDrill('due14');}"><span data-bind="text:$root.t('exec.next14')"></span><b data-bind="text:fmtAmt(data().ap.upcoming.days14)"></b></button>
+      <button class="exec-due-row exec-drillable" data-bind="click:function(){$vm.openDrill('due30');}"><span data-bind="text:$root.t('exec.next30')"></span><b data-bind="text:fmtAmt(data().ap.upcoming.days30)"></b></button>
+      <button class="exec-partial-note exec-drillable" data-bind="click:function(){$vm.openDrill('partial');}"><span data-bind="text:$root.t('exec.partialBalance')"></span><b data-bind="text:fmtFull(data().ap.partialOpenAed)"></b></button>
+    </article>
+    <article class="exec-panel exec-panel--suppliers" data-bind="css:{'exec-region--max':regionMax()==='suppliers'}">
+      <div class="exec-panel-head"><div><h2 data-bind="text:$root.t('exec.suppliersTitle')"></h2><p data-bind="text:$root.t('exec.suppliersSub')"></p></div>
+        <div class="exec-region-actions"><span class="exec-region-hint" tabindex="0">i<span class="exec-region-tip"><b data-bind="text:$root.t('exec.hint.suppliers.title')"></b><strong data-bind="text:supplierHintStats()"></strong><span data-bind="text:$root.t('exec.hint.suppliers.body')"></span><em data-bind="text:$root.t('exec.hint.suppliers.basis')"></em></span></span><button class="exec-region-max" data-bind="click:function(){$vm.toggleRegionMax('suppliers');},text:regionMax()==='suppliers'?'⤡':'⤢',attr:{title:regionMax()==='suppliers'?$root.t('exec.restore'):$root.t('exec.maximize')}"></button></div>
+      </div>
+      <div class="exec-chart exec-chart--suppliers"><canvas id="execSuppliersChart"></canvas></div>
+    </article>
+    <article class="exec-panel exec-ar-gap" data-bind="css:{'exec-region--max':regionMax()==='ar'}">
+      <div class="exec-panel-head"><div><h2 data-bind="text:$root.t('exec.arRegionTitle')"></h2><p data-bind="text:$root.t('exec.arRegionSub')"></p></div>
+        <div class="exec-region-actions"><span class="exec-region-hint" tabindex="0">i<span class="exec-region-tip"><b data-bind="text:$root.t('exec.hint.ar.title')"></b><span data-bind="text:$root.t('exec.hint.ar.body')"></span><em data-bind="text:$root.t('exec.hint.ar.basis')"></em></span></span><button class="exec-region-max" data-bind="click:function(){$vm.toggleRegionMax('ar');},text:regionMax()==='ar'?'⤡':'⤢',attr:{title:regionMax()==='ar'?$root.t('exec.restore'):$root.t('exec.maximize')}"></button></div>
+      </div>
+      <div class="exec-ar-body"><div class="exec-gap-icon">AR</div>
+      <div><h3 data-bind="text:$root.t('exec.arGapTitle')"></h3><p data-bind="text:$root.t('exec.arGapBody')"></p>
+        <div class="exec-ar-meta"><b data-bind="text:fmtInt(data().ar.transactionRows)"></b> <span data-bind="text:$root.t('exec.arRows')"></span></div>
+        <div class="exec-required" data-bind="text:$root.t('exec.arRequired')"></div>
+      </div></div>
+    </article>
+  </section>
+
+  <section class="exec-panel exec-attention" data-bind="css:{'exec-region--max':regionMax()==='attention'}">
+    <div class="exec-panel-head"><div><h2 data-bind="text:$root.t('exec.attentionTitle')"></h2><p data-bind="text:$root.t('exec.attentionSub')"></p></div>
+      <div class="exec-region-actions"><span class="exec-region-hint" tabindex="0">i<span class="exec-region-tip"><b data-bind="text:$root.t('exec.hint.attention.title')"></b><span data-bind="text:$root.t('exec.hint.attention.body')"></span><em data-bind="text:$root.t('exec.hint.attention.basis')"></em></span></span><button class="exec-region-max" data-bind="click:function(){$vm.toggleRegionMax('attention');},text:regionMax()==='attention'?'⤡':'⤢',attr:{title:regionMax()==='attention'?$root.t('exec.restore'):$root.t('exec.maximize')}"></button></div>
+    </div>
+    <interactive-report params="reportCode:'EXEC_AP_ATTENTION',section:'attention',data:attentionIr,isAdmin:false,layoutsApi:null"></interactive-report>
+  </section>
+  <!-- /ko -->
+
+  <div class="exec-drawer-scrim" data-bind="css:{show:drawerOpen},click:closeDrawer"></div>
+  <aside class="exec-drawer" data-bind="css:{show:drawerOpen,'exec-drawer--full':drawerMax}" role="dialog" aria-modal="true" aria-labelledby="execDrawerTitle">
+    <header class="exec-drawer-head">
+      <div><div class="exec-drawer-eyebrow" data-bind="text:drawerSubtitle"></div><h2 id="execDrawerTitle" data-bind="text:drawerTitle"></h2></div>
+      <div class="exec-drawer-actions">
+        <button class="btn btn-sm" data-bind="click:toggleDrawerMax,text:drawerMax()?$root.t('exec.restore'):$root.t('exec.maximize')"></button>
+        <button class="btn btn-sm" data-bind="visible:!drawerInfo()&&!drawerLoading()&&drawerRows().length,click:exportDrawerCsv,text:$root.t('exec.exportDrawer')"></button>
+        <button class="btn btn-sm" data-bind="click:closeDrawer,text:$root.t('exec.close')"></button>
+      </div>
+    </header>
+    <div class="exec-drawer-body">
+      <!-- ko if: drawerLoading --><list-skeleton params="rows:10"></list-skeleton><!-- /ko -->
+      <!-- ko if: drawerError --><div class="alert-banner alert-banner--danger" data-bind="text:$root.t('exec.drillError')"></div><!-- /ko -->
+      <!-- ko if: drawerInfo -->
+      <div class="exec-info-panel"><div class="exec-gap-icon">AR</div><div><h3 data-bind="text:$root.t('exec.arGapTitle')"></h3><p data-bind="text:$root.t('exec.arGapBody')"></p><b data-bind="text:$root.t('exec.arRequired')"></b></div></div>
+      <!-- /ko -->
+      <!-- ko if: !drawerLoading() && !drawerInfo() -->
+      <div class="exec-drawer-summary"><span><b data-bind="text:fmtInt(drawerCount())"></b> <span data-bind="text:$root.t('exec.supportingInvoices')"></span></span><span class="exec-recon-total"><span data-bind="text:$root.t('exec.drawerTotal')"></span>
+        <span class="exec-recon-hint" tabindex="0" role="button" data-bind="attr:{'aria-label':$root.t('exec.reconHintTitle')}">i
+          <span class="exec-recon-tip exec-recon-tip--drawer" role="tooltip">
+            <b data-bind="text:$root.t('exec.reconHintTitle')"></b>
+            <span data-bind="text:$root.t('exec.reconHintFormula')"></span>
+            <span><strong data-bind="text:$root.t('exec.reconHintIncludesLabel')"></strong> <span data-bind="text:$root.t('exec.reconHintIncludes')"></span></span>
+            <span><strong data-bind="text:$root.t('exec.reconHintExcludesLabel')"></strong> <span data-bind="text:$root.t('exec.reconHintExcludes')"></span></span>
+            <em data-bind="text:$root.t('exec.reconHintNote')"></em>
+          </span>
+        </span> <b data-bind="text:fmtFull(drawerTotal())"></b></span></div>
+      <div class="exec-cap-note" data-bind="visible:drawerCapped,text:$root.t('exec.capped')"></div>
+      <div class="exec-drawer-table"><interactive-report params="reportCode:'EXEC_AP_DRILL',section:drawerIrSection,data:drawerIr,isAdmin:false,layoutsApi:null"></interactive-report></div>
+      <div class="empty-state" data-bind="visible:!drawerRows().length&&!drawerError(),text:$root.t('exec.noSupporting')"></div>
+      <!-- /ko -->
+    </div>
+  </aside>
+</div>

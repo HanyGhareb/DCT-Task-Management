@@ -16,6 +16,9 @@
 {%- set POV = (S.pend_ov.data[0] if S.pend_ov and S.pend_ov.data else {}) -%}
 {%- set PAG = S.pend_aging.data if S.pend_aging else [] -%}
 {%- set PAP = S.pend_approvers.data if S.pend_approvers else [] -%}
+{%- set PLS = S.plan_sector.data if S.plan_sector else [] -%}
+{%- set PLD = S.plan_dev.data if S.plan_dev else [] -%}
+{%- set PCV = (S.plan_cov.data[0] if S.plan_cov and S.plan_cov.data else {}) -%}
 {#- applied report scope — mirrors the GL Budget Utilization page filters -#}
 {%- set flt = [] -%}
 {%- if params.period %}{% set _ = flt.append('YTD through ' ~ params.period) %}{% endif -%}
@@ -27,6 +30,7 @@
 {%- if params.task %}{% set _ = flt.append('Task: ' ~ params.task) %}{% endif -%}
 {%- if params.etype %}{% set _ = flt.append('Expenditure type: ' ~ params.etype) %}{% endif -%}
 {%- if params.search %}{% set _ = flt.append('Search: ' ~ params.search) %}{% endif -%}
+{%- if params.bu %}{% set _ = flt.append('Business unit: ' ~ params.bu|replace('|', ', ')) %}{% endif -%}
 {%- set scopeline = flt|join(' · ') if flt else 'Whole organisation · Full year' -%}
 {%- macro money(v) -%}
   {%- if v is none %}&mdash;
@@ -193,6 +197,7 @@
     {% if params.task %}<span>Task <b>{{ params.task }}</b></span>{% endif %}
     {% if params.etype %}<span>Expenditure type <b>{{ params.etype }}</b></span>{% endif %}
     {% if params.search %}<span>Search <b>{{ params.search }}</b></span>{% endif %}
+    {% if params.bu %}<span>Business unit <b>{{ params.bu|replace('|', ', ') }}</b></span>{% endif %}
     <span>Sectors <b>{{ O.sectors|fmt if O.sectors is not none else '—' }}</b></span>
     <span>Projects <b>{{ O.projects|fmt if O.projects is not none else '—' }}</b></span>
     <span>Budget lines <b>{{ O.budget_lines|fmt if O.budget_lines is not none else '—' }}</b></span>
@@ -244,6 +249,10 @@
             <div class="d">Demand still waiting in the Fusion approval queue (funds-reserved): how much, how long it has been waiting, and who is holding it — tomorrow's encumbrance movements.</div></td>
         <td class="n">{{ POV.docs|fmt if POV.docs is not none else '—' }} documents &middot; {{ (POV.amt_total/1000000)|round(1)|fmt if POV.amt_total else '—' }} M AED</td></tr>
     <tr><td class="no">06</td>
+        <td><div class="t">Expenditure Plan Performance</div>
+            <div class="d">Actual spending measured against the uploaded expenditure plan (plan vs actual by sector, largest deviations) and how much of the annual budget the plan covers.</div></td>
+        <td class="n">{{ PCV.exec_pct|fmt if PCV.exec_pct is not none else '—' }}% of plan &middot; {{ PCV.coverage_pct|fmt if PCV.coverage_pct is not none else '—' }}% coverage</td></tr>
+    <tr><td class="no">07</td>
         <td><div class="t">Observations &amp; Insights</div>
             <div class="d">What the numbers say: pacing, pressure points, concentration and pipeline coverage — with the methodology behind every figure.</div></td>
         <td class="n">&nbsp;</td></tr>
@@ -258,7 +267,8 @@
     <span class="pt-s">Budget year {{ params.year }} &middot; {{ scopeline|truncate(80) }}</span></div>
 
   <div class="kpis">
-    <div class="kpi"><div class="k-lbl">Approved Budget</div><div class="k-val">{{ money(O.budget) }}</div><div class="k-sub">AED &middot; {{ O.budget_lines|fmt }} lines</div></div>
+    <div class="kpi"><div class="k-lbl">{{ 'YTD Budget' if params.period else 'Approved Budget' }}</div><div class="k-val">{{ money(O.budget) }}</div><div class="k-sub">AED &middot; {% if O.budget_annual is not none and O.budget_annual != O.budget %}Annual {{ money(O.budget_annual) }} &middot; {% endif %}{{ O.budget_lines|fmt }} lines</div></div>
+    <div class="kpi"><div class="k-lbl">{{ 'YTD Plan' if params.period else 'Expenditure Plan' }}</div><div class="k-val">{{ money(O.plan_approved_ytd) }}</div><div class="k-sub">AED{% if O.plan_approved_annual is not none and O.plan_approved_annual != O.plan_approved_ytd %} &middot; Annual {{ money(O.plan_approved_annual) }}{% endif %}{% if O.plan_revised_annual %} &middot; Revised {{ money(O.plan_revised_ytd) }}{% endif %}</div></div>
     <div class="kpi k-act"><div class="k-lbl">Actual — AP</div><div class="k-val">{{ money(O.actual_ap) }}</div><div class="k-sub">{{ AP|length|fmt }} invoices</div></div>
     <div class="kpi k-act"><div class="k-lbl">Actual — GRN</div><div class="k-val">{{ money(O.actual_grn) }}</div><div class="k-sub">{{ GRN|length|fmt }} receipt lines</div></div>
     <div class="kpi k-enc"><div class="k-lbl">Open Obligation (PO)</div><div class="k-val">{{ money(O.obligation_po) }}</div><div class="k-sub">{{ PO|length|fmt }} PO lines</div></div>
@@ -324,12 +334,14 @@
   <div class="sub-h">1.1 &nbsp; Utilization by sector <small>&mdash; all figures AED</small></div>
   {% if SEC %}
   <table class="data">
-    <thead><tr><th>Sector</th><th>Projects</th><th>Budget</th><th>Actual AP</th><th>Actual GRN</th>
+    <thead><tr><th>Sector</th><th>Projects</th><th>Annual Budget</th><th>{{ 'YTD Budget' if params.period else 'Budget' }}</th>
+      <th>Annual Plan</th><th>{{ 'YTD Plan' if params.period else 'Plan' }}</th><th>Actual AP</th><th>Actual GRN</th>
       <th>Open PO</th><th>Open PR</th><th>Fund Available</th><th>Utilization %</th></tr></thead>
     <tbody>
       {% for r in SEC %}
       <tr><td>{{ r.sector }}</td><td class="num">{{ r.projects|fmt }}</td>
-        <td class="num">{{ r.budget|fmt }}</td><td class="num">{{ r.actual_ap|fmt }}</td>
+        <td class="num">{{ r.budget_annual|fmt }}</td><td class="num">{{ r.budget|fmt }}</td>
+        <td class="num">{{ r.annual_plan|fmt }}</td><td class="num">{{ r.ytd_plan|fmt }}</td><td class="num">{{ r.actual_ap|fmt }}</td>
         <td class="num">{{ r.actual_grn|fmt }}</td><td class="num">{{ r.obligation_po|fmt }}</td>
         <td class="num">{{ r.commitment_pr|fmt }}</td>
         <td class="num {{ 'neg' if r.fund_available is not none and r.fund_available < 0 }}">{{ r.fund_available|fmt }}</td>
@@ -337,7 +349,8 @@
       {% endfor %}
     </tbody>
     <tfoot><tr><td>Total</td><td class="num">{{ O.projects|fmt }}</td>
-      <td class="num">{{ O.budget|fmt }}</td><td class="num">{{ O.actual_ap|fmt }}</td>
+      <td class="num">{{ O.budget_annual|fmt }}</td><td class="num">{{ O.budget|fmt }}</td>
+      <td class="num">{{ O.plan_approved_annual|fmt }}</td><td class="num">{{ O.plan_approved_ytd|fmt }}</td><td class="num">{{ O.actual_ap|fmt }}</td>
       <td class="num">{{ O.actual_grn|fmt }}</td><td class="num">{{ O.obligation_po|fmt }}</td>
       <td class="num">{{ O.commitment_pr|fmt }}</td>
       <td class="num {{ 'neg' if O.fund_available is not none and O.fund_available < 0 }}">{{ O.fund_available|fmt }}</td>
@@ -650,7 +663,89 @@
   <div class="foot">Part 5 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
 </div>
 
-{#- ═══ PART 6 — INSIGHTS ═══════════════════════════════════════════════ -#}
+{#- ═══ PART 6 — EXPENDITURE PLAN PERFORMANCE (v1.88.0) ════════════════ -#}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">06</span><span class="pt-t">Expenditure Plan Performance</span>
+    <span class="pt-s">actual spending vs the uploaded expenditure plan{{ ' &middot; YTD through ' ~ params.period if params.period else '' }}</span></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k-lbl">Plan Performance</div><div class="k-val">{{ PCV.exec_pct|fmt if PCV.exec_pct is not none else '—' }}%</div><div class="k-sub">actual {{ money(PCV.actual_total) }} vs plan {{ money(PCV.ytd_plan) }}</div></div>
+    <div class="kpi"><div class="k-lbl">YTD Plan</div><div class="k-val">{{ money(PCV.ytd_plan) }}</div><div class="k-sub">annual plan {{ money(PCV.annual_plan) }}</div></div>
+    <div class="kpi"><div class="k-lbl">Plan Coverage</div><div class="k-val">{{ PCV.coverage_pct|fmt if PCV.coverage_pct is not none else '—' }}%</div><div class="k-sub">of the {{ money(PCV.annual_budget) }} annual budget</div></div>
+    <div class="kpi {{ 'k-bad' if PCV.lines_below else 'k-ok' }}"><div class="k-lbl">Below Plan</div><div class="k-val {{ 'neg' if PCV.lines_below }}">{{ PCV.lines_below|fmt }}</div><div class="k-sub">lines &middot; {{ money(PCV.below_amount) }} behind plan</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Ahead of Plan</div><div class="k-val">{{ PCV.lines_ahead|fmt }}</div><div class="k-sub">lines &middot; {{ money(PCV.ahead_amount) }} ahead</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Plan Gap</div><div class="k-val">{{ money(PCV.plan_gap) }}</div><div class="k-sub">{{ PCV.lines_under|fmt }} under-planned &middot; {{ PCV.lines_unplanned|fmt }} unplanned lines</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="ch-t">Plan execution by sector — actual as % of the YTD plan (100% = on plan)</div>
+      {% for r in PLS %}{% if r.ytd_plan %}
+      <div class="hb-row"><div class="hb-lbl">{{ (r.sector or '(Unclassified)')|string|truncate(24) }}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if r.plan_status == 'Ahead of plan' else 'warn' if r.plan_status == 'Below plan' else '' }}"
+             style="width:{{ [((r.exec_pct or 0) / 1.4)|round(1), 100]|min }}%"></div></div>
+        <div class="hb-val">{{ r.exec_pct|fmt }}% &middot; {{ r.plan_status }}</div></div>
+      {% endif %}{% endfor %}
+      {% if not PLS %}<div class="empty">No expenditure plan uploaded for the selected scope.</div>{% endif %}
+    </div>
+    <div class="chart">
+      <div class="ch-t">Plan coverage by sector — annual plan as % of the annual budget</div>
+      {% for r in PLS %}
+      <div class="hb-row"><div class="hb-lbl">{{ (r.sector or '(Unclassified)')|string|truncate(24) }}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'warn' if r.coverage_pct is not none and r.coverage_pct < 95 else '' }}"
+             style="width:{{ [((r.coverage_pct or 0) / 1.2)|round(1), 100]|min }}%"></div></div>
+        <div class="hb-val">{{ r.coverage_pct|fmt if r.coverage_pct is not none else '—' }}% &middot; plan {{ money(r.annual_plan) }}</div></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="sub-h">6.1 &nbsp; Plan vs actual by sector</div>
+  {% if PLS %}
+  <table class="data">
+    <thead><tr><th>Sector</th><th>YTD Plan (AED)</th><th>Actual (AED)</th><th>Execution %</th><th>Status</th><th>Annual Plan (AED)</th><th>Annual Budget (AED)</th><th>Coverage %</th></tr></thead>
+    <tbody>
+      {% for r in PLS %}
+      <tr><td>{{ r.sector or '(Unclassified)' }}</td>
+        <td class="num">{{ r.ytd_plan|fmt }}</td>
+        <td class="num">{{ r.actual_total|fmt }}</td>
+        <td class="num">{{ r.exec_pct|fmt if r.exec_pct is not none else '—' }}%</td>
+        <td class="{{ 'neg' if r.plan_status == 'Ahead of plan' }}">{{ r.plan_status }}</td>
+        <td class="num">{{ r.annual_plan|fmt }}</td>
+        <td class="num">{{ r.annual_budget|fmt }}</td>
+        <td class="num">{{ r.coverage_pct|fmt if r.coverage_pct is not none else '—' }}%</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No expenditure plan uploaded for the selected scope.</div>{% endif %}
+
+  <div class="sub-h">6.2 &nbsp; Largest deviations from plan <small>&mdash; top {{ PLD|length }} planned budget lines by absolute variance (actual − YTD plan)</small></div>
+  {% if PLD %}
+  <table class="data">
+    <thead><tr><th>Sector</th><th>Project</th><th>Task</th><th>Expenditure Type</th><th>YTD Plan (AED)</th><th>Actual (AED)</th><th>Variance (AED)</th><th>Execution %</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for r in PLD %}
+      <tr><td>{{ (r.sector or '—')|string|truncate(20) }}</td>
+        <td>{{ r.project_number }} &middot; {{ (r.project_name or '')|string|truncate(34) }}</td>
+        <td>{{ (r.task_number or '—')|string|truncate(16) }}</td>
+        <td>{{ (r.expenditure_type or '—')|string|truncate(26) }}</td>
+        <td class="num">{{ r.ytd_plan|fmt }}</td>
+        <td class="num">{{ r.actual_total|fmt }}</td>
+        <td class="num {{ 'neg' if r.variance and r.variance > 0 }}">{{ r.variance|fmt }}</td>
+        <td class="num">{{ r.exec_pct|fmt if r.exec_pct is not none else '—' }}%</td>
+        <td>{{ r.plan_status }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No planned budget lines in scope.</div>{% endif %}
+  <p style="font-size:9.5px;color:#52606D;margin:10px 0 0">
+    The expenditure plan is the projects cashflow plan uploaded on the GL Cashflow tab (revised plan used where one
+    exists). Execution compares the lines' Total Actual (AP + GRN) to the plan through the same accounting-period
+    window; coverage compares the annual plan to the annual budget. Tolerance bands mirror the GL module settings
+    ({{ '90–110%' }} execution &middot; {{ '95–105%' }} coverage as shipped).</p>
+  <div class="foot">Part 6 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 7 — INSIGHTS ═══════════════════════════════════════════════ -#}
 {#- with a YTD period the pacing clock stops at the period end, not today -#}
 {%- set gy = (params.period[3:]|int) if params.period else generated_at[:4]|int -%}
 {%- set gm = (params.period[:2]|int) if params.period else generated_at[5:7]|int -%}
@@ -659,7 +754,7 @@
 {%- set actual_pct = (100 * (O.actual_total or 0) / O.budget)|round(1) if O.budget else 0 -%}
 {%- set oldest_po = (PO|selectattr('budget_date')|sort(attribute='budget_date')|list|first) if PO else none -%}
 <div class="page">
-  <div class="pt-band"><span class="pt-no">06</span><span class="pt-t">Observations &amp; Insights</span>
+  <div class="pt-band"><span class="pt-no">07</span><span class="pt-t">Observations &amp; Insights</span>
     <span class="pt-s">prepared for management review</span></div>
 
   {#- verdicts drive the red/green colouring: good = on track, bad = needs attention -#}
@@ -752,7 +847,7 @@
       budget-utilization reporting layer, reflecting Oracle Fusion data as of the generation time.
     </div>
   </div>
-  <div class="foot">Part 6 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot;
+  <div class="foot">Part 7 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot;
     Generated {{ generated_at }} GST (UTC+04:00, Asia/Dubai) &middot; {{ report_code }} &middot;
     Prepared by Financial Planning and Budgeting — Finance Department</div>
 </div>

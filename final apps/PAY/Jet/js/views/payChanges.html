@@ -1,0 +1,383 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $vm.t('chg.title')"></div>
+      <div class="page-subtitle" data-bind="text: $vm.t('chg.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: reg -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: function(){ runReport('PDF'); },
+              enable: !reportBusy(),
+              text: reportBusy() === 'PDF' ? $vm.t('chg.reportBusy') : $vm.t('chg.reportPdf')"></button>
+      <button class="btn btn-secondary btn-sm" data-bind="click: function(){ runReport('XLSX'); },
+              enable: !reportBusy(),
+              text: reportBusy() === 'XLSX' ? $vm.t('chg.reportBusy') : $vm.t('chg.reportXlsx')"></button>
+      <button class="btn btn-secondary btn-sm" data-bind="click: exportCsv, text: $vm.t('chg.exportCsv')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ── Criteria ──────────────────────────────────────────────────────── -->
+  <div class="ap-chips">
+    <select class="form-control" style="max-width:300px" data-bind="value: selPayroll">
+      <!-- ko foreach: payrolls -->
+      <option data-bind="value: payrollId, text: code + ' — ' + company"></option>
+      <!-- /ko -->
+    </select>
+    <select class="form-control" style="max-width:200px" data-bind="value: selPeriod">
+      <!-- ko foreach: periods -->
+      <option data-bind="value: period, text: period"></option>
+      <!-- /ko -->
+    </select>
+    <button class="btn btn-primary" data-bind="click: capture,
+            enable: (canHr() || canPay()) && !busy() && periodRow() && canCapture(),
+            text: reg() ? $vm.t('chg.recapture') : $vm.t('chg.capture')"></button>
+    <!-- ko if: captureBlockMsg() -->
+    <span class="chg-meta chg-capblock" data-bind="text: captureBlockMsg"></span>
+    <!-- /ko -->
+    <!-- ko if: reg -->
+    <span data-bind="css: statusClass(reg().status), text: $vm.t('chg.st.' + reg().status)"></span>
+    <span class="chg-meta" data-bind="text: $vm.t('chg.capturedAt') + ' ' + reg().capturedAt + ' · ' + reg().capturedBy"></span>
+    <!-- /ko -->
+    <!-- ko if: error() --><span class="dw-err" style="margin:0" data-bind="text: error"></span><!-- /ko -->
+  </div>
+
+  <!-- ── Empty state ───────────────────────────────────────────────────── -->
+  <!-- ko if: !reg() && !loading() && !booting() -->
+  <div class="card ap-region">
+    <div class="empty-state">
+      <div data-bind="text: $vm.t('chg.noRegister')"></div>
+      <!-- ko ifnot: captureBlockMsg() -->
+      <div class="chg-meta" data-bind="text: $vm.t('chg.noRegisterHint')"></div>
+      <!-- /ko -->
+      <!-- ko if: captureBlockMsg() -->
+      <div class="chg-meta chg-capblock" data-bind="text: captureBlockMsg"></div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: reg -->
+
+  <!-- ── KPI band + dual confirmation tracker ─────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('chg.tracker')"></div>
+      <div class="region-actions">
+        <!-- ko if: reg().priorPeriod -->
+        <span class="chg-meta" data-bind="text: $vm.t('chg.comparedTo') + ' ' + reg().priorPeriod"></span>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <div class="pr-kpis">
+      <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('chg.kScope')"></div><div class="pr-k-v" data-bind="text: num(reg().empCount)"></div></div>
+      <div class="pr-k" data-bind="css: { 'pr-k--warn': (reg().changeCount || 0) > 0 }">
+        <div class="pr-k-l" data-bind="text: $vm.t('chg.kChanges')"></div><div class="pr-k-v" data-bind="text: num(reg().changeCount)"></div></div>
+      <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('chg.kNewHires')"></div><div class="pr-k-v" data-bind="text: num(reg().newHires)"></div></div>
+      <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('chg.kExits')"></div><div class="pr-k-v" data-bind="text: num(reg().exits)"></div></div>
+      <div class="pr-k" data-bind="css: { 'pr-k--warn': (reg().flagged || 0) > 0 }">
+        <div class="pr-k-l" data-bind="text: $vm.t('chg.kFlagged')"></div><div class="pr-k-v" data-bind="text: num(reg().flagged || 0)"></div></div>
+      <div class="pr-k pr-k--charge">
+        <div class="pr-k-l" data-bind="text: $vm.t('chg.kImpact')"></div>
+        <div class="pr-k-v" data-bind="text: impactTxt(),
+             css: { 'chg-neg': (reg().grossImpact || 0) < 0, 'chg-pos': (reg().grossImpact || 0) > 0 }"></div></div>
+    </div>
+
+    <!-- ko if: reg().status !== 'BASELINE' -->
+    <div class="chg-track">
+      <!-- HR side -->
+      <div class="chg-side" data-bind="css: { 'chg-side--done': reg().hrDoneAt }">
+        <div class="chg-side-h">
+          <span class="chg-side-t" data-bind="text: $vm.t('chg.hrSide')"></span>
+          <span class="chg-side-n" data-bind="text: progTxt('HR') + ' ' + $vm.t('chg.confirmed')"></span>
+        </div>
+        <div class="chg-bar"><div class="chg-bar-f" data-bind="style: { width: progW('HR') }"></div></div>
+        <div class="chg-side-f">
+          <!-- ko if: reg().hrDoneAt -->
+          <span class="chg-signed" data-bind="text: $vm.t('chg.signedBy') + ' ' + reg().hrDoneBy + ' · ' + reg().hrDoneAt"></span>
+          <!-- /ko -->
+          <!-- ko if: canHr() && !isWorkflow() -->
+          <button class="btn btn-sm" data-bind="click: function(){ signOff('HR'); }, enable: !busy(),
+                  css: (reg() && reg().hrDoneAt) ? 'btn-secondary' : 'btn-primary',
+                  text: (reg() && reg().hrDoneAt) ? $vm.t('chg.unsign') : $vm.t('chg.signHr')"></button>
+          <!-- /ko -->
+        </div>
+      </div>
+      <!-- Payroll side -->
+      <div class="chg-side" data-bind="css: { 'chg-side--done': reg().payDoneAt }">
+        <div class="chg-side-h">
+          <span class="chg-side-t" data-bind="text: $vm.t('chg.paySide')"></span>
+          <span class="chg-side-n" data-bind="text: progTxt('PAY') + ' ' + $vm.t('chg.confirmed')"></span>
+        </div>
+        <div class="chg-bar"><div class="chg-bar-f chg-bar-f--pay" data-bind="style: { width: progW('PAY') }"></div></div>
+        <div class="chg-side-f">
+          <!-- ko if: reg().payDoneAt -->
+          <span class="chg-signed" data-bind="text: $vm.t('chg.signedBy') + ' ' + reg().payDoneBy + ' · ' + reg().payDoneAt"></span>
+          <!-- /ko -->
+          <!-- ko if: canPay() && !isWorkflow() -->
+          <button class="btn btn-sm" data-bind="click: function(){ signOff('PAY'); }, enable: !busy() && reg() && reg().hrDoneAt,
+                  css: (reg() && reg().payDoneAt) ? 'btn-secondary' : 'btn-primary',
+                  text: (reg() && reg().payDoneAt) ? $vm.t('chg.unsign') : $vm.t('chg.signPay')"></button>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+    <!-- ko if: isWorkflow() && reg().status !== 'CONFIRMED' -->
+    <div class="chg-wf">
+      <!-- ko if: reg().status === 'IN_APPROVAL' -->
+      <span class="chg-wf-t" data-bind="text: $vm.t('chg.inApproval')"></span>
+      <!-- /ko -->
+      <!-- ko if: reg().status !== 'IN_APPROVAL' -->
+      <span class="chg-meta" data-bind="text: $vm.t('chg.submitHint')"></span>
+      <button class="btn btn-primary btn-sm" data-bind="click: submitSignoff,
+              enable: canSubmit() && !busy(), text: $vm.t('chg.submitWf')"></button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+    <!-- ko if: reg().status === 'BASELINE' -->
+    <div class="chg-baseline" data-bind="text: $vm.t('chg.baselineNote')"></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ── Register: changes / all values ────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span class="chg-tab" data-bind="css: { 'chg-tab--on': mode() === 'changes' },
+              click: function(){ setMode('changes'); }, text: $vm.t('chg.tabChanges')"></span>
+        <span class="chg-tab" data-bind="css: { 'chg-tab--on': mode() === 'all' },
+              click: function(){ setMode('all'); }, text: $vm.t('chg.tabAll')"></span>
+      </div>
+      <div class="region-actions">
+        <!-- ko if: mode() === 'changes' && canHr() -->
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ confirmAll('HR'); },
+                enable: !busy() && (reg().pendHr || 0) > 0, text: $vm.t('chg.confirmAllHrBtn')"></button>
+        <!-- /ko -->
+        <!-- ko if: mode() === 'changes' && canPay() -->
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ confirmAll('PAY'); },
+                enable: !busy() && (reg().pendPay || 0) > 0 && (reg().pendHr || 0) === 0,
+                text: $vm.t('chg.confirmAllPayBtn')"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <!-- filters -->
+    <div class="ap-chips" style="margin:10px 0">
+      <!-- ko if: mode() === 'changes' -->
+      <select class="form-control" style="max-width:170px" data-bind="value: fKind">
+        <option value="" data-bind="text: $vm.t('chg.allKinds')"></option>
+        <option value="CHANGE" data-bind="text: $vm.t('chg.kind.CHANGE')"></option>
+        <option value="NEW_HIRE" data-bind="text: $vm.t('chg.kind.NEW_HIRE')"></option>
+        <option value="EXIT" data-bind="text: $vm.t('chg.kind.EXIT')"></option>
+      </select>
+      <!-- /ko -->
+      <select class="form-control" style="max-width:180px" data-bind="value: fGrp">
+        <option value="" data-bind="text: $vm.t('chg.allGroups')"></option>
+        <option value="PROFILE" data-bind="text: $vm.t('chg.grp.PROFILE')"></option>
+        <option value="ASSIGNMENT" data-bind="text: $vm.t('chg.grp.ASSIGNMENT')"></option>
+        <option value="SALARY" data-bind="text: $vm.t('chg.grp.SALARY')"></option>
+        <option value="ENTRY" data-bind="text: $vm.t('chg.grp.ENTRY')"></option>
+        <option value="BANK" data-bind="text: $vm.t('chg.grp.BANK')"></option>
+      </select>
+      <!-- ko if: mode() === 'changes' -->
+      <select class="form-control" style="max-width:190px" data-bind="value: fPending">
+        <option value="" data-bind="text: $vm.t('chg.allStates')"></option>
+        <option value="hr" data-bind="text: $vm.t('chg.pendingHr')"></option>
+        <option value="pay" data-bind="text: $vm.t('chg.pendingPay')"></option>
+      </select>
+      <!-- /ko -->
+      <input class="form-control" style="max-width:240px" type="text"
+             data-bind="textInput: search, attr: { placeholder: $vm.t('chg.searchPh') }" />
+      <!-- ko if: mode() === 'changes' -->
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="pointer-events:none;display:inline-flex">
+          <input type="checkbox" data-bind="checked: fFlagged" style="pointer-events:auto" />
+        </div>
+        <span class="chg-meta" data-bind="text: $vm.t('chg.flaggedOnly'),
+              click: function(){ fFlagged(!fFlagged()); }"></span>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: mode() === 'all' -->
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="pointer-events:none;display:inline-flex">
+          <input type="checkbox" data-bind="checked: allChangedOnly" style="pointer-events:auto" />
+        </div>
+        <span class="chg-meta" data-bind="text: $vm.t('chg.changedOnly'),
+              click: function(){ allChangedOnly(!allChangedOnly()); }"></span>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <!-- changes grid grouped by employee -->
+    <!-- ko if: mode() === 'changes' -->
+    <!-- ko if: itemsLoading -->
+    <div class="empty-state" data-bind="text: $vm.t('common.loading')"></div>
+    <!-- /ko -->
+    <!-- ko if: !itemsLoading() && groups().length === 0 -->
+    <div class="empty-state" data-bind="text: $vm.t('chg.noChanges')"></div>
+    <!-- /ko -->
+    <!-- ko if: !itemsLoading() && groups().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table chg-table">
+      <thead><tr>
+        <th style="min-width:180px" data-bind="text: $vm.t('chg.colAttr')"></th>
+        <th data-bind="text: $vm.t('chg.colOld')"></th>
+        <th style="width:26px"></th>
+        <th data-bind="text: $vm.t('chg.colNew')"></th>
+        <th data-bind="text: $vm.t('chg.colDelta')"></th>
+        <th style="min-width:150px" data-bind="text: $vm.t('chg.colHr')"></th>
+        <th style="min-width:150px" data-bind="text: $vm.t('chg.colPay')"></th>
+      </tr></thead>
+      <!-- ko foreach: groups -->
+      <tbody>
+        <tr class="chg-emp">
+          <td colspan="7">
+            <span class="chg-emp-n" data-bind="text: name"></span>
+            <span class="chg-emp-no" data-bind="text: empNo"></span>
+            <!-- ko if: kind !== 'CHANGE' -->
+            <span data-bind="css: 'chg-badge chg-badge--' + kind.toLowerCase(),
+                  text: $vm.t('chg.kind.' + kind)"></span>
+            <!-- /ko -->
+            <span class="chg-emp-c" data-bind="text: items.length + ' ' + $vm.t('chg.itemsWord')"></span>
+          </td>
+        </tr>
+        <!-- ko foreach: items -->
+        <tr data-bind="css: { 'chg-row--flag': flags }">
+          <td>
+            <span class="chg-grp" data-bind="text: $vm.grpLabel(grp)"></span>
+            <span data-bind="text: $vm.attrLabel(attr)"></span>
+            <!-- ko foreach: $vm.flagList(flags) -->
+            <span class="chg-flag" data-bind="text: $vm.flagLabel($data),
+                  attr: { title: $vm.t('chg.flagHint.' + $data) }"></span>
+            <!-- /ko -->
+            <div class="chg-noteline">
+              <!-- ko if: note -->
+              <span class="chg-note" data-bind="text: '📝 ' + note"></span>
+              <!-- /ko -->
+              <!-- ko if: !note && noteReq === 'Y' -->
+              <span class="chg-notereq" data-bind="text: $vm.t('chg.noteReq')"></span>
+              <!-- /ko -->
+              <!-- ko if: ($vm.canHr() || $vm.canPay()) && !$vm.isLocked() -->
+              <a href="#" class="chg-undo" data-bind="click: function(){ $vm.editNote($data); return false; },
+                 text: note ? $vm.t('chg.editNote') : $vm.t('chg.addNote')"></a>
+              <a href="#" class="chg-undo" data-bind="click: function(){ $vm.attachEvidence($data); return false; },
+                 text: $vm.t('chg.attach')"></a>
+              <!-- /ko -->
+              <!-- ko if: docCount > 0 -->
+              <a href="#" class="chg-undo" data-bind="click: function(){ $vm.openEvidence($data); return false; },
+                 text: '📎 ' + docCount"></a>
+              <!-- /ko -->
+            </div>
+          </td>
+          <td><span class="chg-old" data-bind="text: oldValue || '—'"></span></td>
+          <td class="chg-arrow">→</td>
+          <td>
+            <span class="chg-new" data-bind="text: newValue || '—'"></span>
+            <!-- ko if: kind === 'EXIT' --><span class="chg-meta" data-bind="text: $vm.t('chg.leftPayroll')"></span><!-- /ko -->
+          </td>
+          <td>
+            <!-- ko if: $data.delta !== null && $data.delta !== undefined && $data.delta !== 0 -->
+            <span data-bind="css: delta > 0 ? 'chg-delta chg-pos' : 'chg-delta chg-neg',
+                  text: (delta > 0 ? '+' : '') + $vm.money(delta)"></span>
+            <!-- /ko -->
+          </td>
+          <td>
+            <!-- ko if: hrStatus === 'Y' -->
+            <span class="chg-ok" data-bind="text: '✓ ' + hrBy, attr: { title: hrAt }"></span>
+            <!-- ko if: $vm.canHr() && payStatus === 'N' -->
+            <a href="#" class="chg-undo" data-bind="click: function(){ $vm.confirmOne($data, 'HR'); return false; },
+               text: $vm.t('chg.undo')"></a>
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: hrStatus === 'N' -->
+            <!-- ko if: $vm.canHr -->
+            <button class="btn btn-secondary btn-sm chg-cbtn"
+                    data-bind="click: function(){ $vm.confirmOne($data, 'HR'); }, enable: !$vm.busy(),
+                               text: $vm.t('chg.confirm')"></button>
+            <!-- /ko -->
+            <!-- ko ifnot: $vm.canHr -->
+            <span class="chg-pend" data-bind="text: $vm.t('chg.pending')"></span>
+            <!-- /ko -->
+            <!-- /ko -->
+          </td>
+          <td>
+            <!-- ko if: payStatus === 'Y' -->
+            <span class="chg-ok" data-bind="text: '✓ ' + payBy, attr: { title: payAt }"></span>
+            <!-- ko if: $vm.canPay -->
+            <a href="#" class="chg-undo" data-bind="click: function(){ $vm.confirmOne($data, 'PAY'); return false; },
+               text: $vm.t('chg.undo')"></a>
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: payStatus === 'N' -->
+            <!-- ko if: $vm.canPay() && hrStatus === 'Y' -->
+            <button class="btn btn-secondary btn-sm chg-cbtn"
+                    data-bind="click: function(){ $vm.confirmOne($data, 'PAY'); }, enable: !$vm.busy(),
+                               text: $vm.t('chg.confirm')"></button>
+            <!-- /ko -->
+            <!-- ko if: !$vm.canPay() || hrStatus === 'N' -->
+            <span class="chg-pend" data-bind="text: hrStatus === 'N' ? $vm.t('chg.awaitHr') : $vm.t('chg.pending')"></span>
+            <!-- /ko -->
+            <!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+      <!-- /ko -->
+    </table></div>
+    <!-- /ko -->
+    <!-- /ko -->
+
+    <!-- all-values matrix on the shared interactive report -->
+    <!-- ko if: mode() === 'all' -->
+    <!-- ko if: allLoading -->
+    <div class="empty-state" data-bind="text: $vm.t('common.loading')"></div>
+    <!-- /ko -->
+    <!-- ko if: !allLoading() && allEnv() -->
+    <interactive-report params="reportCode: 'PAY_CHG_ALL', section: 'all',
+                                data: allEnv, isAdmin: false, layoutsApi: null"></interactive-report>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
+  <!-- /ko -->
+
+  <!-- ── Register history ──────────────────────────────────────────────── -->
+  <!-- ko if: history().length > 0 -->
+  <div class="card ap-region">
+    <div class="section-heading-row" data-bind="click: toggleHist" style="cursor:pointer">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: $vm.t('chg.history')"></span>
+        <span class="chg-meta" data-bind="text: histOpen() ? '▾' : '▸'"></span>
+      </div>
+    </div>
+    <!-- ko if: histOpen -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('chg.colPeriod')"></th>
+        <th data-bind="text: $vm.t('chg.colStatus')"></th>
+        <th data-bind="text: $vm.t('chg.kScope')"></th>
+        <th data-bind="text: $vm.t('chg.kChanges')"></th>
+        <th data-bind="text: $vm.t('chg.colCaptured')"></th>
+        <th data-bind="text: $vm.t('chg.colHrSigned')"></th>
+        <th data-bind="text: $vm.t('chg.colPaySigned')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: history">
+        <tr>
+          <td data-bind="text: period"></td>
+          <td><span data-bind="css: $vm.statusClass(status), text: $vm.t('chg.st.' + status)"></span></td>
+          <td data-bind="text: $vm.num(empCount)"></td>
+          <td data-bind="text: $vm.num(changeCount)"></td>
+          <td data-bind="text: (capturedAt || '—') + ($data.capturedBy ? ' · ' + capturedBy : '')"></td>
+          <td data-bind="text: hrDoneAt || '—'"></td>
+          <td data-bind="text: payDoneAt || '—'"></td>
+        </tr>
+      </tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+</div>

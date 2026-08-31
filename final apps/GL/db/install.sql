@@ -19,4 +19,4 @@
 -- @12_gl_encumbrances_ords.sql     -- ADDITIVE, fresh session (re-run after any 05)
 -- @13_gl_pending_ords.sql          -- ADDITIVE, fresh session (re-run after any 05;
 --                                      needs db/v2/52 view + reporting/db/23 seed)
-PROMPT GL install: run scripts 01..13 individually per the header notes.
+PROMPT GL install: run scripts 01..36 individually per the header notes (post-05 re-run list = 07..36; 35 = the LIVE owner of GET /gl/butil, CLOB-pieces define; 36 = Revenue Categories).

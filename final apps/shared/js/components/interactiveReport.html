@@ -284,12 +284,23 @@
   <!-- /ko -->
   <!-- ko if: filteredCount() > 0 -->
   <div class="data-table-wrap ir-table-wrap">
-    <table class="data-table ir-table">
+    <table class="data-table ir-table" data-bind="css: { 'ir-zebra': zebraOn }">
       <thead>
+        <!-- ko if: hasGroups -->
+        <tr class="ir-band" data-bind="foreach: headerGroups">
+          <th data-bind="attr: { colspan: span },
+                         css: 'ir-band-th' + (label ? '' : ' ir-band-th--empty') + (cls ? ' ' + cls : '')">
+            <span data-bind="text: label"></span>
+          </th>
+        </tr>
+        <!-- /ko -->
         <tr data-bind="foreach: visibleColumns">
           <th data-bind="click: function (d, e) { return $component.onHeaderClick($data, e); },
-                         css: $component.cellClass($data)" class="ir-th">
+                         css: $component.colCss($data), style: $component.stickyStyle($data)" class="ir-th">
             <span data-bind="text: label"></span>
+            <!-- ko if: $data.hint -->
+            <span class="ir-hint" data-bind="click: function () { return false; }, clickBubble: false">&#9432;<span class="ir-hint-pop" data-bind="text: $data.hint"></span></span>
+            <!-- /ko -->
             <span class="ir-sort" data-bind="text: $component.sortBadge($data.key)"></span>
           </th>
         </tr>
@@ -301,21 +312,40 @@
         </tr>
         <!-- /ko -->
         <!-- ko if: kind === 'row' -->
-        <tr data-bind="style: $component.rowStyle(row), foreach: $component.visibleColumns()">
-          <td data-bind="text: $component.cellText($parent.row, $data), css: $component.cellClass($data),
-                         style: $component.cellStyle($parent.row, $data)"></td>
+        <tr data-bind="style: $component.rowStyle(row),
+                       attr: { 'class': ((row._rowClass || '') + ($data.zebra ? ' ir-even' : '')).trim() || null },
+                       foreach: $component.visibleColumns()">
+          <td data-bind="css: $component.tdClass($parent.row, $data), style: $component.tdStyle($parent.row, $data),
+                         attr: { 'data-key': $data.key,
+                                 title: $data.ellipsis ? $component.cellText($parent.row, $data) : null }">
+            <!-- ko if: $data.type === 'spark' -->
+            <span data-bind="html: $component.sparkHtml($parent.row, $data)"></span>
+            <!-- /ko -->
+            <!-- ko if: $data.type !== 'spark' && $component.cellHref($parent.row, $data) -->
+            <a class="ir-link" target="_blank" rel="noopener noreferrer"
+               data-bind="attr: { href: $component.cellHref($parent.row, $data) },
+                          text: $component.cellText($parent.row, $data)"></a>
+            <!-- /ko -->
+            <!-- ko if: $data.type !== 'spark' && !$component.cellHref($parent.row, $data) -->
+            <!-- ko if: $data.delta && $component.deltaDir($parent.row, $data) !== 0 -->
+            <span data-bind="css: $component.deltaDir($parent.row, $data) > 0 ? 'ir-delta ir-delta--up' : 'ir-delta ir-delta--dn',
+                             html: $component.deltaDir($parent.row, $data) > 0 ? '&#9650;' : '&#9660;'"></span>
+            <!-- /ko -->
+            <span data-bind="text: $component.cellText($parent.row, $data)"></span>
+            <!-- /ko -->
+          </td>
         </tr>
         <!-- /ko -->
         <!-- ko if: kind === 'sub' -->
         <tr class="ir-subtotal-row" data-bind="foreach: $component.visibleColumns()">
-          <td class="ir-agg-cell" data-bind="text: $component.aggFor($data, $parent.rows), css: $component.cellClass($data)"></td>
+          <td class="ir-agg-cell" data-bind="text: $component.aggFor($data, $parent.rows), css: $component.colCss($data), style: $component.stickyStyle($data)"></td>
         </tr>
         <!-- /ko -->
       </tbody>
       <!-- ko if: hasAggs -->
       <tfoot>
         <tr data-bind="foreach: visibleColumns">
-          <td class="ir-agg-cell" data-bind="text: $component.aggFor($data), css: $component.cellClass($data)"></td>
+          <td class="ir-agg-cell" data-bind="text: $component.aggFor($data), css: $component.colCss($data), style: $component.stickyStyle($data)"></td>
         </tr>
       </tfoot>
       <!-- /ko -->

@@ -9,6 +9,8 @@ DB connection comes from environment variables (never hard-coded):
 Fusion login is interactive (SSO/MFA) in auth.py, so no Fusion password here.
 """
 import os
+import time
+
 import oracledb
 
 
@@ -61,6 +63,77 @@ def apply_runner_config(conn=None):
     return n
 
 
+_CRED_CACHE = {}          # username -> (expires_monotonic, cred-dict-or-None)
+_CRED_CACHE_TTL = 300     # seconds
+
+
+def resolve_user_cred(conn, requested_by):
+    """Resolve the i-Finance user who enqueued a job/action to their PERSONAL
+    Fusion credential (db/62 ATD_USER_CREDENTIAL via ATD_CRED_PKG). Returns
+    {"fusion_login", "fusion_pwd", "tg_chat"} or None (no profile / inactive /
+    password not set / any error) -> the caller uses the global service account.
+    Results (including misses) are cached ~5 min so the claim loop doesn't hit
+    the DB per job. NEVER log the password."""
+    user = (requested_by or "").strip()
+    if not user:
+        return None
+    hit = _CRED_CACHE.get(user)
+    if hit and hit[0] > time.monotonic():
+        return dict(hit[1]) if hit[1] else None
+    cred = None
+    try:
+        cur = conn.cursor()
+        o_login = cur.var(str)
+        o_pwd = cur.var(str)
+        o_chat = cur.var(str)
+        cur.callproc("prod.atd_cred_pkg.resolve_runner_cred",
+                     [user, o_login, o_pwd, o_chat])
+        login = o_login.getvalue()
+        if login:
+            cred = {"fusion_login": login, "fusion_pwd": o_pwd.getvalue(),
+                    "tg_chat": o_chat.getvalue()}
+    except Exception as e:  # noqa: BLE001 - fall back to the service account
+        print(f"[config] per-user credential lookup failed for {user!r}: {e}")
+        return None            # transient DB error: do not cache the miss
+    _CRED_CACHE[user] = (time.monotonic() + _CRED_CACHE_TTL, dict(cred) if cred else None)
+    if cred:
+        print(f"[config] {user} -> personal Fusion account {cred['fusion_login']}")
+    return cred
+
+
+def resolve_job_cred(conn, source_ref, requested_by):
+    """Job identity (db/62, 2026-08-15): the analysis catalog path defines the
+    PERMANENT job owner — priority is
+      1. the profile whose catalog/fusion login matches /users/<login>/ in
+         source_ref (the owner runs EVERY cycle, scheduled ones included),
+      2. else the enqueuing user's profile (requested_by),
+      3. else None -> global service account.
+    Same shape/caching as resolve_user_cred; never log the password."""
+    key = f"{(source_ref or '').split('/', 3)[:3]}|{(requested_by or '').strip()}"
+    hit = _CRED_CACHE.get(key)
+    if hit and hit[0] > time.monotonic():
+        return dict(hit[1]) if hit[1] else None
+    cred = None
+    try:
+        cur = conn.cursor()
+        o_login = cur.var(str)
+        o_pwd = cur.var(str)
+        o_chat = cur.var(str)
+        cur.callproc("prod.atd_cred_pkg.resolve_job_cred",
+                     [source_ref, requested_by, o_login, o_pwd, o_chat])
+        login = o_login.getvalue()
+        if login:
+            cred = {"fusion_login": login, "fusion_pwd": o_pwd.getvalue(),
+                    "tg_chat": o_chat.getvalue()}
+    except Exception as e:  # noqa: BLE001 - fall back to the service account
+        print(f"[config] job credential lookup failed ({requested_by!r}): {e}")
+        return None            # transient DB error: do not cache the miss
+    _CRED_CACHE[key] = (time.monotonic() + _CRED_CACHE_TTL, dict(cred) if cred else None)
+    if cred:
+        print(f"[config] job owner -> personal Fusion account {cred['fusion_login']}")
+    return cred
+
+
 def get_env(conn, env_name):
     cur = conn.cursor()
     cur.execute("""select * from prod.atd_otbi_env where env_name = :n""", n=env_name)
@@ -87,8 +160,8 @@ def get_browser_jobs_sqlcl(only=None):
         where += f" and j.job_name='{only}'"
     sql = f"""select j.job_name, j.env_name, j.target_name, j.source_ref, j.params_json,
                      j.output_format, j.stage_table, j.final_table, j.load_mode, j.key_columns,
-                     j.column_map_json, j.schema_reviewed, e.analytics_base_url,
-                     e.xmlpserver_base_url, e.credential_ref,
+                     j.column_map_json, j.schema_reviewed, j.requested_by, e.analytics_base_url,
+                     e.xmlpserver_base_url, e.fusion_apps_url, e.credential_ref,
                      e.extract_track, t.db_kind
                 from prod.atd_otbi_jobs j
                 join prod.atd_otbi_env e on e.env_name = j.env_name
@@ -115,8 +188,8 @@ def get_action(conn, action_id):
     cur = conn.cursor()
     cur.execute("""select a.action_id, a.action_type, a.env_name, a.source_module,
                           a.source_type, a.source_id, a.source_ref, a.idem_key,
-                          a.payload_json, e.analytics_base_url, e.xmlpserver_base_url,
-                          e.fusion_apps_url, e.credential_ref
+                          a.payload_json, a.created_by, e.analytics_base_url,
+                          e.xmlpserver_base_url, e.fusion_apps_url, e.credential_ref
                      from prod.atd_action_request a
                      left join prod.atd_otbi_env e on e.env_name = a.env_name
                     where a.action_id = :id""", id=action_id)
@@ -135,8 +208,8 @@ def get_browser_jobs(conn, only=None):
     cur = conn.cursor()
     sql = """select j.job_name, j.env_name, j.target_name, j.source_ref, j.params_json,
                     j.output_format, j.stage_table, j.final_table, j.load_mode, j.key_columns,
-                    j.column_map_json, j.schema_reviewed, e.analytics_base_url,
-                    e.xmlpserver_base_url, e.credential_ref,
+                    j.column_map_json, j.schema_reviewed, j.requested_by, e.analytics_base_url,
+                    e.xmlpserver_base_url, e.fusion_apps_url, e.credential_ref,
                     e.extract_track, t.db_kind
                from prod.atd_otbi_jobs j
                join prod.atd_otbi_env e on e.env_name = j.env_name

@@ -7,7 +7,7 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 - KPIs (total/enabled jobs, 24h success rate, 24h runs, last finished), queue-state donut,
   recent runs, alerts (FAILED / truncation). `go(id)` — jump to a section.
 - **Refresh Actuals** header button (`refreshActuals` → `POST /atd/actuals/refresh`): rebuilds the
-  GL classification snapshot (`DCT_GL_COA_SNAP`) the actuals reporting views read — handy straight
+  GL classification snapshot (`DCT_GL_COA_SNAP`) the actuals reporting views read through the validated, overlap-protected db/v2/118 refresh — handy straight
   after a load. Same proc as the GL app's button + the hourly `DCT_ACTUALS_REFRESH_JOB`.
 - **Worker Fleet** panel (`listWorkers` → `GET /atd/workers`): one row per parallel-worker VM
   (`worker_id`, status IDLE/BUSY/DOWN, current job, last-seen age, runs-24h) with a green/red
@@ -20,6 +20,32 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   - **Session Age** column (`sessionAge`/`sessionAged` ← `getJobHealth` → `GET /atd/jobs/health`):
     each VM's Fusion session age (from `ATD_WORKER_HEARTBEAT.session_started`); turns amber past
     ~7h so an aging session is visible before it expires (~8h).
+  - **Region-header ↻ Refresh** (`loadFleet`): re-fetches `/workers` + `/jobs/health` together
+    and re-renders the table (also the initial load path).
+  - **Inline verdict badge** (`startVerdict`/`verdictOn`/`verdictClass`/`verdictText`, v1.42.0):
+    after Check session or Force re-login the row shows a live badge — amber "Checking…"/
+    "Re-logging in…"/"Approve the number in Authenticator" → green "✓ Session OK — no MFA was
+    needed" / "✓ Signed in — MFA approved" → red on failure; driven by `mfa_status` + the 3s
+    poll, terminal verdicts auto-hide after 90s. (A live Microsoft sign-in completes a forced
+    re-login WITHOUT any MFA number — the green verdict is the success signal.)
+  - **Account** column (`sessionAccount`, db/85): which Fusion account the VM's current session
+    belongs to — the service account, or the personal profile of the running job/action.
+    **v1.43.0**: extra muted sub-lines (`workerSessions` ← heartbeat `sessions_json`) list the
+    OTHER live Fusion sessions the worker holds (per-user personal profiles, db/62) with each
+    session's own age; every column header now carries a plain-language ⓘ hint (EN+AR) —
+    Session Age = the SERVICE-account session's age (~8h lifetime, amber past 7h).
+  - **Pause / Resume** buttons (`pauseWorker`/`resumeWorker` → `POST /atd/workers/:id/pause`\|`/resume`,
+    db/85): operator hold — a paused worker claims no new work (in-flight job finishes first),
+    keeps heartbeating (`PAUSED` pill) and still honours session commands.
+  - **VM drill-down** (`openWorkerRuns`): the VM name is a link → Run Logs pre-filtered to that
+    host (one-shot `vmFilter` route state; Run Logs has a matching VM dropdown, `?vm=` on
+    `GET /runs` + `/runs/export`, db/42 rework).
+  - **Worker-offline banner** (`offlineWorkers`): red banner at the top of the dashboard when a
+    worker is `DOWN` or silent > 5 min while not BUSY (a BUSY worker legitimately skips
+    heartbeats for the length of a run).
+  - **Age-based auto re-login** (runner-side, db/85 settings `ATD_AGE_RELOGIN`=N +
+    `ATD_AGE_RELOGIN_HOURS`=7.5, editable in Runner Settings): when on, an idle worker whose
+    session age passes the threshold re-logs itself in (one MFA push); one attempt per session.
 - **Break window banner** (`breakInfo`/`breakText` ← `getJobHealth`): shown when `ATD_BREAK_ENABLED=Y`;
   displays the configured window (`ATD_BREAK_START`–`END`, Asia/Dubai) and whether it is active now,
   so a paused fleet reads as intentional, not broken.
@@ -118,7 +144,30 @@ on the set's interval.
 ## Targets (`targets`)
 - `load` · `newTarget` / `editTarget` (drawer) · `save` (create/update) · `del`.
 
+## VB Templates (`xlTemplates`)
+Visual Builder Excel template repository — per process (template) a set of **versions**, each carrying a
+**MASTER** (unpublished, admin-only) and a **PUBLISHED** (end-user) workbook; exactly **one version is
+ACTIVE per template** and end users elsewhere download the active published file
+(`GET /ords/admin/xl/templates/download?code=`). Backed by the platform **`xl` ORDS module**
+(`/ords/admin/xl/`, NOT `/atd/`) — SYS_ADMIN-gated except the download route.
+- `load` — template list (`.data-table`: code, EN/AR name, module badge, description, versions count,
+  ACTIVE version badge); row click expands the per-template **versions table** (`toggle`/`isOpen`,
+  expansion survives reloads).
+- `newTpl` / `editTpl` / `saveTpl` — create/edit template drawer (code fixed after create; name/nameAr/
+  module/description partial update via `POST /templates/` with `templateId`).
+- `newVersion` / `saveVersion` — New Version drawer (notes) → `POST /templates/version`.
+- `upload(t, v, kind)` — `.xlsx` picker (`shared/docUpload.choose`) → raw-binary
+  `PUT /templates/file?templateid=&ver=&kind=master|published&filename=`; toast + refresh.
+- `download(t, v, kind)` — authed blob fetch → object-URL `a.click` (master or published workbook).
+- `activate(t, v)` — confirm + `POST /templates/activate` (button disabled until a published file exists;
+  server 400s otherwise).
+- `delVersion(t, v)` — confirm + `POST /templates/delete-version` (blocked on the ACTIVE version).
+
 ## Run Logs (`runs`)
+- `cancelRun(row)` (v1.40.0) — Cancel button, rendered on **RUNNING rows only**; confirms, calls `POST /runs/:id/cancel`, reloads. `clickBubble:false` or the row's own click opens the detail drawer underneath it
+- Run Detail shows non-blocking **data warnings** for invalid dates: source row,
+  target column, original value, and reason. The job remains SUCCESS and loads NULL
+  for the invalid cell; diagnostic samples are stored by run (`db/49`).
 - `load` (job/status/**jobSet**/from/to filters, **server-paged** via `<list-pager>` — `offset`/`limit`/`total`) ·
   `open` (detail modal: message, checksum, rows, duration) · `closeDetail` · `exportCsv` (authed blob
   download) · `fmtDuration`.
@@ -182,6 +231,27 @@ Program / BG Override / Revenue Account Override) via *Manage Financial Project 
   `retry(row)`/`cancel(row)` as on Fusion Actions.
 - Header link `viewActions` → the Fusion Actions page (`$root.navigate('actions')`).
 
+## Project Budget Transactions (`pbtExtract`)
+Extracts master–detail budget transactions from the ADG_FIN **Project Budget Transactions**
+VBCS app into `PA_BUDGET_TRX_HEADERS` + the per-type line tables + `PA_BUDGET_TRX_APPROVALS`
+(`otbi-atd/db/77`). Enqueues action type **`PA_BUDGET_TRX`** — the first *read* action — and
+monitors it with the queue's own telemetry.
+- **Currently loaded** (`loadSummary` from `/pbt/summary`): rows per budget type with date span
+  and last-refresh time, line totals per type, approval count, and a scheduled-sync on/off badge.
+- **Extract parameters**: `fType` (budget type), `fMode` (`RANGE` / `SYNC_SHALLOW` / `SYNC_DEEP`,
+  with `modeHint` explaining each), `fFrom`/`fTo` dates, `fBus` + `fStatuses` multi-select chips
+  (`toggleBu`/`hasBu`/`toggleStatus`/`hasStatus`), `fApprovals`, `fPurge`.
+- **Run + monitor**: `submit` (client-side validation → `POST /pbt/runs`), `poll` (4 s until
+  DONE/FAILED/CANCELLED) showing status chip, worker VM, started/finished/duration, rows loaded,
+  per-type detail line and last error; `watchRun(row)` re-attaches the monitor to any past run.
+- **Recent runs** (`loadRuns` from `/pbt/runs`): request, status, scope, worker, timings, rows,
+  submitted-by; row click = watch it.
+- **Extracted transactions** (`loadData` from `/pbt/data`): server-paged register with type /
+  status / BU / date-range / free-text filters (`searchData`, `prevPage`, `nextPage`); row click
+  → `openDetail` drill drawer with the transaction header, its detail lines and its approval
+  trail (`/pbt/data/:num`).
+- Helpers: `statusClass`, `num`, `closeDrawer`.
+
 ## OTBI Discovery (`discovery`)
 One page, three tables, for the `create_analysis` async pipeline:
 - **Discovery requests** (`loadRequests` from `/subject-areas`): current status per subject area
@@ -216,19 +286,36 @@ One page, three tables, for the `create_analysis` async pipeline:
   and maps them back to `{path, column}` (server-validated against the catalog — no hallucinations).
   The matches are ticked in the nested picker for review before Build.
 
+## Runner Settings (`runnerSettings`)
+- **Operational settings table** (`load` from `/config`; `save` → PUT `/config`): the UI-managed
+  `ATD_RUNNER_CONFIG` keys (MFA wait, lease, chunk, notify channel, global `OTBI_USER`…) — the
+  runner overlays them onto its environment at startup (DB wins over env.ps1). Secret rows render
+  a set/not-set badge only.
+- **My OTBI Account** (`loadCred` / `saveCred` / `removeCred` over `/my-credential`, db/62+63):
+  per-user Fusion credential profile — Fusion username, **write-only** password (sent only when
+  typed; AES-256-encrypted server-side), personal Telegram chat id (MFA number-match pushes for
+  this account go there) and an Active toggle. Jobs and Fusion actions the signed-in user enqueues
+  run under THIS account on the worker fleet; scheduled/automatic runs keep the global service
+  account. First personal run per worker VM needs one Authenticator approval from the owner's
+  phone; an unapproved push fails only that run.
+- **Who has a personal account** roster (`credRoster` from `/credentials`): username, Fusion
+  login, active/password/chat flags — no secret values.
+
 ## API Endpoints (ORDS) — `/ords/admin/atd/` (`otbi-atd/db/13_atd_ords.sql`, module `atd.rest`)
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/actuals/refresh` | rebuild `DCT_GL_COA_SNAP` (`prod.dct_actuals_refresh`) — `otbi-atd/db/39_atd_actuals_refresh_ords.sql` (additive to `atd.rest`); mirrors the GL app button + hourly job |
 | GET | `/dashboard` | KPIs + queue counts + recent + alerts (failures **and** runs with a warning message; each alert has `kind` WARNING/FAILED) |
 | GET | `/lookups` | envs + targets for pickers |
-| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec`, +`categories[]`; **`?category=CODE`** filter) / create job — POST needs only `sourceRef`; optional `frequencyMinutes`, `categories[]` |
-| GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes` + `categories[]`) / update (incl. `frequencyMinutes`, `categories[]` replace-set) / delete job |
+| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec`, +`categories[]`, +**`owner`/`ownerType`** = the job's PERMANENT owner: `catalog` = the credential profile whose OTBI catalog folder holds the analysis (every run, scheduled included, signs in as that account), `manual` = the user who queued this cycle, '' = service account; +`requestedBy` (this cycle's manual requester); **`?category=CODE`** filter) / create job — POST needs only `sourceRef`; optional `frequencyMinutes`, `categories[]` |
+| GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes` + `categories[]` + `owner`/`ownerType`/`requestedBy`) / update (incl. `frequencyMinutes`, `categories[]` replace-set) / delete job |
 | GET / POST | `/categories` | list categories (+`usage` count, +`parentCode`/`parentName`) / create (`code`,`nameEn`,`nameAr`,`color`,`displayOrder`,`active`,`parentCode`). SYS_ADMIN |
 | PUT / DELETE | `/categories/:code` | update (partial, incl. `parentCode`) / delete — 400 if in use by jobs OR has sub-categories (deactivate/reparent instead). SYS_ADMIN |
 | POST | `/jobs/:name/approve-schema` | release a job held for schema review (`schema_reviewed`→'Y'); it loads on next run. SYS_ADMIN |
-| GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec` + **`setCode`/`setName`** (the run's Job Set, via `atd_job_set_member`). `status=WARNING` → SUCCESS rows with a message; **`?setcode=`** filters to one set (db/42) |
-| GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |
+| GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec` + **`setCode`/`setName`** (the run's Job Set, via `atd_job_set_member`). `status=WARNING` → SUCCESS rows with a message; **`?setcode=`** filters to one set, **`?vm=`** to one worker VM (db/42) |
+| GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — status, heartbeat, session/MFA state, last login duration/status, last successful extract, 24-hour run count, `paused` + `sessionAccount` (db/85 — that script now owns this handler; run 85 after any 13 re-run, never 56 after 85) |
+| POST | `/workers/:id/pause` | operator hold (`:id` = worker_id or `all`) — sets `ATD_WORKER_HEARTBEAT.paused='Y'`; the worker claims no new work after its in-flight job. SYS_ADMIN (db/85) |
+| POST | `/workers/:id/resume` | clears the pause flag; the worker claims work again. SYS_ADMIN (db/85) |
 | GET | `/jobs/health` | dashboard observability (additive, db/31) — `break` {enabled,active,start,end}, `workers[]` {workerId,sessionStarted,sessionAgeMin}, `jobs[]` (enabled) {jobName,lastSuccess,sinceMin,consecutiveFails,stuckRunning,alertSent,frequencyMin}. SYS_ADMIN |
 | POST | `/workers/:id/refresh` | request a worker re-login (`:id` = worker_id or `all`) — sets `ATD_WORKER_HEARTBEAT.refresh_req`; the worker forces a fresh Fusion login (MFA). SYS_ADMIN |
 | GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
@@ -243,7 +330,8 @@ One page, three tables, for the `create_analysis` async pipeline:
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |
-| GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` filter (redefined by `otbi-atd/db/42_atd_runs_set_ords.sql`, additive; re-run after `13`) |
+| GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` + `?vm=` filters (db/42); detail adds `warningCount` + `warnings[]` with row/column/value/reason for non-blocking invalid-date warnings (db/49). Re-run both additive scripts after `13`. |
+| POST | `/runs/:id/cancel` | cancel a run stuck on RUNNING (worker gone): closes the run-log row + releases any `ATD_ACTION_REQUEST` still holding it — a CLAIMED action keeps its idempotency bucket locked. 409 if already finished. **Cannot kill a process** (no command channel to the ATD fleet). db/81 — re-run after any 13 |
 | GET | `/actions` | Fusion action queue list (paged; filter `status`/`type`/`search`; incl. db/46 telemetry `workerVm`/`startedAt`/`finishedAt`/`durationSecs`/`submittedBy`) — `otbi-atd/db/20_atd_action_ords.sql` (additive to `atd.rest`) |
 | GET | `/actions/stats` | action-queue counts (ready/claimed/done/failed/cancelled) — dashboard tile |
 | GET | `/actions/:id` | action detail: payload, last error, source status history |
@@ -257,13 +345,38 @@ One page, three tables, for the `create_analysis` async pipeline:
 | POST | `/job-sets/:code/run` | Run Set Now — top-priority enqueue every enabled member (`atd_set_pkg.run_now`) |
 | PUT | `/job-sets/:code/pause` | pause / resume the whole set (`{paused:'Y'/'N'}`) |
 | GET | `/job-set-jobs` | candidate picker — every job + its current set (if any); the detail add-member list filters to unassigned jobs |
+| GET / PUT | `/config` | Runner Settings — list / update `ATD_RUNNER_CONFIG` rows (update-only, secrets masked). SYS_ADMIN |
+| GET / PUT / DELETE | `/my-credential` | per-user OTBI credential profile (db/62+63): read own profile (`passwordSet` flag, never the password) / upsert (`password` applied only when present + non-empty — write-only; `catalogLogin` = OTBI catalog folder when it differs from the sign-in — drives permanent job ownership) / remove. SYS_ADMIN, always the caller's own row — `otbi-atd/db/63_atd_user_cred_ords.sql` (additive) |
+| POST / GET | `/pbt/runs` | enqueue one PBT extract (`{mode,transactionTypes[],dateFrom,dateTo,businessUnits[],statuses[],includeApprovals,purgeMissing}`; mode `RANGE`\|`SYNC_SHALLOW`\|`SYNC_DEEP`) / request register with worker + timings + row counts — `otbi-atd/db/78_pa_budget_trx_ords.sql` (additive). **db/44's `/actions/enqueue` is hard-coded to `PPM_TASK_ADDL_INFO`, so PBT needs its own.** |
+| GET | `/pbt/runs/:id` | one request + its run-log detail (the page polls this while a run is live) |
+| GET | `/pbt/summary` | KPIs — headers by type (with date span + last refresh), by status, by BU; line + approval totals; budget-type LOV; `syncEnabled` |
+| GET | `/pbt/data` | paged extracted-header register (`?type=&status=&bu=&from=&to=&search=&page=&size=`) |
+| GET | `/pbt/data/:num` | one transaction — header + its detail lines (from the table matching `?type=`) + its approval trail |
+| GET | `/credentials` | roster of personal OTBI accounts (username, fusionLogin, active/password/chat flags — no secrets) — db/63 (additive) |
 
 All handlers: `dct_rest.validate_session` → 401, `dct_auth.has_role(user,'SYS_ADMIN')` → 403.
+
+## API Endpoints (ORDS) — `/ords/admin/xl/` (platform `xl` module — VB Template repository)
+Bearer-auth like every other module; **SYS_ADMIN-gated except `/templates/download`** (any valid
+session). Errors arrive as `{"error":"…"}` with a proper HTTP status. Consumed by the VB Templates
+page via `js/services/xlService.js` (base derived by swapping the module segment — the shared
+api.js `wf` pattern; `config.xlBase` wins if set).
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/templates/` | full repository — `{items:[{templateId, code, name, nameAr, description, module, versions:[{versionNo, isActive, notes, masterFile/SizeKb/By/At, pubFile/SizeKb/By/At}]}]}`. SYS_ADMIN |
+| POST | `/templates/` | create (`{code,name,nameAr,description,module}` → `{templateId}`) or partial update (same body + `templateId`). SYS_ADMIN |
+| POST | `/templates/version` | `{templateId, notes}` → `{versionNo}` — next version for a template. SYS_ADMIN |
+| PUT | `/templates/file?templateid=&ver=&kind=master\|published&filename=` | raw-binary workbook upload (`application/octet-stream` body) → `{ok:1}`. SYS_ADMIN |
+| GET | `/templates/file?templateid=&ver=&kind=master\|published` | binary workbook download (authed blob). SYS_ADMIN |
+| POST | `/templates/activate` | `{templateId, versionNo}` → `{ok:1}`; 400 if that version has no published file. SYS_ADMIN |
+| POST | `/templates/delete-version` | `{templateId, versionNo}` → `{ok:1}`; 400 if the version is ACTIVE. SYS_ADMIN |
+| GET | `/templates/download?code=` | the template's **active published** file — any authenticated user (end-user download route) |
 
 ## Services / Data layer
 | File | Role |
 |---|---|
-| `js/services/atdService.js` | one method per ORDS endpoint (Promises); incl. `getActionStats` / `listActions` / `getAction` / `retryAction` / `cancelAction`; job sets `listJobSets` / `getJobSet` / `createJobSet` / `updateJobSet` / `deleteJobSet` / `addSetMembers` / `updateSetMember` / `removeSetMember` / `runJobSet` / `pauseJobSet` / `listSetCandidates` |
+| `js/services/atdService.js` | one method per ORDS endpoint (Promises); incl. `getActionStats` / `listActions` / `getAction` / `retryAction` / `cancelAction`; job sets `listJobSets` / `getJobSet` / `createJobSet` / `updateJobSet` / `deleteJobSet` / `addSetMembers` / `updateSetMember` / `removeSetMember` / `runJobSet` / `pauseJobSet` / `listSetCandidates`; Project Budget Transactions `pbtSummary` / `pbtRun` / `pbtRuns` / `pbtRunById` / `pbtData` / `pbtDetail` |
+| `js/services/xlService.js` | VB Template repository client for the platform `xl` ORDS module (`/ords/admin/xl/`): `list` / `save` / `newVersion` / `activate` / `deleteVersion` / raw-binary `uploadFile` / authed `fileBlobUrl` |
 | `js/services/api.js` | re-export of `shared/js/api.js` (Bearer + 401 handling) |
 | `js/services/authService.js` | session reader (shared `ifinance_jet_session`) |
 | `js/services/config.js` | `apiBase=/ords/admin/atd`, `authBase=/ords/admin/dct` |

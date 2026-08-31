@@ -84,6 +84,13 @@ function (ko, config, authService, i18n, shell) {
         ]
       },
       {
+        id: 'rebill', labelKey: 'nav.rebillGroup', auth: 'arAdmin',
+        collapsed: ko.observable(false),
+        items: [
+          { id: 'arRebill', labelKey: 'nav.arRebill' },
+        ]
+      },
+      {
         id: 'admin', labelKey: 'nav.adminGroup', auth: 'arAdmin',
         collapsed: ko.observable(true),
         items: [

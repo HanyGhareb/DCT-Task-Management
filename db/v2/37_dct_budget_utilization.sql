@@ -4,8 +4,14 @@
 -- DCT_BUDGET_UTILIZATION_V : project-costing budget-vs-actual, ONE row per
 -- BUDGET_YEAR x PROJECT x TASK x EXPENDITURE TYPE (only lines with budget > 0).
 --
---   Budget          : prod.projects_budget (ATD_PROJECTS_BUDGET, BUDGET_YEAR
---                     dimension), counted once per line.
+--   Budget          : prod.projects_budget (ATD_PROJECTS_BUDGET, BUDGET_YEAR x
+--                     ACCOUNTING_PERIOD MM-YYYY grain since 2026-07-21). TWO
+--                     figures per line: BUDGET_ANNUAL = sum of ALL period rows;
+--                     BUDGET (the period-aware figure every consumer reads) =
+--                     sum of period rows on/before BUTIL_END - equal to
+--                     BUDGET_ANNUAL when no period is set. NULL/unparseable
+--                     periods count as annual (always included). Line set =
+--                     BUDGET_ANNUAL > 0 (stable across period picks).
 --   Actual AP       : no-PO invoice distributions (PO_NUMBER IS NULL), invoice
 --                     validation_status IN (Validated, Unpaid, Available),
 --                     non-reversed, project/task/etype at distribution level,
@@ -42,7 +48,9 @@
 -- before that day - i.e. year-to-date THROUGH the selected period. Unset =
 -- full budget year (unchanged behavior for every existing consumer: the
 -- hourly refresh job, db/v2/39 report views, /gl/butil without ?period=).
--- The budget column stays ANNUAL (ATD_PROJECTS_BUDGET has no period spread).
+-- Since 2026-07-21 the BUDGET column is period-aware too (YTD sum of the
+-- line's ACCOUNTING_PERIOD rows; see the pb CTE) and BUDGET_ANNUAL carries
+-- the full-year figure - FUND_AVAILABLE = BUDGET(YTD) - consumption.
 --
 -- All amounts AED. Requires prod.dct_gl_coa_snap (db/v2/33) + base views
 -- (db/v2/32 + 36). DEPLOY ORDER: re-run 32 first after any ATD reload so the
@@ -57,6 +65,7 @@ WITH
 proj AS (
   SELECT project_id, project_number, MAX(project_name) AS project_name,
          MAX(project_type) AS project_type,
+         MAX(business_unit_name) AS business_unit,
          MAX(appropriation) AS appropriation, MAX(appropriation_description) AS appropriation_desc
   FROM prod.projects GROUP BY project_id, project_number
 ),
@@ -65,17 +74,31 @@ tsk AS (
   FROM prod.tasks GROUP BY task_id
 ),
 tsk_org AS (
-  SELECT task_number, MAX(task_organization) AS task_organization
-  FROM prod.tasks GROUP BY task_number
+  -- project-scoped (2026-08-12): task numbers REPEAT across projects, so a
+  -- bare GROUP BY task_number picked an arbitrary project's organization.
+  SELECT TO_CHAR(pj.project_number) AS project_key, t.task_number,
+         MAX(t.task_organization) AS task_organization
+  FROM prod.tasks t
+  JOIN proj pj ON pj.project_id = t.project_id
+  GROUP BY TO_CHAR(pj.project_number), t.task_number
 ),
 tsk_seg AS (
   SELECT TO_CHAR(pj.project_number) AS project_key, t.task_number AS task_key,
          MAX(CASE WHEN t.cost_center   IS NOT NULL THEN LPAD(TO_CHAR(t.cost_center),7,'0')   END) AS cost_center_code,
          MAX(CASE WHEN t.appropriation IS NOT NULL THEN LPAD(TO_CHAR(t.appropriation),6,'0') END) AS appropriation_code,
-         MAX(CASE WHEN t.program IS NOT NULL THEN LPAD(TO_CHAR(t.program),6,'0') END) AS program_code
+         MAX(CASE WHEN t.program IS NOT NULL THEN LPAD(TO_CHAR(t.program),6,'0') END) AS program_code,
+         MAX(CASE WHEN t.entity_specific IS NOT NULL THEN LPAD(TO_CHAR(t.entity_specific),7,'0') END) AS entity_specific_code
   FROM prod.tasks t
   JOIN proj pj ON pj.project_id = t.project_id
   GROUP BY TO_CHAR(pj.project_number), t.task_number
+),
+proj_seg AS (
+  SELECT project_key,
+         MAX(cost_center_code)     AS cost_center_code,
+         MAX(appropriation_code)   AS appropriation_code,
+         MAX(program_code)         AS program_code,
+         MAX(entity_specific_code) AS entity_specific_code
+  FROM tsk_seg GROUP BY project_key
 ),
 cc_dim AS (
   SELECT cost_center_code, MAX(cost_center_desc) AS cost_center_desc,
@@ -113,13 +136,57 @@ acct AS (
   SELECT account_code, MAX(account_desc) AS account_desc
   FROM prod.dct_gl_coa_snap GROUP BY account_code
 ),
+pb_src AS (
+  -- ONE row stream feeding pb: the Fusion budget rows contribute BUDGET, the
+  -- end-user rows contribute CHG (the signed budget change entered from the
+  -- Excel VB workbook or the GL Budget Change drawer, PROD.DCT_PROJECT_BUDGET_USER,
+  -- db/v2/106). A UNION ALL - NOT a join - because the Fusion budget is NOT
+  -- cashflow-phased: 1,736 of 1,779 FY2026 lines carry a single period row
+  -- (mostly 01-2026), so a change booked at any other period has no budget row
+  -- to hang off and an outer join from the budget table would silently drop it.
+  SELECT b.budget_year, b.project_id, b.task_id, b.expenditure_type,
+         b.accounting_period, b.budget, 0 AS chg, 0 AS chg_cnt
+  FROM prod.projects_budget b
+  UNION ALL
+  SELECT TO_NUMBER(SUBSTR(u.accounting_period, 4, 4) DEFAULT NULL ON CONVERSION ERROR),
+         u.project_id, u.task_id, u.expenditure_type,
+         u.accounting_period, 0 AS budget, u.budget_change AS chg, 1 AS chg_cnt
+  FROM prod.dct_project_budget_user u
+),
 pb AS (
+  -- budget_annual = ALL period rows of the line; budget_ytd = period rows whose
+  -- ACCOUNTING_PERIOD (MM-YYYY) falls on or before BUTIL_END. A NULL/unparseable
+  -- period falls back to 1900-01-01 = ALWAYS included (un-spread budget counts
+  -- as annual). BUTIL_END unset -> budget_ytd = budget_annual (full year).
+  -- Budget change (2026-08-17, v2): when SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+  -- the signed change is ADDED to the budget (a negative change subtracts), so
+  -- annual AND YTD budget, fund available, utilization and every consuming
+  -- report reflect it. Before v2 the figure REPLACED the budget - the model is
+  -- now additive. The override_* columns (change amounts + changed-line count)
+  -- are ALWAYS emitted regardless of the flag - they feed the separate Budget
+  -- Change KPI.
   SELECT b.budget_year,
          COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(b.project_id)) AS project_key,
          COALESCE(tk.task_number, '#'||TO_CHAR(b.task_id))                AS task_key,
          b.expenditure_type,
-         SUM(b.budget) AS budget
-  FROM prod.projects_budget b
+         SUM(b.budget + CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+                             THEN b.chg ELSE 0 END) AS budget_annual,
+         SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+                    OR NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                           DATE '1900-01-01')
+                       < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1
+                  THEN b.budget + CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+                                       THEN b.chg ELSE 0 END
+             END) AS budget_ytd,
+         SUM(b.chg) AS override_annual,
+         SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+                    OR NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                           DATE '1900-01-01')
+                       < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1
+                  THEN b.chg END) AS override_ytd,
+         SUM(b.chg_cnt) AS override_cnt,
+         SUM(b.budget) AS fusion_annual
+  FROM pb_src b
   LEFT JOIN proj pj ON pj.project_id = b.project_id
   LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
   GROUP BY b.budget_year,
@@ -277,9 +344,13 @@ SELECT
            MAX(MAX(tcc.cost_center_code)) OVER (PARTITION BY k.budget_year, k.project_key))  AS cost_centre,
   k.project_key             AS project_number,
   MAX(pj.project_name)      AS project_name,
+  MAX(pj.business_unit)     AS business_unit,
   k.task_key                AS task_number,
-  COALESCE(MAX(CASE WHEN coa.account_code IS NOT NULL THEN coa.account_code || ' - ' || coa.account_desc END),
-           MAX(CASE WHEN ac.account_code  IS NOT NULL THEN ac.account_code  || ' - ' || ac.account_desc  END)) AS gl_account,
+  -- GL account = the expenditure type's 6-digit prefix (user rule 2026-07-30;
+  -- the posted-transaction account is display fallback only)
+  COALESCE(MAX(CASE WHEN ac.account_code  IS NOT NULL THEN ac.account_code  || ' - ' || ac.account_desc  END),
+           REGEXP_SUBSTR(k.expenditure_type,'^\d{6}'),
+           MAX(CASE WHEN coa.account_code IS NOT NULL THEN coa.account_code || ' - ' || coa.account_desc END)) AS gl_account,
   COALESCE(MAX(CASE WHEN tcc.appropriation_code IS NOT NULL
                     THEN tcc.appropriation_code ||
                          CASE WHEN ad.appropriation_desc IS NOT NULL THEN ' - ' || ad.appropriation_desc END END),
@@ -294,16 +365,62 @@ SELECT
                          CASE WHEN pgd.program_desc IS NOT NULL THEN ' - ' || pgd.program_desc END END),
            MAX(CASE WHEN coa.program_code IS NOT NULL THEN coa.program_code || ' - ' || coa.program_desc END)) AS program,
   k.expenditure_type,
-  MAX(NVL(b.budget,0))              AS budget,
+  MAX(NVL(b.budget_annual,0))       AS budget_annual,
+  MAX(NVL(b.budget_ytd,0))          AS budget,
   SUM(NVL(ap.actual_ap,0))          AS actual_ap,
   SUM(NVL(grn.actual_grn,0))        AS actual_grn,
   SUM(NVL(pr.open_commitment_pr,0)) AS commitment_pr,
   SUM(NVL(po.open_obligation_po,0)) AS obligation_po,
   CASE WHEN MAX(b.project_key) IS NOT NULL THEN
-    MAX(NVL(b.budget,0))
+    MAX(NVL(b.budget_ytd,0))
       - SUM( NVL(ap.actual_ap,0) + NVL(grn.actual_grn,0)
            + NVL(pr.open_commitment_pr,0) + NVL(po.open_obligation_po,0) )
-  END AS fund_available
+  END AS fund_available,
+  MAX(NVL(b.override_annual,0)) AS override_budget_annual,
+  MAX(NVL(b.override_ytd,0))    AS override_budget,
+  MAX(NVL(b.override_cnt,0))    AS override_lines,
+  -- BUDGET_COMBINATION: the line's full 10-segment canonical GL combination
+  -- (Fusion order entity.program.cc.bg.account.es.appr.ic.f1.f2). User rules
+  -- 2026-07-30: ACCOUNT = the expenditure type's 6-digit prefix ALWAYS (never
+  -- the posted-transaction account); PROGRAM/CC/ES/APPROPRIATION come from
+  -- the task, and a task missing one takes it from PROJECT level (the rollup
+  -- of the project's tasks, appropriation also from the project attribute).
+  -- Entity 451 + budget group 1 + constant tail 000.000000.000000. Each
+  -- segment mirrors its DISPLAY column's fallback chain (2026-08-11 fix:
+  -- MSS/ZNM budget-only lines have no task/project segment attrs, but their
+  -- project DOES have posted combinations — the display cost_centre found a
+  -- CC while the builder yielded NULL): task attr -> project attr rollup ->
+  -- the line's posted-combination segment -> the project-window posted
+  -- segment. Falls back to an actual posted combination (MAX cc_string)
+  -- only when no source anywhere yields a cost centre.
+  COALESCE(
+    CASE WHEN COALESCE(MAX(tcc.cost_center_code), MAX(pseg.cost_center_code),
+                       MAX(coa.cost_center_code),
+                       MAX(MAX(coa.cost_center_code)) OVER (PARTITION BY k.budget_year, k.project_key)) IS NOT NULL
+          AND REGEXP_SUBSTR(k.expenditure_type,'^\d{6}') IS NOT NULL
+         THEN '451.' || COALESCE(MAX(tcc.program_code), MAX(pseg.program_code),
+                                 MAX(coa.program_code),
+                                 MAX(MAX(coa.program_code)) OVER (PARTITION BY k.budget_year, k.project_key),
+                                 '000000') || '.' ||
+              COALESCE(MAX(tcc.cost_center_code), MAX(pseg.cost_center_code),
+                       MAX(coa.cost_center_code),
+                       MAX(MAX(coa.cost_center_code)) OVER (PARTITION BY k.budget_year, k.project_key)) || '.1.' ||
+              REGEXP_SUBSTR(k.expenditure_type,'^\d{6}') || '.' ||
+              COALESCE(MAX(tcc.entity_specific_code), MAX(pseg.entity_specific_code),
+                       MAX(coa.entity_specific_code),
+                       MAX(MAX(coa.entity_specific_code)) OVER (PARTITION BY k.budget_year, k.project_key),
+                       '0000000') || '.' ||
+              COALESCE(MAX(tcc.appropriation_code), MAX(pseg.appropriation_code),
+                       MAX(coa.appropriation_code),
+                       MAX(MAX(coa.appropriation_code)) OVER (PARTITION BY k.budget_year, k.project_key),
+                       LPAD(MAX(pj.appropriation),6,'0'), '000000') || '.000.000000.000000'
+    END,
+    MAX(k.cc_string)) AS budget_combination,
+  -- TASK_ORGANIZATION: the raw PPM owning organization of the task (OTBI
+  -- "Task Organization", e.g. "MSS Guggenheim Abu Dhabi"). Shown alongside
+  -- DEPARTMENT (the GL cost-centre segment description) since 2026-08-12 —
+  -- the two are DIFFERENT Fusion attributes and users need both.
+  MAX(torg.task_organization) AS task_organization
 FROM keys k
 LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = k.cc_string
 LEFT JOIN pb b  ON b.budget_year = k.budget_year
@@ -311,8 +428,9 @@ LEFT JOIN pb b  ON b.budget_year = k.budget_year
                AND NVL(b.task_key,'~')         = NVL(k.task_key,'~')
                AND NVL(b.expenditure_type,'~') = NVL(k.expenditure_type,'~')
 LEFT JOIN proj pj ON TO_CHAR(pj.project_number) = k.project_key
-LEFT JOIN tsk_org torg ON torg.task_number = k.task_key
+LEFT JOIN tsk_org torg ON torg.project_key = k.project_key AND torg.task_number = k.task_key
 LEFT JOIN tsk_seg tcc ON tcc.project_key = k.project_key AND tcc.task_key = k.task_key
+LEFT JOIN proj_seg pseg ON pseg.project_key = k.project_key
 LEFT JOIN cc_dim tcd ON tcd.cost_center_code = tcc.cost_center_code
 LEFT JOIN sector_map sm ON sm.cost_center_code = tcc.cost_center_code
 LEFT JOIN approp_dim ad ON ad.appropriation_code = tcc.appropriation_code
@@ -340,7 +458,16 @@ LEFT JOIN f_po po ON po.budget_year = k.budget_year
                  AND po.project_key = k.project_key
                  AND NVL(po.task_key,'~')         = NVL(k.task_key,'~')
                  AND NVL(po.expenditure_type,'~') = NVL(k.expenditure_type,'~')
+-- exclude CANCELLED / soft-deleted lines: project '#%' (no-project + cancelled),
+-- task '#_%' (cancelled task id; a bare '#' task = legit no-task line, kept).
+-- (platform rule 2026-07-25; currently a no-op here as budget masters resolve.)
+WHERE k.project_key NOT LIKE '#%'
+  AND k.task_key NOT LIKE '#_%'
 GROUP BY k.budget_year, k.project_key, k.task_key, k.expenditure_type
-HAVING MAX(NVL(b.budget,0)) > 0;
+-- line set pinned to the FUSION annual (2026-07-28): with BUTIL_OVR the
+-- effective annual can be zero or NEGATIVE (budget fully transferred out) and
+-- such lines must stay VISIBLE, not vanish; overridden zero-fusion lines are
+-- kept too. Set is stable across flag toggles.
+HAVING MAX(NVL(b.fusion_annual,0)) > 0 OR MAX(NVL(b.override_cnt,0)) > 0;
 
 PROMPT DCT_BUDGET_UTILIZATION_V created (budget-year x project x task x expenditure type).

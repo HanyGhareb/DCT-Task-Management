@@ -68,10 +68,22 @@ BEGIN
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_val  VARCHAR2(4000);
+  l_num  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
   l_val := APEX_JSON.get_varchar2(p_path => 'value');
+  IF [COLON]setkey IN ('ATD_SUCCESS_LOG_RETENTION_DAYS','ATD_ISSUE_LOG_RETENTION_DAYS') THEN
+    IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+      dct_rest.err(403,'Only SYS_ADMIN may change technical log retention'); RETURN;
+    END IF;
+    l_num := TO_NUMBER(l_val DEFAULT NULL ON CONVERSION ERROR);
+    IF l_num IS NULL OR l_num != TRUNC(l_num)
+       OR ([COLON]setkey = 'ATD_SUCCESS_LOG_RETENTION_DAYS' AND l_num NOT BETWEEN 7 AND 3650)
+       OR ([COLON]setkey = 'ATD_ISSUE_LOG_RETENTION_DAYS' AND l_num NOT BETWEEN 30 AND 3650) THEN
+      dct_rest.err(400,'Invalid retention days'); RETURN;
+    END IF;
+  END IF;
   IF l_val = '********' THEN
     dct_rest.json_header;
     APEX_JSON.initialize_output;
@@ -115,6 +127,7 @@ DECLARE
   l_offset NUMBER        := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_search VARCHAR2(200) := [COLON]search;
   l_action VARCHAR2(100) := UPPER([COLON]action);
+  l_category VARCHAR2(100) := UPPER([COLON]category);
   l_from   DATE          := TO_DATE([COLON]fromdt DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
   l_to     DATE          := TO_DATE([COLON]todt   DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
   l_total  NUMBER;
@@ -124,10 +137,11 @@ BEGIN
   SELECT COUNT(*) INTO l_total
   FROM   dct_audit_log
   WHERE (l_action IS NULL OR action = l_action)
+    AND (l_category IS NULL OR NVL(module_code,'UNCATEGORIZED') = l_category)
     AND (l_from   IS NULL OR logged_at >= l_from)
     AND (l_to     IS NULL OR logged_at <  l_to + 1)
     AND (l_search IS NULL OR
-         UPPER(NVL(username,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
+         UPPER(NVL(username,'') || ' ' || NVL(module_code,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
          LIKE '%' || UPPER(l_search) || '%');
 
   dct_rest.json_header;
@@ -138,14 +152,15 @@ BEGIN
   APEX_JSON.write('offset', l_offset);
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT log_id, username, action, object_type, object_id,
+    SELECT log_id, username, module_code, action, object_type, object_id,
            status, error_message, logged_at
     FROM   dct_audit_log
     WHERE (l_action IS NULL OR action = l_action)
+      AND (l_category IS NULL OR NVL(module_code,'UNCATEGORIZED') = l_category)
       AND (l_from   IS NULL OR logged_at >= l_from)
       AND (l_to     IS NULL OR logged_at <  l_to + 1)
       AND (l_search IS NULL OR
-           UPPER(NVL(username,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
+           UPPER(NVL(username,'') || ' ' || NVL(module_code,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
            LIKE '%' || UPPER(l_search) || '%')
     ORDER BY logged_at DESC
     OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
@@ -153,6 +168,7 @@ BEGIN
     APEX_JSON.open_object;
     APEX_JSON.write('logId',       r.log_id);
     APEX_JSON.write('username',    r.username);
+    APEX_JSON.write('category',    NVL(r.module_code,'UNCATEGORIZED'));
     APEX_JSON.write('action',      r.action);
     APEX_JSON.write('objectType',  r.object_type);
     APEX_JSON.write('objectId',    r.object_id);

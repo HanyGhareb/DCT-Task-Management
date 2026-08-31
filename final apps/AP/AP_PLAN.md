@@ -29,7 +29,7 @@ The app ships with:
 | App number | **212** |
 | Module code | `AP` (key `ap`, badge `AP`) |
 | App name | Accounts Payable – AP / الحسابات الدائنة |
-| Brand colour | `#8E3B5C` (deep burgundy; dark `#6d2c46`, soft `#f4e9ee`) |
+| Brand colour | `#14682F` (deep burgundy; dark `#6d2c46`, soft `#f4e9ee`) |
 | ORDS module | `ap.rest` at `/ords/admin/ap/` |
 | Folder | `final apps/AP/` (`Jet/`, `db/`, `docs/`, `tests/`, `UAT/`, `STATUS.md`, `AP_PLAN.md`) |
 | Auth | Shared `ifinance_jet_session` — no own login; redirects to Admin JET (App 200) |

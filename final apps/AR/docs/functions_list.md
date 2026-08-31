@@ -70,6 +70,34 @@ Auth + shell are shared (`shared/` layer). The app boots into the dashboard.
 
 ---
 
+## 9. AR Invoice Rebill — Fusion write-back (2026-07-25)
+
+**Invoice Rebill** (`arRebill`, AR_ADMIN) — submit and track VAT-correction rebill requests.
+Each request runs a nine-stage saga inside Oracle Fusion Receivables, performed by the ATD
+worker fleet (`otbi-atd/runner/actions/ar_invoice_rebill.py`): credit the invoice off in full →
+duplicate it → correct the Tax Classification on the nominated memo lines → set Project/Task on
+each line → complete the duplicate. Both generated document numbers come back to the
+register. Enqueue only — the page never talks to Fusion directly.
+- Single request: `submitSingle` · `resetForm` · `addLine` / `removeLine` · `cmNumberPlaceholder`
+  (defaults the credit memo number to `<invoice>CM`) · `lovLabel`. The **memo line is the matching
+  key** (2026-07-26): the line number is optional everywhere, and the fleet applies each payload
+  memo line to **every** Fusion invoice line carrying that memo (same memo, same treatment).
+- Bulk upload (**ONE flat sheet grouped by invoice number** via SheetJS, 2026-07-26): columns
+  `Invoice Number · Memo Line · Project Number · Task · VAT Rate Code · CM Number · New Invoice
+  Number` + the optional per-invoice header-detail columns `CM_TXN_NO · CM_TXN_DATE · CM_ACCT_DATE
+  · CREDIT_REASON · COMMENTS · CM_FINISH · DUP_SOURCE · DUP_TXN_DATE · DUP_ACCT_DATE` (read from
+  the invoice's first non-empty cell; blanks fall back to the batch defaults `bulkDate` /
+  `bulkReason` / `bulkFinish`, auto comments, source DCT Manual). CM Number / New Invoice Number
+  are RESULT columns — an invoice whose results are already filled is skipped, so the running
+  workbook re-uploads whole. `downloadTemplate` (flat sheet) · `chooseFile` (parse + group +
+  per-row validation) · `submitBulk` (chunked enqueue, per-row `READY #id`) · `clearBulk` ·
+  `bulkValidCount` / `bulkErrorCount` / `bulkDoneCount`.
+- Register (2026-07-26): the SHARED `<interactive-report>` component over a one-shot capped fetch (10,000; `AR_REBILL_REQUESTS`, `layoutsApi: null`) — filtering, multi-sort, column show/hide/rename, control breaks, highlights, aggregates, CSV/XLSX export and **maximize-to-full-screen** all come from the component; `loadRegister` (refresh) · `irRowClick` (delegated row click via the cell's KO context → stage timeline) · `statusClass` · `fmtDur`.
+- Stage timeline drawer: `openDetail` / `closeDetail` · `stageLabel` (EN/AR from the
+  `AR_REBILL_STAGE` lookup).
+
+---
+
 ## API Endpoints (ORDS)
 
 Module `ar.rest` · base path **`/ords/admin/ar/`** · defined in `final apps/AR/db/05_ar_ords.sql`.
@@ -92,6 +120,7 @@ service in the SPA). All other calls hit `/ords/admin/ar/`.
 | Settings & Providers | `GET settings/` · `PUT settings/` · `GET providers/` · `POST providers/` · `PUT providers/:id` · `DELETE providers/:id` |
 | Meta | `GET meta/lookups` |
 | AR Customers (db/10, ADDITIVE — re-run after any 05 re-run) | `GET customers/` · `POST customers/` · `GET customers/:id` · `PUT customers/:id` · `DELETE customers/:id` · `POST customers/:id/submit` · `POST customers/:id/sync` · `GET customers/wssearch` · `GET customers/lovs` · `GET customers/soapui-config` (AR_ADMIN) |
+| AR Invoice Rebill (db/11, ADDITIVE — re-run after any 05 re-run; all AR_ADMIN) | `POST rebill/requests` (bulk enqueue, ≤500 rows, per-row result) · `GET rebill/requests` (register) · `GET rebill/requests/:id` (request + 9-stage timeline) · `GET rebill/lovs` |
 
 ---
 
@@ -105,6 +134,7 @@ service in the SPA). All other calls hit `/ords/admin/ar/`.
 | `arService` | events, P&L lines, files, AI jobs, what-if, categories. |
 | `settingService` | module/system settings + AI providers. |
 | `arCustomerService` | AR Customer submissions CRUD + submit/sync + Fusion lookup + form LOVs. |
+| `rebillService` | AR Invoice Rebill: bulk enqueue, register, request detail + stage timeline, form value sets. |
 | `soapuiGen` | client-side Excel→SoapUI-project generator (wire catalog, parse/validate, envelope + project XML, template) — keep in sync with `AR/tools/soapui-customers/generate_soapui_customers.py`. |
 
 ---

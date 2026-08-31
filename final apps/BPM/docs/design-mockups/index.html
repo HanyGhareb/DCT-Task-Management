@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fusion BPM — Design Directions</title>
+  <link rel="stylesheet" href="mockups.css">
+</head>
+<body data-theme="oracle">
+  <div class="concept-bar">
+    <div class="concept-brand"><span class="mark">F</span><span><b>Fusion BPM</b><small>Design study · App 214</small></span></div>
+    <div class="concept-tabs" role="tablist" aria-label="Design concepts">
+      <button class="concept-tab active" data-theme="oracle"><i>01</i> Oracle Fusion</button>
+      <button class="concept-tab" data-theme="atelier"><i>02</i> Executive Atelier</button>
+      <button class="concept-tab" data-theme="command"><i>03</i> Command Canvas</button>
+    </div>
+    <button class="icon-button info-button" aria-label="About concepts">?</button>
+  </div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="side-brand"><div class="side-mark">BP</div><div><strong>Fusion BPM</strong><small>Workflow management</small></div></div>
+      <nav>
+        <a href="#"><span class="nav-icon">⌂</span>Overview</a>
+        <p>My workspace</p>
+        <a href="#"><span class="nav-icon">✓</span>My worklist <em>8</em></a>
+        <a href="#"><span class="nav-icon">◷</span>Pending approvals <em>12</em></a>
+        <a href="#"><span class="nav-icon">↗</span>My delegations</a>
+        <p>Process design</p>
+        <a class="active" href="#"><span class="nav-icon">⌘</span>Approval processes</a>
+        <a href="#"><span class="nav-icon">♙</span>Role assignments</a>
+        <p>Oversight</p>
+        <a href="#"><span class="nav-icon">◎</span>Approval monitor</a>
+        <a href="#"><span class="nav-icon">▤</span>Templates</a>
+      </nav>
+      <div class="side-footer"><span class="status-dot"></span><div><b>All systems normal</b><small>Last sync 2 min ago</small></div></div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <button class="icon-button mobile-menu">☰</button>
+        <div class="crumbs"><span>Fusion i-Finance</span><b>/</b><strong>Approval Processes</strong></div>
+        <div class="top-actions"><button class="search">⌕ <span>Search processes…</span><kbd>⌘ K</kbd></button><button class="icon-button">◌<i class="notif"></i></button><button class="avatar">SA</button><span class="user"><b>System Administrator</b><small>Workflow administrator</small></span></div>
+      </header>
+
+      <section class="page-head">
+        <div><span class="eyebrow">Process design</span><h1>Approval processes</h1><p>Build, test, and publish approval chains without interrupting work in progress.</p></div>
+        <div class="head-actions"><button class="btn secondary">Import</button><button class="btn primary" id="createBtn"><span>＋</span> Create process</button></div>
+      </section>
+
+      <section class="metrics">
+        <article><span class="metric-icon">⌘</span><div><small>Active processes</small><b>14</b><em>Across 8 modules</em></div></article>
+        <article><span class="metric-icon">✓</span><div><small>Published</small><b>11</b><em class="positive">↑ 2 this month</em></div></article>
+        <article><span class="metric-icon">◷</span><div><small>Drafts</small><b>3</b><em>Awaiting review</em></div></article>
+        <article><span class="metric-icon">⚡</span><div><small>Avg. cycle time</small><b>1.8d</b><em class="positive">12% faster</em></div></article>
+      </section>
+
+      <section class="workspace">
+        <div class="list-panel">
+          <div class="toolbar">
+            <div class="filter-search">⌕ <input aria-label="Filter processes" placeholder="Filter processes"></div>
+            <button class="filter active">All <span>14</span></button><button class="filter">Published <span>11</span></button><button class="filter">Draft <span>3</span></button>
+            <button class="icon-button more">⋯</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th><input type="checkbox" aria-label="Select all"></th><th>Process</th><th>Module</th><th>Status</th><th>Steps</th><th>Updated</th><th></th></tr></thead>
+              <tbody id="processRows">
+                <tr class="selected" data-record="kpi"><td><input type="checkbox" checked></td><td><b>KPI result approval</b><small>KPI_RESULT_APPROVAL</small></td><td><span class="module-chip">KPI</span></td><td><span class="badge published">● Published</span></td><td><span class="steps-count">2</span></td><td><span>Today</span><small>by Fatima Al Nuaimi</small></td><td><button class="row-more">•••</button></td></tr>
+                <tr data-record="travel"><td><input type="checkbox"></td><td><b>Duty travel request</b><small>DT_REQUEST_APPROVAL</small></td><td><span class="module-chip blue">DT</span></td><td><span class="badge published">● Published</span></td><td><span class="steps-count">4</span></td><td><span>Yesterday</span><small>by Omar Hassan</small></td><td><button class="row-more">•••</button></td></tr>
+                <tr data-record="cards"><td><input type="checkbox"></td><td><b>Credit card issuance</b><small>CC_ISSUE_APPROVAL</small></td><td><span class="module-chip gold">CC</span></td><td><span class="badge draft">● Draft</span></td><td><span class="steps-count">3</span></td><td><span>31 Jul 2026</span><small>by Sara Ahmed</small></td><td><button class="row-more">•••</button></td></tr>
+                <tr data-record="freelancer"><td><input type="checkbox"></td><td><b>Freelancer onboarding</b><small>FL_ONBOARD_APPROVAL</small></td><td><span class="module-chip teal">FL</span></td><td><span class="badge published">● Published</span></td><td><span class="steps-count">5</span></td><td><span>28 Jul 2026</span><small>by Khalid Mansoor</small></td><td><button class="row-more">•••</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer"><span>Showing 1–4 of 14 processes</span><div><button disabled>‹</button><button class="current">1</button><button>2</button><button>3</button><button>›</button></div></div>
+        </div>
+
+        <aside class="detail-panel" id="detailPanel">
+          <div class="detail-head"><div><span class="badge published">● v1 Published</span><h2 id="detailTitle">KPI result approval</h2><p id="detailCode">KPI_RESULT_APPROVAL</p></div><button class="icon-button" id="closeDetail">×</button></div>
+          <div class="detail-tabs"><button class="active" data-tab="design">Design</button><button data-tab="settings">Settings</button><button data-tab="activity">Activity</button></div>
+          <div class="detail-body">
+            <div class="tab-content active" data-content="design">
+              <div class="section-title"><div><span>Approval chain</span><small>2 sequential steps</small></div><button class="text-button">＋ Add step</button></div>
+              <div class="flow">
+                <article><span class="step-num">1</span><div><b>Section head review</b><p>Line manager · 72 hour SLA</p><div class="choice-chips"><span>Approve</span><span>Reject</span><span>Return</span></div></div><button>•••</button></article>
+                <article><span class="step-num">2</span><div><b>Finance director approval</b><p>KPI Finance Director · 72 hour SLA</p><div class="choice-chips"><span>Approve</span><span>Reject</span><span>Return</span></div></div><button>•••</button></article>
+              </div>
+              <div class="section-title attachment-title"><div><span>Attachments</span><small>Supporting process documents</small></div><span class="file-count" id="fileCount">2 files</span></div>
+              <label class="dropzone" id="dropzone"><input id="fileInput" type="file" multiple><span class="upload-icon">⇧</span><b>Drop files here or <u>browse</u></b><small>PDF, DOCX, XLSX or PNG · max 10 MB</small></label>
+              <div class="files" id="files"><div><span class="file-icon pdf">PDF</span><p><b>KPI approval policy.pdf</b><small>1.8 MB · Added 30 Jul 2026</small></p><button>×</button></div><div><span class="file-icon doc">DOC</span><p><b>Delegation matrix.docx</b><small>640 KB · Added 28 Jul 2026</small></p><button>×</button></div></div>
+            </div>
+            <div class="tab-content" data-content="settings"><label>Process name<input value="KPI result approval"></label><label>Process code<input value="KPI_RESULT_APPROVAL"></label><label>Module<select><option>KPI Management</option><option>Duty Travel</option></select></label><label class="toggle-label"><span><b>Test mode</b><small>Run without sending live tasks</small></span><input type="checkbox"></label></div>
+            <div class="tab-content activity" data-content="activity"><article><span>✓</span><p><b>Version 1 published</b><small>Today, 10:42 · Fatima Al Nuaimi</small></p></article><article><span>＋</span><p><b>Delegation matrix attached</b><small>28 Jul, 14:10 · Omar Hassan</small></p></article></div>
+          </div>
+          <div class="detail-footer"><button class="btn secondary">Simulate</button><button class="btn primary" id="saveBtn">Edit process</button></div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="createDialog">
+    <form method="dialog">
+      <div class="dialog-head"><div><span class="eyebrow">New workflow</span><h2>Create approval process</h2><p>Start with the basics. You can add approval steps next.</p></div><button value="cancel" class="icon-button">×</button></div>
+      <div class="dialog-body"><label>Process name<input id="newName" placeholder="e.g. Purchase requisition approval" required></label><label>Process code<input placeholder="PURCHASE_REQ_APPROVAL"></label><label>Business module<select><option>Select a module</option><option>Duty Travel</option><option>Credit Cards</option><option>KPI Management</option></select></label><label>Description<textarea placeholder="What does this approval process manage?"></textarea></label><label class="dropzone mini"><input type="file"><span class="upload-icon">⇧</span><b>Attach a policy document</b><small>Optional · PDF or DOCX</small></label></div>
+      <div class="dialog-footer"><button value="cancel" class="btn secondary">Cancel</button><button value="default" id="continueBtn" class="btn primary">Create & continue</button></div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast"><span>✓</span><div><b>Changes saved</b><small>Your process has been updated.</small></div></div>
+  <script src="mockups.js"></script>
+</body>
+</html>

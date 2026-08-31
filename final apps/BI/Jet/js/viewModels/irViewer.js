@@ -163,6 +163,9 @@ function (ko, rpt, authService, toast, i18n) {
         if (hit.length) {
           self.select(hit[0]);
           if (st.section) { self.sectionSel(st.section); st.section = null; }
+          // deep-linked and parameter-less: run it straight away — the caller
+          // wanted the report, not the picker
+          if (!(hit[0].params || []).length) { self.run(); }
         }
       }
     }).catch(function () {}).then(function () { self.catLoading(false); });

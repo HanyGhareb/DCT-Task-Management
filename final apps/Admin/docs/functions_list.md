@@ -53,6 +53,26 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 **Permission Matrix** (`permissions`) — role × permission grid by module.
 - `togglePerm` · `hasPerm` · `getPermsByModule` · `saveAll`.
 
+## 3b. Security Console (2026-07-19 — Fusion-style RBAC over /dct/sec/; review round same day: every catalog renders in the SHARED `<interactive-report>` [who columns Created/Updated By/On included], every create/edit form lives in a shared `<edit-drawer>`, and Description is REQUIRED on every artifact)
+
+**Privileges** (`privileges`) — verb-first privilege catalog in an interactive report (`SEC_PRIVILEGES`; one-shot load, row click = edit).
+- `reload` · `gridClick` (delegated row click → editor drawer) · `addPrivilege` / `editPrivilege` / `saveEdit` (verb-first + description-required validation) · `askDeactivate` / `doDelete` (soft, from inside the drawer).
+
+**Privilege Groups** (`privilegeGroups`) — interactive report of privilege bundles (`SEC_PRIV_GROUPS`; replaced the card grid).
+- `gridClick` · `addGroup` / `editGroup` / `saveEdit` (full `permIds[]` sync, 760px drawer) · `togglePriv` · `askDeactivate` / `doDelete`.
+
+**Abstract / Duty / Job Roles** (`abstractRoles` / `dutyRoles` / `jobRoles`) — one shared implementation (`secRolesBase.js`) parameterized by `role_category`; interactive-report catalogs (`SEC_ROLES_<CAT>`). The FULL role editor (definition + Privileges & Groups / Nested Duties / Exclusions / Effective Privileges tabs) lives in a 920px `<edit-drawer>` opened by row click — the separate `secRoleEdit` route was RETIRED in the review round.
+- `gridClick` · `addRole` / `editRole` · `saveEdit` (syncs `permIds` + `groupIds` + `dutyIds` [cycle/depth guarded server-side] + `exclusionPermIds`) · `togglePriv` / `toggleGroup` / `toggleDuty` / `toggleExcl` / `setTab` · `startCopy` / `doCopy` (copy drawer; deep copy of the definition, never assignments) · `askDeactivate` / `doDelete`.
+
+**Security Profiles** (`secProfiles`) — data-security profiles (10 dimensions: BU, Sector, Department, CC, Project, Task, GL Account, Appropriation, DCT Program, Chapter) in an interactive report (`SEC_PROFILES`).
+- `gridClick` · `addProfile` / `editProfile` / `saveEdit` (800px drawer) · `addScope` (dimension LOV search via `/sec/lov`, `include_children` for hierarchy dims) / `removeScope` · `askDeactivate` / `doDelete`.
+
+**User Management** (`userManagement`) — master–detail replacement for users/userEdit (legacy pages retire after UAT). Profile tab uses the strict `.rm-form-grid` two-column layout (Save top-right); **New User opens in a 640px drawer** (`saveNewUser` → lands on the Role Assignments tab, since a user has no access until a role is assigned). The **four detail tabs are shared `<interactive-report>` grids** (`SEC_USER_ROLES` / `SEC_USER_PROFILES` / `SEC_USER_EXCLUSIONS` / `SEC_USER_EFFECTIVE`): the End/Remove actions live in a declared `action` column handled by delegated wrapper clicks (`rolesGridClick`/`profilesGridClick`/`exclGridClick` — row identity via a side-map keyed on visible cell values, the GL pending-page pattern), and Effective Privileges is a flat grid with a "Granted by role" column (use the IR control-break to re-group).
+- List: `search` / `prevPage` / `nextPage` / `selectUser` / `newUser`.
+- Profile tab: `saveProfile`. Roles tab: `assignRole` (dated) / `endRole` (GREATEST end-date rule). Profiles tab: `assignProfile` / `endProfile`. Exclusions tab: `addExclusion` / `endExclusion`. Effective tab: `effectiveGroups` (grouped by granting role, with via-duty/via-group provenance).
+
+**`<security-info>`** (shared component, `shared/js/components/securityInfo.js`) — SYS_ADMIN-only "Security Info" drawer on any page; renders the page registry (`GET /dct/sec/pageinfo`): view privilege, artifacts (buttons/tabs/endpoints) and the roles granting each privilege. GL portal has a `.dw-*` twin in `GL/Jet` (`openSecurityInfo`).
+
 ## 4. Organisation & Modules
 
 **Org Hierarchy** (`orgHierarchy`) — org unit tree (divisions/departments/sections).
@@ -64,25 +84,24 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
   per-module role grant set controlling App-Launcher (module switcher) visibility;
   empty set = visible to everyone, SYS_ADMIN always sees every app.
 
-## 5. Approvals & Delegation
+## 5. Approvals & Delegation — MOVED to Fusion BPM (App 214), 2026-08-01
 
-**Approval Templates** (`approvalTemplates`) — multi-step approval workflow designer with draft lifecycle.
-- `viewTemplate` · `saveSteps` / `moveStep` · `activate` / `toggleActive` · `cloneDraft`.
-- Versioning: `openHistory` / `closeHistory` / `hasHistory` / `familyArchives` / `restoreVersion` / `diffText` · `statusOf` / `statusBadge` / `closeDetail`.
-
-**Approval Monitor** (`approvalMonitor`) — live view of in-flight approval instances.
-- `reload` · `getStepArray` / `stepState` / `getProgressPct`.
-
-**Pending Approvals** (`pendingApprovals`) — unified approvals inbox (all modules).
-- `startApprove` / `startReject` / `startAction` · `confirmAction` / `cancelAction` · `getStepArray` / `stepState`.
-
-**Delegations** (`delegations`) — admin view of approval delegations.
-- `reload` · `cancel` · `scopeLabel` / `statusBadge`.
+All workflow pages now live in the dedicated **Fusion BPM — Workflow Management** app
+(`final apps/BPM/`, App 214): My Worklist, Pending Approvals (legacy inbox),
+My Delegations (self-service vacation rule), Approval Processes (DWP designer),
+Role Assignments (+ Policies / Manage Roles / Manage Objects / Level Priority /
+Import Matrix drawers), Approval Templates (legacy), Approval Monitor (legacy) and
+the admin Delegations oversight. See `final apps/BPM/docs/functions_list.md`.
+Admin keeps: the profile page's own delegation section, and the dashboard approval
+KPIs/charts (the approval-cycle drill now deep-links to `/BPM/Jet/index.html#approvalMonitor`).
+The `/dct/approvals*`, `/dct/approval-templates*` and `/dct/delegations*` ORDS
+endpoints are unchanged — they are shared platform APIs, not Admin-private.
 
 ## 6. System Configuration
 
-**System Settings** (`systemSettings`) — platform-wide settings (branding, feature flags, secrets).
-- `saveAll`.
+**System Settings** (`systemSettings`) — platform-wide settings + Data Maintenance, headed by the SYS_ADMIN Operations Center (consolidated health, scheduler failures/missed runs, schema/LOB capacity forecast, 15-minute ORDS latency/error telemetry, actuals-refresh status) followed by storage, object health, integrity, SQL performance and locks.
+- `saveAll` · `loadOperations` / `refreshOperations` · `runDatabaseHealth` / `recompileDatabase` · `runDataIntegrity` / `runLogCleanup` · `refreshSqlPerformance`.
+- Operations API: `GET/POST /dct/maintenance/operations` (db/v2/119; SYS_ADMIN).
 
 **Region Appearance** (`appearance`) — region header/border theming palette.
 - `selectTheme` · `saveTheme`.
@@ -147,6 +166,15 @@ and read is **PUT** `notifications/:id/read` (not POST).
 | Automation Registry | `GET runners/` · `GET runners/meta` · `POST runners/` · `GET runners/:id` · `PUT runners/:id` · `DELETE runners/:id` · `PUT runners/:id/file` · `GET runners/:id/file` *(db/v2/31)* |
 | Delegations | `GET delegations/` · `POST delegations/` · `POST delegations/:id/cancel` |
 | Announcements | `GET announcements/` · `POST announcements/` · `PUT announcements/:id` · `GET announcements/active` |
+| Security Console *(db/v2/101 — ALL SYS_ADMIN-gated; re-run 101 after any 11 re-run)* | `GET sec/meta` · `GET/POST sec/privileges` · `PUT/DELETE sec/privileges/:id` · `GET/POST sec/groups` · `GET/PUT/DELETE sec/groups/:id` · `GET/POST sec/roles` · `GET/PUT/DELETE sec/roles/:id` · `POST sec/roles/:id/copy` · `GET/POST sec/profiles` · `GET/PUT/DELETE sec/profiles/:id` · `GET sec/lov` · `GET sec/users/:id/security` · `POST sec/users/:id/roles\|profiles\|exclusions` · `GET sec/users/:id/effective` · `GET/POST sec/pages` · `GET sec/pageinfo` *(the Security Info drawer route)* |
+
+Module `wf.rest` · base path **`/ords/admin/wf/`** · defined in `db/v2/67` + `69` (designer) + `96` (role assignments). Cross-module by design (EXEMPT from the module-access gate → every route self-gates); consumed via `shared/js/wfService.js`.
+
+| Area | Endpoints |
+|---|---|
+| Worklist & actions | `GET worklist` · `POST tasks/:id/action` · `claim` / `release` / `delegate` / `request-info` · `GET instances/:id/history` · `GET chain` |
+| Designer (WF_ADMIN) | `GET processes` · `versions/:id/steps` · `versions/:id/design` · `outcome-sets` · `schemas/:id/fields` · `POST processes/:code/draft` · `PUT/DELETE versions/:id/step(/:key)` · `condition(/:key)` · `participant(/:rid)` · `POST versions/:id/validate` / `publish` · `DELETE versions/:id` · `POST conditions/compile` · `POST processes/:code/simulate` |
+| Role assignments (WF_ADMIN) | `GET assign/object-types` · `GET assign/lov` · `GET assign/list` · `POST assign/` (create / replace) · `PUT assign/:id` (end / update / void) · `GET assign/timeline` · `GET assign/preview` · `GET assign/audit` · `GET assign/audit/export` *(db/v2/96)* · `PUT assign/policy/:role` *(db/v2/97)* · `GET/POST assign/manage/roles` · `GET/POST assign/manage/object-types` (SYS_ADMIN) · `GET assign/dict` (SYS_ADMIN) · `POST tasks/:id/reassign` *(db/v2/98)* · `GET/PUT assign/priority` · `POST assign/import` *(db/v2/113)* |
 
 ---
 
@@ -167,5 +195,6 @@ and read is **PUT** `notifications/:id/read` (not POST).
 | `auditService` | audit log + export. |
 | `sessionService` | active sessions + revoke. |
 | `delegationService` | approval delegations. |
+| `secService` | Security Console client (`/dct/sec/`): privileges, groups, roles+hierarchy+copy, profiles+LOV, per-user security/effective, page registry. |
 | `announcementService` | announcement banners. |
 | `runnerService` | automation registry CRUD + meta + binary file up/download (`putBinary`/`fetchBlobUrl`). |

@@ -49,6 +49,7 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-08-16 — Canonical job-route guard (APP_VERSION 1.37.1):** all job-specific service calls now pass through one validator/encoder and reject missing, `undefined`, or `null` names before issuing HTTP; Job Detail redirects safely to Jobs when route state has no canonical job name. Stops the observed `/atd/jobs/undefined` polling noise.
 - **2026-07-13 (b)** — **Recent Actions telemetry** (APP_VERSION **1.22.0**, webtier release
   20260713185640). `otbi-atd/db/46_atd_action_telemetry.sql`: persistent `worker_host` /
   `started_at` / `finished_at` on `ATD_ACTION_REQUEST` (the queue NULLs `claimed_*` on finish, so
@@ -268,3 +269,140 @@ them; see `otbi-atd/docs/deployment-notes.md` § Fusion Action #2 for the handle
   `webtier/deploy_frontend.sh`, now runnable from the Linux dev VM — its SSH key was authorized on
   `opc@129.151.159.189` + `root@atd-vm180/181/182` on 2026-07-12); live check: `/ATD/Jet/index.html`
   serves APP_VERSION 1.20.0 and both `projectsOrg.*` files return 200.
+
+---
+
+## Cancel a stuck run from Run Logs — 2026-08-18 (v1.40.0, `otbi-atd/db/81`)
+
+A worker that dies mid-run (VM reboot, `systemctl restart` during a handler
+upgrade, kernel panic) leaves `ATD_LOAD_RUN_LOG.status = 'RUNNING'` for ever and
+any action it claimed stuck on `CLAIMED` — which then reads as "still running"
+on every page. Until now the only fix was an UPDATE by hand.
+
+**Run Logs now shows a Cancel button on RUNNING rows only.** It calls the new
+`POST /atd/runs/:id/cancel` (SYS_ADMIN), which closes the run-log row **and**
+releases any `ATD_ACTION_REQUEST` still holding that run — important, because a
+CLAIMED action keeps its idempotency-key bucket locked and blocks the next run
+of the same bucket.
+
+> **It closes control-plane rows; it cannot kill a process.** The ATD fleet has
+> no command channel (the reporting workers do, these don't). If the worker is
+> somehow still alive it finishes and overwrites the status, which is correct.
+> The button is for runs whose worker is gone.
+
+`409` if the run already finished, `404` unknown, `400` non-numeric id — all
+decided **before** `json_header`, or the header wins and the status is lost.
+
+**`13_atd_ords.sql` rebuilds `atd.rest`, so the post-13 re-run list is now
+`20, 38, 41, 42, 44, 45, 63, 78, 81`.**
+
+Verified: cancelled the real orphan (run 13147, left by the PBT handler upgrade)
+plus 409/404/400/401; browser test 6/6 — button present on RUNNING, absent on
+finished, status flips, button disappears, no JS errors.
+
+Same round: fixed a **pre-existing** binding bug on this page — the warning rows
+bound `columnName` / `rawValue` bare, and APEX_JSON omits a NULL key, so any
+warning without a column threw `ReferenceError` and blanked the row. Bound as
+`$data.x` (the standing platform rule).
+
+---
+
+## Project Budget Transactions (PBT) extract — 2026-08-17 (v1.39.0)
+
+Extracts master–detail budget transactions out of the **ADG_FIN "Project Budget
+Transactions" VBCS app** into PROD tables, on demand from a new page and on a schedule.
+Plan: `otbi-atd/docs/PBT_EXTRACT_PLAN.md` · API contract: `otbi-atd/docs/fusion-actions/pbt-api-spec.md`.
+
+### What it is (and why it is an ACTION, not a job)
+The source is **not** OTBI and **not** BI Publisher — it is a VBCS page over a plain ORDS
+service (`apex.aderp.addigital.gov.ae/ords/dge_custom/extn/fin010/Budgets`). Neither extract
+track fits: both are whole-job, single-target, schedule-driven snapshots with parameters
+pinned to the job row. This is per-request, parameterised, master–detail into five tables and
+monitored — i.e. the **action queue**. So it is action type **`PA_BUDGET_TRX`**, the first
+**READ** action (every other action writes into Fusion).
+
+**Route B (in use):** the worker's *existing* Fusion SSO session already covers the VBCS host —
+the app URL loads with no sign-in and no MFA, and the three REST endpoints are then called
+from the page context. Route A (ADB → ORDS directly) was ruled out: the ORDS credential is
+held server-side by the VBCS proxy and is not available to us.
+
+### Deploy order
+1. `otbi-atd/db/77_pa_budget_trx.sql` — 5 tables + vocabularies + settings + request view.
+   **Deploy via python-oracledb on a worker VM** (Linux SQLcl rule).
+2. `otbi-atd/db/78_pa_budget_trx_ords.sql` — ADMIN synonyms + 6 routes. `sql -name prod_mcp`,
+   **fresh session** (synonym rule → ORA-01471).
+3. `otbi-atd/db/79_pa_budget_trx_sync.sql` — `PA_PBT_SYNC_PKG` + hourly `PA_PBT_SYNC_JOB`.
+3b. `otbi-atd/db/80_pa_budget_trx_line_v.sql` (2026-08-17) — `V_PA_BUDGET_TRX_LINE` +
+   synonym, the unified line view the GL app's Budget Transactions criteria filter on.
+   `sql -name prod_mcp`, **fresh session** (it creates a synonym). Deploy it BEFORE
+   re-running `final apps/GL/db/20`, which references it.
+4. `runner/actions/pa_budget_trx.py` → sync to **vm180/181/182**, `systemctl restart atd-worker`
+   on each (handlers load at start).
+5. Frontend + `APP_VERSION` bump.
+6. **Turn the sync on LAST:** `PBT_SYNC_ENABLED = Y` in Runner Settings, only after a manual
+   full run reconciles.
+
+> **`13_atd_ords.sql` rebuilds `atd.rest` from scratch — the post-13 re-run list is now
+> 20, 38, 41, 42, 44, 45, 63 AND 78.**
+
+### Tables (PROD)
+`PA_BUDGET_TRX_HEADERS` (all three types — the source header payload is byte-identical across
+them and carries `transaction_type`), `PA_ADDITIONAL_FUND_LINES` (34), `PA_ESTIMATED_COST_LINES`
+(21), `PA_ANNUAL_BUDGET_LINES` (38 — the shapes genuinely differ, hence one table per type),
+`PA_BUDGET_TRX_APPROVALS` (all types).
+
+Keys: the source ships a stable `identifier` on headers **and** lines → that is the MERGE key,
+so a re-run can never duplicate. Approval rows carry no key at all → delete-then-insert per
+transaction.
+
+### The scheduled sync (two speeds)
+| Mode | Cadence | Cost | Catches |
+|---|---|---|---|
+| `SYNC_SHALLOW` | hourly (:35) | ~30 s idle | new transactions, status/header changes |
+| `SYNC_DEEP` | nightly at `PBT_DEEP_HOUR` (local) | ~10 min | line-only edits, deletions |
+
+The master call is complete and cheap (~10 s/type, no pagination), so the *diff* is nearly
+free and only child calls are skipped. **The deep pass is not redundant:** the source header
+has **no `last_updated_date`**, so a line edited without touching its header is invisible to
+the hash diff. Throttling is free — `idem_key` is bucketed per hour/day and the queue's UNIQUE
+constraint drops a tick that fires while the fleet is still busy.
+
+Settings (`atd_runner_config`, Runner Settings page): `PBT_SYNC_ENABLED` (ships **N**),
+`PBT_SYNC_TYPES`, `PBT_SYNC_BUS`, `PBT_SYNC_APPROVALS`, `PBT_DEEP_HOUR`.
+
+### Verified live 2026-08-17
+- Full `SYNC_DEEP` of all three types: **2,187 headers / 18,544 lines / 1,770 approvals in 607 s**.
+- **Reconciles exactly** against counts probed independently from the source: Additional 1,341
+  (1,132 DCT + 193 Museum Shared Services + 16 Abrahamic Family House), Estimated-Cost 519,
+  Annual-Budget 327.
+- Idempotency: identical scope re-run → identical counts, 0 duplicate identifiers, 0 orphan lines.
+- 110 headers legitimately have no lines (73+31 `Entered`, 5 `Baselining Failed`, 1 `Rejected`;
+  **zero `Baselined`**) — confirmed against the source, which also returns 0 lines for them.
+- Tests: unit **21/21**, full runner suite **60/60**, API `tests/pbt_api_smoke.py` **19/19**,
+  browser `tests/pbt_browser_smoke.py` **24/24** EN + AR/RTL. 0 INVALID PROD objects.
+
+### Gotchas found building this (each cost a debug cycle)
+- **Budget-type codes are HYPHENATED** — `Estimated-Cost`, `Annual-Budget`. A wrong value
+  returns **HTTP 200 with zero rows**, never an error. Six unhyphenated guesses all "worked".
+- **Omitting `p_business_unit` WIDENS** to every BU in `bu_arr`; omitting `p_transaction_date`
+  returns the **entire dataset**. There is no "all" sentinel and no server-side date range at
+  all (`p_date_from`/`p_date_to` are ignored, `p_trx_year` filters to zero). Filter client-side.
+- **`limit`/`offset` are inert** — 1,132 rows come back in one body. No pagination to drive.
+- **Three different `creation_date` formats by type**: header `DD-MM-YYYY`, Additional lines
+  `DD-MON-YY`, Estimated-Cost/Annual-Budget lines `YYYY-MM-DD`. Never one `TO_DATE` mask.
+- **`commitments` arrives as a STRING** while every neighbouring money field is a JSON number.
+- **Approval rows carry no transaction key** — the caller must stamp it. And
+  `transaction_id` on ApprovalHistory means `transaction_num`, not `identifier`.
+- **New PROD tables need ADMIN synonyms or EVERY route answers 555** — the handler never
+  compiles, so its EXCEPTION block cannot report it. This cost a full "all 15 endpoints fail"
+  cycle; the synonyms are now at the top of db/78.
+- **`ORDS.DEFINE_TEMPLATE` on an existing template DROPS its other handlers** (the GL/db/09
+  trap): `pbt/runs` carries both POST and GET, and declaring the template twice silently
+  deleted the POST while the deploy still reported success. Declare each pattern ONCE.
+- **`l_body CLOB := :body` does not compile → 555.** Use `dct_rest.parse_body(:body)`, which
+  dereferences the BLOB exactly once.
+- Column widths are read from the data dictionary at run start rather than hard-coded, so the
+  handler cannot drift from db/77 into an ORA-12899 mid-run.
+- Deploying mixed DDL/PL/SQL with a python-oracledb splitter: an indented `SET col = val`
+  inside an `UPDATE` is **not** a SQL*Plus directive, and a `CREATE PACKAGE` body must be
+  executed whole — splitting it on `;` shreds it.

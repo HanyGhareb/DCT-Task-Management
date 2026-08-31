@@ -157,6 +157,147 @@ define(['shared/api'], function (api) {
     /** Shadow-mode drift: what the old engine decided vs what the new one would. */
     parity: function () {
       return api.get('/parity', WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /* ── dynamic role assignments (WF_ADMIN) — role x business object, date-tracked ── */
+
+    /** Registry (object types) + the DATA roles, in one call. */
+    assignMeta: function () { return api.get('/assign/object-types', WF); },
+
+    /** Object picker rows for one type: { key, label, parent?, extra? }. */
+    assignLov: function (type, search, parent) {
+      var q = '?type=' + encodeURIComponent(type);
+      if (search) q += '&search=' + encodeURIComponent(search);
+      if (parent) q += '&parent=' + encodeURIComponent(parent);
+      return api.get('/assign/lov' + q, WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /** Filtered, paged assignment list. filters: {type,key,role,userid,activeon,status,limit,offset} */
+    assignList: function (f) {
+      f = f || {};
+      var q = Object.keys(f).filter(function (k) { return f[k] !== '' && f[k] != null; })
+        .map(function (k) { return k + '=' + encodeURIComponent(f[k]); }).join('&');
+      return api.get('/assign/list' + (q ? '?' + q : ''), WF);
+    },
+
+    assignCreate:  function (body)     { return api.post('/assign/', body, WF); },
+    /** op: 'end' {endDate,note} | 'void' {reason} | 'update' {notes,endDate,clearEnd} */
+    assignAct:     function (id, body) { return api.put('/assign/' + id, body, WF); },
+    assignReplace: function (id, newUserId, effectiveDate) {
+      return api.post('/assign/', { action: 'replace', assignmentId: id,
+                                    newUserId: newUserId, effectiveDate: effectiveDate }, WF);
+    },
+
+    /** Full date-ordered history of one (object, role). */
+    assignTimeline: function (type, key, key2, role) {
+      var q = '?type=' + encodeURIComponent(type) + '&key=' + encodeURIComponent(key);
+      if (key2) q += '&key2=' + encodeURIComponent(key2);
+      if (role) q += '&role=' + encodeURIComponent(role);
+      return api.get('/assign/timeline' + q, WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /** Who holds the role on the object as of a date (today when omitted). */
+    assignPreview: function (type, key, key2, role, asof) {
+      var q = '?type=' + encodeURIComponent(type) + '&key=' + encodeURIComponent(key)
+            + '&role=' + encodeURIComponent(role);
+      if (key2) q += '&key2=' + encodeURIComponent(key2);
+      if (asof) q += '&asof=' + encodeURIComponent(asof);
+      return api.get('/assign/preview' + q, WF);
+    },
+
+    /** The audit trail, filtered + paged. */
+    assignAudit: function (f) {
+      f = f || {};
+      var q = Object.keys(f).filter(function (k) { return f[k] !== '' && f[k] != null; })
+        .map(function (k) { return k + '=' + encodeURIComponent(f[k]); }).join('&');
+      return api.get('/assign/audit' + (q ? '?' + q : ''), WF);
+    },
+
+    /**
+     * Flip a role's assignment cardinality (Y = single assignee, N = group).
+     * Resolves to { roleCode, overlapGroups } — overlapGroups > 0 on a flip to
+     * single means grandfathered overlapping assignments still resolve until
+     * ended (the check only runs at save time).
+     */
+    assignSetPolicy: function (roleCode, single) {
+      return api.put('/assign/policy/' + encodeURIComponent(roleCode),
+                     { singleAssignee: single ? 'Y' : 'N' }, WF);
+    },
+
+    /* ── management drawers (Manage Roles = WF_ADMIN, Manage Objects = SYS_ADMIN) ── */
+
+    /** Full DATA-role list INCLUDING inactive, with active-assignment counts. */
+    manageRoles: function () {
+      return api.get('/assign/manage/roles', WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /** Create or update a DATA role (+ its cardinality policy). */
+    saveRole: function (body) { return api.post('/assign/manage/roles', body, WF); },
+
+    /** Full object-type registry INCLUDING inactive, with all columns + counts. */
+    manageObjectTypes: function () {
+      return api.get('/assign/manage/object-types', WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /** Create or update an object-type registry row (SYS_ADMIN). */
+    saveObjectType: function (body) { return api.post('/assign/manage/object-types', body, WF); },
+
+    /** PROD views matching a search (SYS_ADMIN; feeds the Manage Objects view picker). */
+    dictViews: function (search) {
+      return api.get('/assign/dict' + (search ? '?search=' + encodeURIComponent(search) : ''), WF)
+                .then(function (r) { return (r && r.views) || []; });
+    },
+
+    /** Columns of one PROD view (SYS_ADMIN). */
+    dictColumns: function (view) {
+      return api.get('/assign/dict?view=' + encodeURIComponent(view), WF)
+                .then(function (r) { return (r && r.columns) || []; });
+    },
+
+    /** Admin reassignment — REPLACES the task owner (the leaver/vacation case). */
+    reassign: function (taskId, toUserId, reason) {
+      return api.post('/tasks/' + taskId + '/reassign',
+                      { toUserId: toUserId, reason: reason || null }, WF);
+    },
+
+    /* ── cascade level priority + approval-matrix import (WF_ADMIN) ────────── */
+
+    /** { defaultLevels: [..], overrides: [{roleCode, levels}], types: [..] } */
+    getPriority: function () { return api.get('/assign/priority', WF); },
+
+    /**
+     * Replace one scope's ordered level list. roleCode null = the platform
+     * default; an EMPTY list on a role removes its override.
+     */
+    setPriority: function (roleCode, levels) {
+      return api.put('/assign/priority',
+                     { roleCode: roleCode || null, levels: levels || [] }, WF);
+    },
+
+    /**
+     * Matrix rows, dry-run or apply. body = { mode: 'dryrun'|'apply',
+     * effectiveDate: 'YYYY-MM-DD'|null, entries: [{row, cc, role, email}] }.
+     * Chunk entries <= 150 per call; resolves to per-entry results + counts.
+     */
+    importMatrix: function (body) { return api.post('/assign/import', body, WF); },
+
+    /**
+     * Testing mode for ONE process: while on, every notification of that
+     * process is redirected to the WF_TEST_EMAIL account (subject tagged
+     * [TEST]); task routing is untouched. The platform-wide switch is the
+     * WF_TEST_MODE system setting.
+     */
+    setTestMode: function (processCode, on) {
+      return api.put('/processes/' + encodeURIComponent(processCode) + '/test-mode',
+                     { testMode: on ? 'Y' : 'N' }, WF);
+    },
+
+    /** Authed CSV download of the audit trail (object URL). */
+    assignAuditCsv: function (f) {
+      f = f || {};
+      var q = Object.keys(f).filter(function (k) { return f[k] !== '' && f[k] != null; })
+        .map(function (k) { return k + '=' + encodeURIComponent(f[k]); }).join('&');
+      return api.fetchBlobUrl('/assign/audit/export' + (q ? '?' + q : ''), { base: 'wf' });
     }
   };
 });

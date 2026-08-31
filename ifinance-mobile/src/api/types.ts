@@ -18,10 +18,13 @@ export interface Session {
 
 /** GET /approvals/pending → { items: PendingApproval[] } */
 export interface PendingApproval {
+  id: number;
+  engine: 'NATIVE' | 'LEGACY';
   instanceId: number;
+  sourceRecordId?: number;
   requestRef: string;
   module: string; // source_module discriminator (PETTY_CASH, TRAVEL_REQUEST, …)
-  templateName: string;
+  processName: string;
   requestedBy: string;
   requestedAt: string; // 'YYYY-MM-DD HH24:MI'
   amount: number;
@@ -29,9 +32,23 @@ export interface PendingApproval {
   totalSteps: number;
   currentStepName: string;
   actingFor?: string | null; // present when acting via delegation
+  via?: string;
+  currency?: string;
+  dueAt?: string;
+  overdue?: 'Y' | 'N';
+  outcomes: WorkflowOutcome[];
 }
 
-export type ApprovalAction = 'APPROVED' | 'REJECTED' | 'RETURNED';
+export interface WorkflowOutcome {
+  code: string;
+  labelEn: string;
+  labelAr: string;
+  semantic?: string;
+  isPositive: 'Y' | 'N';
+  requiresComment: 'Y' | 'N';
+  color?: string;
+  icon?: string;
+}
 
 /** GET /notifications/ → { items: Notification[] } */
 export interface AppNotification {
@@ -41,6 +58,9 @@ export interface AppNotification {
   type?: string;
   isRead: 'Y' | 'N';
   createdAt: string; // ISO
+  module?: string;
+  sourceType?: string;
+  sourceId?: string | number;
 }
 
 /** GET /delegations/?mine=Y → { items: Delegation[] } */

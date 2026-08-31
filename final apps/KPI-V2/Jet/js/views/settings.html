@@ -1,0 +1,473 @@
+<div class="page-head">
+  <div>
+    <h1 class="greet" data-bind="text: $root.t('settings.title')"></h1>
+    <div class="greet-sub" style="margin:0" data-bind="text: $root.t('settings.sub')"></div>
+  </div>
+</div>
+
+<!-- ── settings sub-tabs ─────────────────────────────────────────── -->
+<div class="subtabs">
+  <a href="#" data-bind="css: { on: nav() === 'lookups' }, click: function () { nav('lookups'); return false; },
+     text: $root.t('set.nav.lookups')"></a>
+  <a href="#" data-bind="css: { on: nav() === 'kpis' }, click: function () { goKpis(); return false; },
+     text: $root.t('set.nav.kpis')"></a>
+  <a href="#" data-bind="css: { on: nav() === 'security' }, click: function () { nav('security'); return false; },
+     text: $root.t('set.nav.security')"></a>
+</div>
+
+<!-- ══ SUB-TAB 1 · Manage Lookups ═════════════════════════════════ -->
+<!-- ko if: nav() === 'lookups' -->
+<div class="lk-grid">
+
+  <!-- master: lookups -->
+  <div>
+    <div class="sec" style="margin-top:0">
+      <span data-bind="text: $root.t('set.lk.master')"></span><span class="rule"></span>
+      <div class="row-act">
+        <button class="btn btn-sm btn-ghost" data-bind="click: exportLookupsCsv, text: $root.t('set.lk.exportCsv')"></button>
+        <button class="btn btn-primary btn-sm" data-bind="click: openNewLookup, text: '+ ' + $root.t('set.lk.newLookup')"></button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th data-bind="text: $root.t('set.col.code')"></th>
+          <th data-bind="text: $root.t('set.col.name')"></th>
+          <th class="num" data-bind="text: $root.t('set.col.values')"></th>
+          <th data-bind="text: $root.t('set.col.status')"></th>
+        </tr></thead>
+        <!-- ko if: lookupsLoading -->
+        <tbody data-bind="foreach: [1,2,3,4,5,6]">
+          <tr class="sk-row"><td colspan="4"><div class="sk"></div></td></tr>
+        </tbody>
+        <!-- /ko -->
+        <!-- ko ifnot: lookupsLoading -->
+        <tbody data-bind="foreach: lookups">
+          <tr data-bind="click: $vm.selectLookup, css: { sel: $vm.selected() && $vm.selected().id === id }">
+            <td class="mono" data-bind="text: code"></td>
+            <td data-bind="text: $vm.ln($data)"></td>
+            <td class="num" data-bind="text: effectiveCount + ' / ' + valueCount"></td>
+            <td><span class="chip" data-bind="css: isActive === 'Y' ? 'ok' : 'muted',
+                  text: isActive === 'Y' ? $root.t('set.st.active') : $root.t('set.st.inactive')"></span></td>
+          </tr>
+        </tbody>
+        <!-- /ko -->
+      </table>
+      <!-- ko if: !lookupsLoading() && lookups().length === 0 -->
+      <div class="empty pad" data-bind="text: $root.t('set.lk.noLookups')"></div>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- detail: values of the selected lookup -->
+  <div>
+    <!-- ko ifnot: selected -->
+    <div class="sec" style="margin-top:0">
+      <span data-bind="text: $root.t('set.lk.values')"></span><span class="rule"></span>
+    </div>
+    <div class="card empty pad" data-bind="text: $root.t('set.lk.selectHint')"></div>
+    <!-- /ko -->
+
+    <!-- ko if: selected -->
+    <div class="sec" style="margin-top:0">
+      <span data-bind="text: ln(selected())"></span>
+      <span class="chip gold mono" data-bind="text: selected().code"></span>
+      <span class="rule"></span>
+      <div class="row-act">
+        <button class="btn btn-sm" data-bind="click: openEditLookup, text: $root.t('set.lk.editLookup')"></button>
+        <button class="btn btn-sm btn-ghost" data-bind="click: exportValuesCsv, text: $root.t('set.lk.exportCsv')"></button>
+        <button class="btn btn-primary btn-sm" data-bind="click: openNewValue, text: '+ ' + $root.t('set.lk.newValue')"></button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th data-bind="text: $root.t('set.col.code')"></th>
+          <th data-bind="text: $root.t('set.col.nameEn')"></th>
+          <th data-bind="text: $root.t('set.col.nameAr')"></th>
+          <th data-bind="text: $root.t('set.col.desc')"></th>
+          <th data-bind="text: $root.t('set.col.start')"></th>
+          <th data-bind="text: $root.t('set.col.end')"></th>
+          <th class="num" data-bind="text: $root.t('set.col.order')"></th>
+          <th data-bind="text: $root.t('set.col.status')"></th>
+        </tr></thead>
+        <!-- ko if: valuesLoading -->
+        <tbody data-bind="foreach: [1,2,3,4,5]">
+          <tr class="sk-row"><td colspan="8"><div class="sk"></div></td></tr>
+        </tbody>
+        <!-- /ko -->
+        <!-- ko ifnot: valuesLoading -->
+        <tbody data-bind="foreach: values">
+          <tr data-bind="click: $vm.openEditValue">
+            <td class="mono">
+              <span data-bind="text: code"></span>
+              <!-- ko if: isDefault === 'Y' --><span class="dot-def" data-bind="attr: { title: $root.t('set.fld.default') }"></span><!-- /ko -->
+            </td>
+            <td data-bind="text: nameEn"></td>
+            <td data-bind="text: nameAr"></td>
+            <td class="lk-desc" data-bind="text: $vm.ldesc($data), attr: { title: $vm.ldesc($data) }"></td>
+            <td class="mono" data-bind="text: startDate"></td>
+            <td class="mono" data-bind="text: endDate"></td>
+            <td class="num" data-bind="text: displayOrder"></td>
+            <td><span class="chip" data-bind="css: $vm.stCls(effectiveStatus), text: $vm.stTxt(effectiveStatus)"></span></td>
+          </tr>
+        </tbody>
+        <!-- /ko -->
+      </table>
+      <!-- ko if: !valuesLoading() && values().length === 0 -->
+      <div class="empty pad" data-bind="text: $root.t('set.lk.noValues')"></div>
+      <!-- /ko -->
+    </div>
+    <div class="lk-note" data-bind="text: $root.t('set.lk.effNote')"></div>
+    <!-- /ko -->
+  </div>
+
+</div>
+<!-- /ko -->
+
+<!-- ══ SUB-TAB 2 · Manage KPIs ════════════════════════════════════ -->
+<!-- ko if: nav() === 'kpis' -->
+<div class="sec" style="margin-top:0">
+  <span data-bind="text: $root.t('set.k.title')"></span><span class="rule"></span>
+  <div class="row-act">
+    <button class="btn btn-sm btn-ghost" data-bind="click: exportKpisCsv, text: $root.t('set.lk.exportCsv')"></button>
+    <button class="btn btn-primary btn-sm" data-bind="click: openNewKpi, text: '+ ' + $root.t('set.k.newKpi')"></button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <input class="inp search" data-bind="textInput: kSearch, attr: { placeholder: $root.t('set.k.search') }">
+  <select class="inp" data-bind="options: lovOpts('KPI2_KPI_TYPE'), optionsText: lovLabel, optionsValue: 'code',
+          optionsCaption: $root.t('set.k.anyType'), value: kFType"></select>
+  <select class="inp" data-bind="options: lovOpts('KPI2_REPORTING_FREQ'), optionsText: lovLabel, optionsValue: 'code',
+          optionsCaption: $root.t('set.k.anyFreq'), value: kFFreq"></select>
+  <select class="inp" data-bind="value: kFStatus">
+    <option value="" data-bind="text: $root.t('set.k.anyStatus')"></option>
+    <option value="Y" data-bind="text: $root.t('set.st.active')"></option>
+    <option value="N" data-bind="text: $root.t('set.st.inactive')"></option>
+  </select>
+  <button class="btn btn-sm" data-bind="click: resetKpiFilters, text: $root.t('set.k.reset')"></button>
+  <span class="lk-note" style="margin:0" data-bind="text: filteredKpis().length + ' / ' + kpis().length"></span>
+</div>
+
+<div class="tbl-wrap">
+  <table class="tbl">
+    <thead><tr>
+      <th data-bind="text: $root.t('set.col.code')"></th>
+      <th data-bind="text: $root.t('set.col.name')"></th>
+      <th data-bind="text: $root.t('set.k.type')"></th>
+      <th data-bind="text: $root.t('set.k.category')"></th>
+      <th data-bind="text: $root.t('set.k.reporting')"></th>
+      <th data-bind="text: $root.t('set.k.updating')"></th>
+      <th data-bind="text: $root.t('set.k.polarity')"></th>
+      <th data-bind="text: $root.t('set.k.calc')"></th>
+      <th data-bind="text: $root.t('set.k.uom')"></th>
+      <th data-bind="text: $root.t('set.k.evidence')"></th>
+      <th class="num" data-bind="text: $root.t('set.k.bands')"></th>
+      <th data-bind="text: $root.t('set.col.status')"></th>
+    </tr></thead>
+    <!-- ko if: kpisLoading -->
+    <tbody data-bind="foreach: [1,2,3,4,5,6]">
+      <tr class="sk-row"><td colspan="12"><div class="sk"></div></td></tr>
+    </tbody>
+    <!-- /ko -->
+    <!-- ko ifnot: kpisLoading -->
+    <tbody data-bind="foreach: filteredKpis">
+      <tr data-bind="click: $vm.openEditKpi">
+        <td class="mono" data-bind="text: code"></td>
+        <td data-bind="text: $vm.ln($data), attr: { title: code }"></td>
+        <td data-bind="text: $vm.lovName('KPI2_KPI_TYPE', type)"></td>
+        <td data-bind="text: $vm.lovName('KPI2_CATEGORY', category)"></td>
+        <td data-bind="text: $vm.lovName('KPI2_REPORTING_FREQ', reportingFreq)"></td>
+        <td data-bind="text: $vm.lovName('KPI2_UPDATING_FREQ', updatingFreq)"></td>
+        <td data-bind="text: $vm.lovName('KPI2_POLARITY', polarity)"></td>
+        <td data-bind="text: $vm.lovName('KPI2_CALC_METHOD', calcMethod)"></td>
+        <td data-bind="text: $vm.lovName('KPI2_UOM', uom)"></td>
+        <td><span class="chip" data-bind="css: evidenceRequired === 'Y' ? 'gold' : 'muted',
+              text: evidenceRequired === 'Y' ? $root.t('set.k.yes') : $root.t('set.k.no')"></span></td>
+        <td class="num" data-bind="text: bandCount"></td>
+        <td><span class="chip" data-bind="css: isActive === 'Y' ? 'ok' : 'muted',
+              text: isActive === 'Y' ? $root.t('set.st.active') : $root.t('set.st.inactive')"></span></td>
+      </tr>
+    </tbody>
+    <!-- /ko -->
+  </table>
+  <!-- ko if: !kpisLoading() && filteredKpis().length === 0 -->
+  <div class="empty pad" data-bind="text: $root.t('set.k.noKpis')"></div>
+  <!-- /ko -->
+</div>
+<div class="lk-note" data-bind="text: $root.t('set.k.assignNote')"></div>
+<!-- /ko -->
+
+<!-- ══ SUB-TAB 3 · Manage Security ════════════════════════════════ -->
+<!-- ko if: nav() === 'security' -->
+<div class="sec" style="margin-top:0">
+  <span data-bind="text: $root.t('set.sec.title')"></span><span class="rule"></span>
+  <span class="chip warn" data-bind="text: $root.t('set.sec.enforceOff')"></span>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div data-bind="text: $root.t('set.sec.intro')"></div>
+</div>
+
+<div class="sec-cards">
+  <div class="card">
+    <div class="sc-h" data-bind="text: $root.t('set.sec.jobRoles')"></div>
+    <div class="sc-d" data-bind="text: $root.t('set.sec.jobRolesD')"></div>
+    <!-- ko foreach: secJobRoles -->
+    <div class="seclist"><span class="mono" data-bind="text: code"></span>
+      <span data-bind="text: $root.t($data.key)"></span></div>
+    <!-- /ko -->
+  </div>
+  <div class="card">
+    <div class="sc-h" data-bind="text: $root.t('set.sec.dutyRoles')"></div>
+    <div class="sc-d" data-bind="text: $root.t('set.sec.dutyRolesD')"></div>
+    <!-- ko foreach: secDutyRoles -->
+    <div class="seclist"><span class="mono" data-bind="text: code"></span>
+      <span data-bind="text: $root.t($data.key)"></span></div>
+    <!-- /ko -->
+  </div>
+  <div class="card">
+    <div class="sc-h" data-bind="text: $root.t('set.sec.privileges')"></div>
+    <div class="sc-d" data-bind="text: $root.t('set.sec.privilegesD')"></div>
+    <!-- ko foreach: secPrivileges -->
+    <div class="seclist"><span class="chip muted" data-bind="text: verb"></span>
+      <span class="mono" data-bind="text: code"></span></div>
+    <!-- /ko -->
+  </div>
+</div>
+
+<div class="sec"><span data-bind="text: $root.t('set.sec.console')"></span><span class="rule"></span></div>
+<div class="card">
+  <div class="sc-d" style="margin-bottom:12px" data-bind="text: $root.t('set.sec.consoleD')"></div>
+  <div class="row-act" style="flex-wrap:wrap;justify-content:flex-start">
+    <button class="btn btn-sm" data-bind="click: function () { openAdminSec('privileges'); }, text: $root.t('set.sec.lnkPrivileges')"></button>
+    <button class="btn btn-sm" data-bind="click: function () { openAdminSec('privilegeGroups'); }, text: $root.t('set.sec.lnkGroups')"></button>
+    <button class="btn btn-sm" data-bind="click: function () { openAdminSec('dutyRoles'); }, text: $root.t('set.sec.lnkDuty')"></button>
+    <button class="btn btn-sm" data-bind="click: function () { openAdminSec('jobRoles'); }, text: $root.t('set.sec.lnkJob')"></button>
+    <button class="btn btn-sm" data-bind="click: function () { openAdminSec('secProfiles'); }, text: $root.t('set.sec.lnkProfiles')"></button>
+    <button class="btn btn-sm btn-primary" data-bind="click: function () { openAdminSec('userManagement'); }, text: $root.t('set.sec.lnkUsers')"></button>
+  </div>
+</div>
+<div class="lk-note" data-bind="text: $root.t('set.sec.registryNote')"></div>
+<!-- /ko -->
+
+<!-- ── lookup (master) drawer ──────────────────────────────────────── -->
+<edit-drawer params="open: showLkDrawer, vm: $vm, title: lkDrawerTitle,
+                     saveLabel: $root.t('set.save'), cancelLabel: $root.t('set.cancel'),
+                     onSave: saveLookup, width: '520px'">
+  <div class="grid2">
+    <div class="field full">
+      <span class="lbl" data-bind="text: t('set.fld.code') + ' *'"></span>
+      <input class="inp mono" data-bind="value: lkForm.code, enable: !lkEditing()" maxlength="100">
+    </div>
+    <div class="field full">
+      <span class="lbl" data-bind="text: t('set.fld.nameEn') + ' *'"></span>
+      <input class="inp" data-bind="value: lkForm.nameEn" maxlength="200">
+    </div>
+    <div class="field full">
+      <span class="lbl" data-bind="text: t('set.fld.nameAr')"></span>
+      <input class="inp" dir="rtl" data-bind="value: lkForm.nameAr" maxlength="200">
+    </div>
+    <div class="field full">
+      <div class="ckrow">
+        <input type="checkbox" id="lkActive" data-bind="checked: lkForm.isActive">
+        <span data-bind="text: t('set.fld.active')"></span>
+      </div>
+    </div>
+  </div>
+  <div class="err" data-bind="visible: lkErr, text: lkErr"></div>
+</edit-drawer>
+
+<!-- ── value drawer ────────────────────────────────────────────────── -->
+<edit-drawer params="open: showValDrawer, vm: $vm, title: valDrawerTitle,
+                     subtitle: valDrawerSub,
+                     saveLabel: $root.t('set.save'), cancelLabel: $root.t('set.cancel'),
+                     onSave: saveValue, width: '640px'">
+  <div class="grid2">
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.code') + ' *'"></span>
+      <input class="inp mono" data-bind="value: valForm.code, enable: !valEditing()" maxlength="100">
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.order')"></span>
+      <input class="inp" type="number" step="10" data-bind="value: valForm.displayOrder">
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.nameEn') + ' *'"></span>
+      <input class="inp" data-bind="value: valForm.nameEn" maxlength="200">
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.nameAr')"></span>
+      <input class="inp" dir="rtl" data-bind="value: valForm.nameAr" maxlength="200">
+    </div>
+    <div class="field full">
+      <span class="lbl" data-bind="text: t('set.fld.descEn')"></span>
+      <textarea class="inp" rows="2" data-bind="value: valForm.descriptionEn" maxlength="1000"></textarea>
+    </div>
+    <div class="field full">
+      <span class="lbl" data-bind="text: t('set.fld.descAr')"></span>
+      <textarea class="inp" dir="rtl" rows="2" data-bind="value: valForm.descriptionAr" maxlength="1000"></textarea>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.start')"></span>
+      <input class="inp" type="date" data-bind="value: valForm.startDate">
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.end')"></span>
+      <input class="inp" type="date" data-bind="value: valForm.endDate">
+    </div>
+    <div class="field">
+      <div class="ckrow">
+        <input type="checkbox" id="valDefault" data-bind="checked: valForm.isDefault">
+        <span data-bind="text: t('set.fld.default')"></span>
+      </div>
+    </div>
+    <div class="field">
+      <div class="ckrow">
+        <input type="checkbox" id="valActive" data-bind="checked: valForm.isActive">
+        <span data-bind="text: t('set.fld.active')"></span>
+      </div>
+    </div>
+  </div>
+  <div class="err" data-bind="visible: valErr, text: valErr"></div>
+</edit-drawer>
+
+<!-- ── KPI drawer (wide, region-organised) ─────────────────────────── -->
+<edit-drawer params="open: showKpiDrawer, vm: $vm, title: kpiDrawerTitle,
+                     subtitle: kpiDrawerSub,
+                     saveLabel: $root.t('set.save'), cancelLabel: $root.t('set.cancel'),
+                     onSave: saveKpi, width: 'min(1080px, 96vw)'">
+
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regBasic')"></span></div>
+  <div class="dw-reg-b">
+  <div class="grid2">
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.code') + ' *'"></span>
+      <input class="inp mono" data-bind="value: kForm.code, enable: !kpiEditing()" maxlength="60">
+    </div>
+    <div class="field">
+      <div class="ckrow" style="padding-top:22px">
+        <input type="checkbox" id="kActive" data-bind="checked: kForm.isActive">
+        <span data-bind="text: t('set.fld.active')"></span>
+      </div>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.nameEn') + ' *'"></span>
+      <input class="inp" data-bind="value: kForm.nameEn" maxlength="300">
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.nameAr')"></span>
+      <input class="inp" dir="rtl" data-bind="value: kForm.nameAr" maxlength="300">
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.descEn')"></span>
+      <textarea class="inp" rows="2" data-bind="value: kForm.descriptionEn" maxlength="2000"></textarea>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.fld.descAr')"></span>
+      <textarea class="inp" dir="rtl" rows="2" data-bind="value: kForm.descriptionAr" maxlength="2000"></textarea>
+    </div>
+  </div>
+  </div>
+  </div>
+
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regClass')"></span></div>
+  <div class="dw-reg-b">
+  <div class="grid2">
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.k.type') + ' *'"></span>
+      <select class="inp" data-bind="options: lovOpts('KPI2_KPI_TYPE', kForm.type), optionsText: lovLabel,
+              optionsValue: 'code', optionsCaption: '—', value: kForm.type"></select>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.k.category')"></span>
+      <select class="inp" data-bind="options: lovOpts('KPI2_CATEGORY', kForm.category), optionsText: lovLabel,
+              optionsValue: 'code', optionsCaption: '—', value: kForm.category"></select>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.k.reporting') + ' *'"></span>
+      <select class="inp" data-bind="options: lovOpts('KPI2_REPORTING_FREQ', kForm.reportingFreq), optionsText: lovLabel,
+              optionsValue: 'code', optionsCaption: '—', value: kForm.reportingFreq"></select>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.k.updating') + ' *'"></span>
+      <select class="inp" data-bind="options: lovOpts('KPI2_UPDATING_FREQ', kForm.updatingFreq), optionsText: lovLabel,
+              optionsValue: 'code', optionsCaption: '—', value: kForm.updatingFreq"></select>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.k.polarity') + ' *'"></span>
+      <select class="inp" data-bind="options: lovOpts('KPI2_POLARITY', kForm.polarity), optionsText: lovLabel,
+              optionsValue: 'code', optionsCaption: '—', value: kForm.polarity"></select>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.k.calc') + ' *'"></span>
+      <select class="inp" data-bind="options: lovOpts('KPI2_CALC_METHOD', kForm.calcMethod), optionsText: lovLabel,
+              optionsValue: 'code', optionsCaption: '—', value: kForm.calcMethod"></select>
+    </div>
+    <div class="field">
+      <span class="lbl" data-bind="text: t('set.k.uom') + ' *'"></span>
+      <select class="inp" data-bind="options: lovOpts('KPI2_UOM', kForm.uom), optionsText: lovLabel,
+              optionsValue: 'code', optionsCaption: '—', value: kForm.uom"></select>
+    </div>
+    <div class="field">
+      <div class="ckrow" style="padding-top:22px">
+        <input type="checkbox" id="kEvidence" data-bind="checked: kForm.evidenceRequired">
+        <span data-bind="text: t('set.k.evidenceReq')"></span>
+      </div>
+    </div>
+  </div>
+  </div>
+  </div>
+
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regSources')"></span></div>
+  <div class="dw-reg-b">
+  <div class="pick-grid" data-bind="foreach: lovOpts('KPI2_DATA_SOURCE')">
+    <span class="pick" data-bind="css: { on: $parent.isSourcePicked(code) },
+          click: function () { $parent.toggleSource(code); }, text: $parent.lovLabel($data)"></span>
+  </div>
+  </div>
+  </div>
+
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regFigures')"></span></div>
+  <div class="dw-reg-b">
+  <div class="pick-grid" data-bind="foreach: lovOpts('KPI2_SOURCE_FIGURE')">
+    <span class="pick" data-bind="css: { on: $parent.isFigurePicked(code) },
+          click: function () { $parent.toggleFigure(code); }, text: $parent.lovLabel($data)"></span>
+  </div>
+  </div>
+  </div>
+
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regBands')"></span>
+    <span class="hint" data-bind="text: t('set.k.bandsHint')"></span>
+  </div>
+  <div class="dw-reg-b">
+  <div class="band-head">
+    <span data-bind="text: t('set.k.bScore')"></span>
+    <span data-bind="text: t('set.k.bOperator')"></span>
+    <span data-bind="text: t('set.k.bT1')"></span>
+    <span data-bind="text: t('set.k.bT2')"></span>
+    <span data-bind="text: t('set.k.bLabelEn')"></span>
+    <span data-bind="text: t('set.k.bLabelAr')"></span>
+  </div>
+  <!-- ko foreach: bandRows -->
+  <div class="band-row">
+    <span class="band-score" data-bind="text: score"></span>
+    <select class="inp" data-bind="options: $parent.lovOpts('KPI_BAND_OP', operator), optionsText: $parent.lovLabel,
+            optionsValue: 'code', optionsCaption: '—', value: operator"></select>
+    <input class="inp" type="number" step="any" data-bind="value: t1, enable: operator">
+    <input class="inp" type="number" step="any" data-bind="value: t2, enable: operator() === 'BETWEEN'">
+    <input class="inp" data-bind="value: labelEn, enable: operator" maxlength="60">
+    <input class="inp" dir="rtl" data-bind="value: labelAr, enable: operator" maxlength="60">
+  </div>
+  <!-- /ko -->
+  </div>
+  </div>
+
+  <div class="err" data-bind="visible: kpiErr, text: kpiErr"></div>
+</edit-drawer>

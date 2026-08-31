@@ -43,6 +43,12 @@ INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_v
   VALUES ('OTBI_USER', 'hg2248@dctabudhabi.ae', 'STRING', NULL, 'Fusion / OTBI login username (the password stays in env.ps1 / Vault)', 10);
 INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)
   VALUES ('ATD_MFA_WAIT', '420', 'NUMBER', NULL, 'Seconds to wait for the MFA push approval before failing the run', 20);
+
+MERGE INTO prod.atd_runner_config t
+USING (SELECT 'ATD_MFA_SLOT_WAIT' config_key FROM dual) s ON (t.config_key=s.config_key)
+WHEN NOT MATCHED THEN INSERT (config_key,config_value,value_type,enum_values,description,display_order)
+  VALUES ('ATD_MFA_SLOT_WAIT','1200','NUMBER',NULL,
+          'Maximum seconds a worker waits for another worker to finish MFA',25);
 INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)
   VALUES ('ATD_LEASE_MINUTES', '30', 'NUMBER', NULL, 'Minutes before a CLAIMED job is reclaimed (worker crash recovery)', 30);
 INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)

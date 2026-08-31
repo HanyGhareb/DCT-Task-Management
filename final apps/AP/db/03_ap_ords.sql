@@ -21,6 +21,12 @@
 --           facet call -- the Beneficiaries dashboard locks it to 26553 (the
 --           generic BENEFICIARY supplier; the beneficiary name acts as the
 --           supplier name, the site number as the beneficiary's supplier no).
+--           nopo=Y (2026-08-21, Direct AP page) scopes /filters LOVs + every
+--           facet call to invoices with NO PO reference and NO project coding
+--           (header_po_number IS NULL AND po_count = 0 AND project_count = 0
+--           AND no invoice LINE carries a po_number/project_number -- the
+--           header counts derive from distributions only and 131 invoices are
+--           project-coded at the line grain with clean distributions).
 --           Setup is split into five small procedures on purpose -- the Linux
 --           SQLcl build silently skips very large single statements.
 -- Routes  :
@@ -72,43 +78,49 @@ BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT TO_CHAR(MIN(invoice_date),'YYYY-MM-DD'), TO_CHAR(MAX(invoice_date),'YYYY-MM-DD')
     INTO l_min, l_max FROM prod.ap_invoices_header_v
-   WHERE ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1);
+   WHERE ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL)));
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('minDate', l_min); APEX_JSON.write('maxDate', l_max);
+  -- Business Units (header BU name; cross-BU since the 2026-07-18 extract change)
+  APEX_JSON.open_array('businessUnits');
+  FOR r IN (SELECT business_unit v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE business_unit IS NOT NULL AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY business_unit ORDER BY 2 DESC) LOOP
+    APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
   APEX_JSON.open_array('paymentStatus');
-  FOR r IN (SELECT payment_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY payment_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT payment_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY payment_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('validationStatus');
-  FOR r IN (SELECT validation_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY validation_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT validation_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY validation_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('accountingStatus');
-  FOR r IN (SELECT accounting_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY accounting_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT accounting_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY accounting_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('approvalStatus');
-  FOR r IN (SELECT approval_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY approval_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT approval_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY approval_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('invoiceStatus');
-  FOR r IN (SELECT invoice_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY invoice_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT invoice_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY invoice_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('invoiceType');
-  FOR r IN (SELECT invoice_type v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY invoice_type ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT invoice_type v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY invoice_type ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('currency');
-  FOR r IN (SELECT invoice_currency v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY invoice_currency ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT invoice_currency v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY invoice_currency ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('payGroup');
-  FOR r IN (SELECT NVL(pay_group,'(None)') v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY NVL(pay_group,'(None)') ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT NVL(pay_group,'(None)') v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY NVL(pay_group,'(None)') ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('paymentMethod');
-  FOR r IN (SELECT payment_method v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY payment_method ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT payment_method v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) GROUP BY payment_method ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('sectors');
@@ -126,44 +138,76 @@ BEGIN
                       AND d.distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax')
                WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR h.invoice_status <> 'Cancelled')
                  AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h.supplier_number)) = 1)
+                 AND ([COLON]nopo IS NULL OR (h.header_po_number IS NULL AND h.po_count = 0 AND h.project_count = 0 AND h.pr_count = 0 AND h.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL)))
                GROUP BY h.invoice_id)
              GROUP BY sect ORDER BY 2 DESC) LOOP
+    APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
+  END LOOP; APEX_JSON.close_array;
+  APEX_JSON.open_array('chapters');
+  -- per-invoice classification like sectors: one chapter bucket per invoice
+  -- (single chapter / Multiple / Unclassified), counts sum to the invoices KPI
+  FOR r IN (SELECT chap v, COUNT(*) c FROM (
+              SELECT h.invoice_id,
+                     CASE WHEN COUNT(DISTINCT CASE WHEN d.invoice_id IS NOT NULL
+                                                   THEN NVL(d.chapter_name,'Unclassified') END) > 1
+                          THEN '(Multiple chapters)'
+                          ELSE NVL(MAX(NVL(d.chapter_name,'Unclassified')),'Unclassified') END chap
+                FROM prod.ap_invoices_header_v h
+                LEFT JOIN prod.ap_invoice_distributions_v d
+                       ON d.invoice_id = h.invoice_id
+                      AND d.distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax')
+               WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR h.invoice_status <> 'Cancelled')
+                 AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h.supplier_number)) = 1)
+                 AND ([COLON]nopo IS NULL OR (h.header_po_number IS NULL AND h.po_count = 0 AND h.project_count = 0 AND h.pr_count = 0 AND h.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL)))
+               GROUP BY h.invoice_id)
+             GROUP BY chap ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('suppliers');
   -- suppnum scope (Beneficiaries dashboard): the generic supplier is one name,
   -- so the facet lists the EFFECTIVE supplier (= beneficiary name) instead
   FOR r IN (SELECT DISTINCT CASE WHEN [COLON]suppnum IS NOT NULL AND supplier_name = 'BENEFICIARY' AND beneficiary_name IS NOT NULL
-                                 THEN beneficiary_name ELSE supplier_name END v FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND supplier_name IS NOT NULL ORDER BY 1) LOOP
+                                 THEN beneficiary_name ELSE supplier_name END v FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) AND ([COLON]nopo IS NULL OR (header_po_number IS NULL AND po_count = 0 AND project_count = 0 AND pr_count = 0 AND invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) AND supplier_name IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('departments');
-  FOR r IN (SELECT DISTINCT expenditure_organization v FROM prod.ap_invoice_lines_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND expenditure_organization IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT expenditure_organization v FROM prod.ap_invoice_lines_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND ([COLON]nopo IS NULL OR invoice_id IN (SELECT h3.invoice_id FROM prod.ap_invoices_header_v h3 WHERE h3.header_po_number IS NULL AND h3.po_count = 0 AND h3.project_count = 0 AND h3.pr_count = 0 AND h3.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) AND expenditure_organization IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('requestors');
-  FOR r IN (SELECT DISTINCT pr_preparer v FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND pr_preparer IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT pr_preparer v FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND ([COLON]nopo IS NULL OR invoice_id IN (SELECT h3.invoice_id FROM prod.ap_invoices_header_v h3 WHERE h3.header_po_number IS NULL AND h3.po_count = 0 AND h3.project_count = 0 AND h3.pr_count = 0 AND h3.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) AND pr_preparer IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('expTypes');
-  FOR r IN (SELECT DISTINCT expenditure_type v FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND expenditure_type IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT expenditure_type v FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND ([COLON]nopo IS NULL OR invoice_id IN (SELECT h3.invoice_id FROM prod.ap_invoices_header_v h3 WHERE h3.header_po_number IS NULL AND h3.po_count = 0 AND h3.project_count = 0 AND h3.pr_count = 0 AND h3.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) AND expenditure_type IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('costCenters');
-  FOR r IN (SELECT DISTINCT cost_center_code cd, cost_center_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND cost_center_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT cost_center_code cd, cost_center_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND ([COLON]nopo IS NULL OR invoice_id IN (SELECT h3.invoice_id FROM prod.ap_invoices_header_v h3 WHERE h3.header_po_number IS NULL AND h3.po_count = 0 AND h3.project_count = 0 AND h3.pr_count = 0 AND h3.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) AND cost_center_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('accounts');
-  FOR r IN (SELECT DISTINCT account_code cd, account_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND account_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT account_code cd, account_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND ([COLON]nopo IS NULL OR invoice_id IN (SELECT h3.invoice_id FROM prod.ap_invoices_header_v h3 WHERE h3.header_po_number IS NULL AND h3.po_count = 0 AND h3.project_count = 0 AND h3.pr_count = 0 AND h3.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) AND account_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('appropriations');
-  FOR r IN (SELECT DISTINCT appropriation_code cd, appropriation_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND appropriation_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT appropriation_code cd, appropriation_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND ([COLON]nopo IS NULL OR invoice_id IN (SELECT h3.invoice_id FROM prod.ap_invoices_header_v h3 WHERE h3.header_po_number IS NULL AND h3.po_count = 0 AND h3.project_count = 0 AND h3.pr_count = 0 AND h3.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) AND appropriation_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('projects');
-  FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND project_number IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND ([COLON]nopo IS NULL OR invoice_id IN (SELECT h3.invoice_id FROM prod.ap_invoices_header_v h3 WHERE h3.header_po_number IS NULL AND h3.po_count = 0 AND h3.project_count = 0 AND h3.pr_count = 0 AND h3.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))) AND project_number IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
+  END LOOP; APEX_JSON.close_array;
+  APEX_JSON.open_array('bankAccounts');
+  -- installments round: vendor bank accounts (searchable facet list)
+  FOR r IN (SELECT DISTINCT n.bank_account_number v FROM prod.ap_invoice_installments n
+             WHERE n.bank_account_number IS NOT NULL
+               AND n.invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2
+                                     WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR h2.invoice_status <> 'Cancelled')
+                                       AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)
+                                       AND ([COLON]nopo IS NULL OR (h2.header_po_number IS NULL AND h2.po_count = 0 AND h2.project_count = 0 AND h2.pr_count = 0 AND h2.invoice_id NOT IN (SELECT lx.invoice_id FROM prod.ap_invoice_lines lx WHERE lx.po_number IS NOT NULL OR lx.project_number IS NOT NULL))))
+             ORDER BY 1) LOOP
+    APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
@@ -226,7 +270,10 @@ BEGIN
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
-    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum, p_inclcxl => [COLON]inclcxl);
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   SELECT COUNT(*),
          COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                              THEN h.beneficiary_name ELSE h.supplier_name END),
@@ -390,7 +437,10 @@ BEGIN
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
-    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum, p_inclcxl => [COLON]inclcxl);
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   SELECT NVL(SUM(h.invoice_amount_aed),0),
          NVL(SUM(CASE WHEN h.payment_status = 'Unpaid' THEN NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) ELSE 0 END),0)
     INTO l_amt, l_bal
@@ -407,7 +457,7 @@ BEGIN
            CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                 THEN h.beneficiary_name ELSE h.supplier_name END supplier_name,
            CASE WHEN h.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
-           h.supplier_number, h.supplier_site, h.invoice_description, h.invoice_currency,
+           h.supplier_number, h.supplier_site, h.business_unit, h.invoice_description, h.invoice_currency,
            h.invoice_amount, h.invoice_amount_aed, NVL(h.amount_paid,0) amount_paid, NVL(h.balance_due,0) balance_due,
            NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
@@ -439,6 +489,7 @@ BEGIN
     APEX_JSON.write('isBeneficiary', r.is_beneficiary);
     APEX_JSON.write('supplierNumber', r.supplier_number);
     APEX_JSON.write('supplierSite', r.supplier_site);
+    APEX_JSON.write('businessUnit', NVL(r.business_unit,''));
     APEX_JSON.write('description', r.invoice_description);
     APEX_JSON.write('currency', r.invoice_currency);
     APEX_JSON.write('amount', r.invoice_amount);
@@ -523,18 +574,21 @@ BEGIN
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
-    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum, p_inclcxl => [COLON]inclcxl);
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-register-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
   HTP.prn(UNISTR('\FEFF'));
-  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Site,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Approval,Terms Date,Due Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
+  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Site,Business Unit,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Approval,Terms Date,Due Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
   FOR r IN (
     SELECT h.invoice_number, TO_CHAR(h.invoice_date,'YYYY-MM-DD') inv_dt, h.invoice_type,
            CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                 THEN h.beneficiary_name ELSE h.supplier_name END supplier_name,
            CASE WHEN h.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
-           h.supplier_site, h.invoice_description, h.invoice_currency, h.invoice_amount, h.invoice_amount_aed,
+           h.supplier_site, h.business_unit, h.invoice_description, h.invoice_currency, h.invoice_amount, h.invoice_amount_aed,
            NVL(h.amount_paid,0) amount_paid, NVL(h.balance_due,0) balance_due,
            ROUND(NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1),2) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
@@ -550,7 +604,7 @@ BEGIN
   LOOP
     HTP.print(
       esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.invoice_type) || ',' ||
-      esc(r.supplier_name) || ',' || r.is_beneficiary || ',' || esc(r.supplier_site) || ',' || esc(r.invoice_description) || ',' || r.invoice_currency || ',' ||
+      esc(r.supplier_name) || ',' || r.is_beneficiary || ',' || esc(r.supplier_site) || ',' || esc(r.business_unit) || ',' || esc(r.invoice_description) || ',' || r.invoice_currency || ',' ||
       r.invoice_amount || ',' || r.invoice_amount_aed || ',' || r.amount_paid || ',' ||
       r.balance_due || ',' || r.balance_aed || ',' ||
       esc(r.validation_status) || ',' || esc(r.accounting_status) || ',' || esc(r.payment_status) || ',' ||
@@ -607,7 +661,7 @@ BEGIN
            payment_status, validation_status, accounting_status, funds_status, approval_status,
            payment_terms, TO_CHAR(terms_date,'YYYY-MM-DD') terms_dt,
            TO_CHAR(due_date,'YYYY-MM-DD') due_dt, payment_method, pay_group,
-           payment_currency, voucher_num, invoice_source, batch_name,
+           payment_currency, voucher_num, invoice_source,
            TO_CHAR(gl_date,'YYYY-MM-DD') gl_dt, TO_CHAR(invoice_received_date,'YYYY-MM-DD') rcv_dt,
            created_by, TO_CHAR(created_date,'YYYY-MM-DD') created_dt,
            last_updated_by, TO_CHAR(last_updated_date,'YYYY-MM-DD') updated_dt,
@@ -638,7 +692,7 @@ BEGIN
     APEX_JSON.write('dueDate', h.due_dt);
     APEX_JSON.write('paymentMethod', h.payment_method); APEX_JSON.write('payGroup', h.pay_group);
     APEX_JSON.write('paymentCurrency', h.payment_currency); APEX_JSON.write('voucherNum', h.voucher_num);
-    APEX_JSON.write('source', h.invoice_source); APEX_JSON.write('batchName', h.batch_name);
+    APEX_JSON.write('source', h.invoice_source);
     APEX_JSON.write('glDate', h.gl_dt); APEX_JSON.write('receivedDate', h.rcv_dt);
     APEX_JSON.write('createdBy', h.created_by); APEX_JSON.write('createdDate', h.created_dt);
     APEX_JSON.write('lastUpdatedBy', h.last_updated_by); APEX_JSON.write('lastUpdatedDate', h.updated_dt);
@@ -737,6 +791,34 @@ BEGIN
       APEX_JSON.write('future2Code', r.f2_code); APEX_JSON.write('future2Desc', r.f2_desc);
       APEX_JSON.write('intercompanyCode', r.ic_code); APEX_JSON.write('intercompanyDesc', r.ic_desc);
       APEX_JSON.write('programCode', r.prog_code); APEX_JSON.write('programDesc', r.prog_desc);
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+    APEX_JSON.open_array('installments');
+    -- payment schedule (ATD_AP_INVOICE_INSTALLMENTS via AP_INVOICE_INSTALLMENTS_V)
+    FOR r IN (SELECT n.installment_number, TO_CHAR(n.due_date,'YYYY-MM-DD') due_dt,
+                     n.payment_priority, n.payment_method, n.bank_account_number, n.pay_group,
+                     n.installment_paid, n.installment_on_hold,
+                     n.gross_amount, n.gross_amount_aed, n.unpaid_amount, n.unpaid_amount_aed,
+                     n.invoice_currency, n.payment_currency
+                FROM prod.ap_invoice_installments_v n
+               WHERE n.invoice_id = l_id
+               ORDER BY n.installment_number) LOOP
+      APEX_JSON.open_object;
+      APEX_JSON.write('installmentNumber', r.installment_number);
+      APEX_JSON.write('dueDate', r.due_dt);
+      APEX_JSON.write('priority', r.payment_priority);
+      APEX_JSON.write('paymentMethod', r.payment_method);
+      APEX_JSON.write('bankAccount', r.bank_account_number);
+      APEX_JSON.write('payGroup', r.pay_group);
+      APEX_JSON.write('installmentPaid', r.installment_paid);
+      APEX_JSON.write('onHold', r.installment_on_hold);
+      APEX_JSON.write('grossAmount', r.gross_amount);
+      APEX_JSON.write('grossAmountAed', r.gross_amount_aed);
+      APEX_JSON.write('unpaidAmount', r.unpaid_amount);
+      APEX_JSON.write('unpaidAmountAed', r.unpaid_amount_aed);
+      APEX_JSON.write('currency', r.invoice_currency);
+      APEX_JSON.write('paymentCurrency', r.payment_currency);
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;

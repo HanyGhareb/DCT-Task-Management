@@ -59,6 +59,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: Boolean(isOff), busy: Boolean(loading) }}
       disabled={isOff}
       onPress={onPress}
       hitSlop={6}
@@ -108,7 +109,11 @@ export function Card({
   );
   if (!onPress) return body;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
+    >
       {body}
     </Pressable>
   );

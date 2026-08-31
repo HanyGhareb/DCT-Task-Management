@@ -44,7 +44,7 @@ export function ApprovalsScreen() {
           </T>
         </View>
         <T variant="body" style={{ marginTop: 6 }} numberOfLines={1}>
-          {item.requestRef} · {item.templateName}
+          {item.requestRef} · {item.processName}
         </T>
         <View style={[styles.row, { marginTop: 8 }]}>
           <T variant="caption" color={palette.textMuted} numberOfLines={1} style={{ flex: 1 }}>
@@ -76,9 +76,8 @@ export function ApprovalsScreen() {
       ) : (
         <FlashList
           data={data ?? []}
-          keyExtractor={(it) => String(it.instanceId)}
+          keyExtractor={(it) => String(it.id)}
           renderItem={renderItem}
-          estimatedItemSize={132}
           contentContainerStyle={{ padding: spacing.lg }}
           ListEmptyComponent={
             <EmptyState icon="checkmark-done-circle" title={t('appr.empty')} subtitle={t('appr.emptySub')} />

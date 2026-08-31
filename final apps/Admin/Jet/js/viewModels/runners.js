@@ -18,6 +18,8 @@ function (ko, svc, i18n, toast) {
     self.loading   = ko.observable(true);
     self.loadError = ko.observable(false);
     self.runners   = ko.observableArray([]);
+    self.dbJobs    = ko.observableArray([]);
+    self.dbJobsLoading = ko.observable(true);
 
     self.categories = ko.observableArray([]);
     self.runtimes   = ko.observableArray([]);
@@ -48,6 +50,14 @@ function (ko, svc, i18n, toast) {
         self.loading(false);
       }).catch(function () {
         self.loadError(true); self.loading(false);
+      });
+      self.dbJobsLoading(true);
+      svc.schedulerHealth().then(function (r) {
+        self.dbJobs(r.items || []);
+        self.dbJobsLoading(false);
+      }).catch(function () {
+        self.dbJobs([]);
+        self.dbJobsLoading(false);
       });
     };
 
@@ -182,6 +192,28 @@ function (ko, svc, i18n, toast) {
       if (s === 'ACTIVE') return 'badge badge--active';
       if (s === 'DEPRECATED' || s === 'ARCHIVED') return 'badge badge--inactive';
       return 'badge';
+    };
+
+    self.jobStatusClass = function (s) {
+      s = (s || '').toUpperCase();
+      if (s === 'SUCCEEDED') return 'badge badge--active';
+      if (s === 'FAILED' || s === 'BROKEN') return 'badge badge--inactive';
+      return 'badge';
+    };
+
+    self.jobFailureLabel = function (job) {
+      var count = Number((job && job.failureCount) || 0);
+      if (!count) return '0';
+      var latest = String((job && job.lastStatus) || '').toUpperCase();
+      return latest === 'SUCCEEDED'
+        ? count + ' ' + self.t('runner.jobs.historical')
+        : count + ' ' + self.t('runner.jobs.active');
+    };
+
+    self.jobFailureClass = function (job) {
+      var count = Number((job && job.failureCount) || 0);
+      var latest = String((job && job.lastStatus) || '').toUpperCase();
+      return count > 0 && latest !== 'SUCCEEDED' ? 'badge badge--inactive' : 'muted';
     };
   }
 

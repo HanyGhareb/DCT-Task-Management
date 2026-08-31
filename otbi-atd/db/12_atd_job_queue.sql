@@ -10,6 +10,9 @@
 --   db/40) so a set can gate/re-interval its members. Apply db/40 as well; until it is,
 --   those wrappers are missing and this package body is INVALID (auto-revalidates once
 --   db/40 runs). A job in no set behaves exactly as before.
+-- NOTE: enqueue() also references atd_otbi_jobs.requested_by (per-user OTBI
+--   credentials, db/62) -- on a fresh install run db/62 BEFORE re-running 12 or
+--   the body is INVALID until the column exists.
 -- Rerunnable (ADD guarded against ORA-01430). Schema-qualified PROD. CRLF/UTF-8 no BOM.
 -- ===========================================================================
 SET DEFINE OFF
@@ -38,6 +41,16 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1430 THEN RAISE; END IF;
 END;
 /
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER TABLE prod.atd_otbi_jobs ADD (claim_token VARCHAR2(64))';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1430 THEN RAISE; END IF;
+END;
+/
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER TABLE prod.atd_otbi_jobs ADD (lease_expires_at TIMESTAMP)';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1430 THEN RAISE; END IF;
+END;
+/
 
 -- status domain guard (drop+add so rerun is clean)
 BEGIN
@@ -61,18 +74,32 @@ CREATE OR REPLACE PACKAGE prod.atd_queue_pkg AS
   -- Atomically lease the next READY job to p_host; returns job_name or NULL.
   -- Pure SKIP LOCKED claim (no lease logic in the hot path - see reap_stale).
   FUNCTION claim_next(p_host VARCHAR2) RETURN VARCHAR2;
+  FUNCTION claim_next(p_host VARCHAR2, p_token VARCHAR2,
+                      p_lease_minutes NUMBER DEFAULT 10) RETURN VARCHAR2;
   -- Return CLAIMED jobs whose lease passed p_lease_minutes back to READY (crash
   -- recovery). Call occasionally, e.g. once at worker startup. Returns count.
   FUNCTION reap_stale(p_lease_minutes NUMBER DEFAULT 30) RETURN NUMBER;
   -- Mark a claimed job DONE / FAILED (records the run log id when known).
   PROCEDURE mark_done  (p_job VARCHAR2, p_run_id NUMBER DEFAULT NULL);
   PROCEDURE mark_failed(p_job VARCHAR2, p_run_id NUMBER DEFAULT NULL);
+  PROCEDURE mark_done  (p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2,
+                        p_run_id NUMBER DEFAULT NULL);
+  PROCEDURE mark_failed(p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2,
+                        p_run_id NUMBER DEFAULT NULL);
+  FUNCTION renew_lease(p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2,
+                       p_lease_minutes NUMBER DEFAULT 10) RETURN NUMBER;
   -- Hand a claimed job BACK to the queue (-> READY) WITHOUT marking it failed/done.
   -- Used when a worker's Fusion session died mid-run so a peer with a healthy session
   -- retries it (cross-worker failover) instead of the job being consumed as FAILED.
   PROCEDURE release_job(p_job VARCHAR2);
+  PROCEDURE release_job(p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2);
   -- Queue (mark READY) all enabled jobs, or one named job. Returns count.
-  FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER;
+  -- p_requested_by: the i-Finance user behind a MANUAL single-job enqueue (db/62
+  -- per-user OTBI credentials -- the worker signs in as that user's Fusion
+  -- account). The scheduled/bulk path (p_only NULL) always runs as the global
+  -- service account and CLEARS any stale personal tag.
+  FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL,
+                   p_requested_by VARCHAR2 DEFAULT NULL) RETURN NUMBER;
   -- Atomically claim the next QUEUED subject-area discovery (-> SCRAPING); SKIP LOCKED.
   -- Returns subject_area or NULL. Lets N hosts drain the discover queue with no overlap.
   FUNCTION claim_sa RETURN VARCHAR2;
@@ -85,6 +112,14 @@ END atd_queue_pkg;
 CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
 
   FUNCTION claim_next(p_host VARCHAR2) RETURN VARCHAR2 IS
+  BEGIN
+    -- Rolling-deploy compatibility for an older worker. New workers always call
+    -- the token overload; remove this overload only after every worker is upgraded.
+    RETURN claim_next(p_host, NULL, 10);
+  END claim_next;
+
+  FUNCTION claim_next(p_host VARCHAR2, p_token VARCHAR2,
+                      p_lease_minutes NUMBER DEFAULT 10) RETURN VARCHAR2 IS
     CURSOR c IS
       SELECT job_name FROM prod.atd_otbi_jobs
        WHERE enabled = 'Y' AND run_status = 'READY'
@@ -97,13 +132,30 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
     IF c%FOUND THEN
       UPDATE prod.atd_otbi_jobs
          SET run_status = 'CLAIMED', claimed_by = p_host,
-             claimed_at = CAST(SYSTIMESTAMP AS TIMESTAMP)
+             claimed_at = CAST(SYSTIMESTAMP AS TIMESTAMP),
+             claim_token = p_token,
+             lease_expires_at = CAST(SYSTIMESTAMP AS TIMESTAMP)
+                                + NUMTODSINTERVAL(NVL(p_lease_minutes,10), 'MINUTE')
        WHERE job_name = v_job;
     END IF;
     CLOSE c;
     COMMIT;                 -- releases the row lock; the CLAIMED flag now owns it
     RETURN v_job;          -- NULL when the queue is empty
   END claim_next;
+
+  FUNCTION renew_lease(p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2,
+                       p_lease_minutes NUMBER DEFAULT 10) RETURN NUMBER IS
+    n NUMBER;
+  BEGIN
+    UPDATE prod.atd_otbi_jobs
+       SET lease_expires_at = CAST(SYSTIMESTAMP AS TIMESTAMP)
+                              + NUMTODSINTERVAL(NVL(p_lease_minutes,10), 'MINUTE')
+     WHERE job_name = p_job AND run_status = 'CLAIMED'
+       AND claimed_by = p_host AND claim_token = p_token;
+    n := SQL%ROWCOUNT;
+    COMMIT;
+    RETURN n;
+  END renew_lease;
 
   FUNCTION reap_stale(p_lease_minutes NUMBER DEFAULT 30) RETURN NUMBER IS
     n NUMBER;
@@ -112,10 +164,12 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
     -- never mistaken for stale (mixing TIMESTAMP with SYSTIMESTAMP-WITH-TZ skews
     -- by the session/db TZ offset).
     UPDATE prod.atd_otbi_jobs
-       SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL
+       SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL,
+           claim_token = NULL, lease_expires_at = NULL
      WHERE run_status = 'CLAIMED'
-       AND claimed_at < CAST(SYSTIMESTAMP AS TIMESTAMP)
-                        - NUMTODSINTERVAL(NVL(p_lease_minutes,30), 'MINUTE');
+       AND NVL(lease_expires_at,
+               claimed_at + NUMTODSINTERVAL(NVL(p_lease_minutes,30), 'MINUTE'))
+           < CAST(SYSTIMESTAMP AS TIMESTAMP);
     n := SQL%ROWCOUNT;
     COMMIT;
     RETURN n;
@@ -126,7 +180,10 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
     UPDATE prod.atd_otbi_jobs
        SET run_status = 'DONE',
            last_run_id = NVL(p_run_id, last_run_id)
-     WHERE job_name = p_job;
+     WHERE job_name = p_job AND claim_token IS NULL;
+    IF SQL%ROWCOUNT = 0 THEN
+      RAISE_APPLICATION_ERROR(-20061, 'Token-fenced job requires owner completion');
+    END IF;
     COMMIT;
   END mark_done;
 
@@ -135,19 +192,68 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
     UPDATE prod.atd_otbi_jobs
        SET run_status = 'FAILED',
            last_run_id = NVL(p_run_id, last_run_id)
-     WHERE job_name = p_job;
+     WHERE job_name = p_job AND claim_token IS NULL;
+    IF SQL%ROWCOUNT = 0 THEN
+      RAISE_APPLICATION_ERROR(-20061, 'Token-fenced job requires owner failure update');
+    END IF;
+    COMMIT;
+  END mark_failed;
+
+  PROCEDURE mark_done(p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2,
+                      p_run_id NUMBER DEFAULT NULL) IS
+  BEGIN
+    UPDATE prod.atd_otbi_jobs
+       SET run_status='DONE', last_run_id=NVL(p_run_id,last_run_id),
+           claimed_by=NULL, claimed_at=NULL, claim_token=NULL, lease_expires_at=NULL
+     WHERE job_name=p_job AND run_status='CLAIMED'
+       AND claimed_by=p_host AND claim_token=p_token;
+    IF SQL%ROWCOUNT = 0 THEN
+      RAISE_APPLICATION_ERROR(-20061, 'Job claim lost; completion rejected');
+    END IF;
+    COMMIT;
+  END mark_done;
+
+  PROCEDURE mark_failed(p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2,
+                        p_run_id NUMBER DEFAULT NULL) IS
+  BEGIN
+    UPDATE prod.atd_otbi_jobs
+       SET run_status='FAILED', last_run_id=NVL(p_run_id,last_run_id),
+           claimed_by=NULL, claimed_at=NULL, claim_token=NULL, lease_expires_at=NULL
+     WHERE job_name=p_job AND run_status='CLAIMED'
+       AND claimed_by=p_host AND claim_token=p_token;
+    IF SQL%ROWCOUNT = 0 THEN
+      RAISE_APPLICATION_ERROR(-20061, 'Job claim lost; failure update rejected');
+    END IF;
     COMMIT;
   END mark_failed;
 
   PROCEDURE release_job(p_job VARCHAR2) IS
   BEGIN
     UPDATE prod.atd_otbi_jobs
-       SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL
-     WHERE job_name = p_job;
+       SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL,
+           claim_token = NULL, lease_expires_at = NULL
+     WHERE job_name = p_job AND claim_token IS NULL;
+    IF SQL%ROWCOUNT = 0 THEN
+      RAISE_APPLICATION_ERROR(-20061, 'Token-fenced job requires owner release');
+    END IF;
     COMMIT;
   END release_job;
 
-  FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER IS
+  PROCEDURE release_job(p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2) IS
+  BEGIN
+    UPDATE prod.atd_otbi_jobs
+       SET run_status='READY', claimed_by=NULL, claimed_at=NULL,
+           claim_token=NULL, lease_expires_at=NULL
+     WHERE job_name=p_job AND run_status='CLAIMED'
+       AND claimed_by=p_host AND claim_token=p_token;
+    IF SQL%ROWCOUNT = 0 THEN
+      RAISE_APPLICATION_ERROR(-20061, 'Job claim lost; release rejected');
+    END IF;
+    COMMIT;
+  END release_job;
+
+  FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL,
+                   p_requested_by VARCHAR2 DEFAULT NULL) RETURN NUMBER IS
     n        NUMBER;
     v_defreq NUMBER := 15;
   BEGIN
@@ -167,7 +273,12 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
     -- i.e. has no run within its frequency_minutes (NULL -> ATD_DEFAULT_FREQ_MINUTES).
     -- A manual single-job enqueue (p_only) always runs as an explicit override.
     UPDATE prod.atd_otbi_jobs j
-       SET j.run_status = 'READY', j.claimed_by = NULL, j.claimed_at = NULL
+       SET j.run_status = 'READY', j.claimed_by = NULL, j.claimed_at = NULL,
+           j.claim_token = NULL, j.lease_expires_at = NULL,
+           -- per-user identity (db/62): the scheduled/bulk path clears any stale
+           -- personal tag so an old manual enqueue never leaks into automatic
+           -- cycles; a manual single-job enqueue stamps its caller.
+           j.requested_by = CASE WHEN p_only IS NULL THEN NULL ELSE p_requested_by END
      WHERE j.enabled = 'Y'
        AND j.run_status <> 'CLAIMED'
        AND (p_only IS NULL OR j.job_name = p_only)
@@ -227,9 +338,8 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
 END atd_queue_pkg;
 /
 
--- start all current jobs READY
-UPDATE prod.atd_otbi_jobs SET run_status = 'READY' WHERE enabled = 'Y';
-COMMIT;
+-- Fresh rows already default to READY. Never reset existing rows here: this package
+-- is recompiled during production upgrades and an in-flight CLAIMED row must remain owned.
 
 SET ECHO OFF
 PROMPT otbi-atd 12 job queue : done

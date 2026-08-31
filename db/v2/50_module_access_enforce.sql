@@ -56,6 +56,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
                    WHEN 'gl'  THEN 'GL'
                    WHEN 'rpt' THEN 'REPORTING'
                    WHEN 'ap'  THEN 'AP'
+                   WHEN 'kpi' THEN 'KPI_MGMT'
+                   WHEN 'pay' THEN 'PAY'
                    -- ---------------------------------------------------------
                    -- /wf/ IS DELIBERATELY EXEMPT. DO NOT MAP IT TO A MODULE.
                    -- The workflow platform's worklist is CROSS-MODULE by
@@ -163,6 +165,14 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
             g_deny_sent := FALSE;
             RETURN;
         END IF;
+        -- db/v2/119: lightweight autonomous ORDS error telemetry. Never allow
+        -- monitoring failure to alter the API response.
+        BEGIN
+            prod.dct_ops_api.log_error(p_status, p_msg,
+                OWA_UTIL.get_cgi_env('X-APEX-PATH'),
+                OWA_UTIL.get_cgi_env('REQUEST_METHOD'));
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
         -- Do NOT use APEX_JSON here: initialize_output resets the HTP buffer
         -- and silently wipes the status line (every error returned HTTP 200
         -- until this was fixed -- discovered in the Phase 1 smoke test).

@@ -23,3 +23,9 @@ export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
   key: 'ifinance_rq_cache',
 });
+
+/** Remove all server-derived data before another identity can use the app. */
+export async function clearServerState(): Promise<void> {
+  queryClient.clear();
+  await asyncStoragePersister.removeClient();
+}

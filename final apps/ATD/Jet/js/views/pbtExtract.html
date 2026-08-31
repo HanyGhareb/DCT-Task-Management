@@ -1,0 +1,414 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.pbt.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-secondary"
+              data-bind="click: function(){ loadSummary(); loadRuns(); loadData(); },
+                         text: t('atd.common.refresh')"></button>
+      <button class="btn btn-primary"
+              data-bind="click: submit, enable: !busy() && !isRunning(),
+                         text: busy() ? t('atd.pbt.queueing') : t('atd.pbt.runExtract')"></button>
+    </div>
+  </div>
+
+  <div class="muted" style="margin-bottom:14px" data-bind="text: t('atd.pbt.hint')"></div>
+
+  <!-- ko if: error -->
+  <div class="alert alert-danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <!-- ============ what is currently loaded ============ -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.pbt.loaded.title')"></h2>
+      <div class="region-actions">
+        <span class="badge"
+              data-bind="text: (syncEnabled() === 'Y' ? t('atd.pbt.syncOn') : t('atd.pbt.syncOff')),
+                         css: syncEnabled() === 'Y' ? 'badge badge-success' : 'badge'"></span>
+      </div>
+    </div>
+    <!-- ko if: summary -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.type')"></th>
+            <th class="num" data-bind="text: t('atd.pbt.c.headers')"></th>
+            <th data-bind="text: t('atd.pbt.c.dateSpan')"></th>
+            <th data-bind="text: t('atd.pbt.c.lastSeen')"></th>
+          </tr>
+        </thead>
+        <tbody data-bind="foreach: (summary() || {}).byType || []">
+          <tr>
+            <td data-bind="text: $data.type"></td>
+            <td class="num" data-bind="text: $vm.num($data.headers)"></td>
+            <td data-bind="text: ($data.dateFrom || '') + ' → ' + ($data.dateTo || '')"></td>
+            <td data-bind="text: $data.lastSeen || ''"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="muted" style="margin-top:10px"
+         data-bind="text: t('atd.pbt.lineTotals')
+                      + ': ' + num((summary()||{}).linesAdditional || 0)
+                      + ' / ' + num((summary()||{}).linesEstimatedCost || 0)
+                      + ' / ' + num((summary()||{}).linesAnnualBudget || 0)
+                      + ' · ' + t('atd.pbt.c.approvals') + ': '
+                      + num((summary()||{}).approvals || 0)"></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ============ parameters ============ -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.pbt.params.title')"></h2>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.type')"></label>
+        <select class="form-control" data-bind="options: types, optionsText: 'name',
+                                                optionsValue: 'code', value: fType"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.mode')"></label>
+        <select class="form-control" data-bind="value: fMode">
+          <option value="RANGE" data-bind="text: t('atd.pbt.mode.range')"></option>
+          <option value="SYNC_SHALLOW" data-bind="text: t('atd.pbt.mode.sync_shallow')"></option>
+          <option value="SYNC_DEEP" data-bind="text: t('atd.pbt.mode.sync_deep')"></option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('atd.pbt.f.dateFrom')"></span>
+          <!-- ko if: rangeNeeded --><span> *</span><!-- /ko --></label>
+        <input type="date" class="form-control"
+               data-bind="value: fFrom, enable: rangeNeeded">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.dateTo')"></label>
+        <input type="date" class="form-control"
+               data-bind="value: fTo, enable: rangeNeeded">
+      </div>
+    </div>
+
+    <div class="muted pbt-mode-hint" style="margin:6px 0 12px" data-bind="text: modeHint"></div>
+
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label" data-bind="text: t('atd.pbt.f.businessUnits')"></label>
+      <div class="chip-row" data-bind="foreach: allBus">
+        <span class="chip" data-bind="click: function(){ $vm.toggleBu($data); },
+                                      css: { 'chip--on': $vm.hasBu($data) }, text: $data"></span>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label" data-bind="text: t('atd.pbt.f.statuses')"></label>
+      <div class="chip-row" data-bind="foreach: allStatuses">
+        <span class="chip" data-bind="click: function(){ $vm.toggleStatus($data); },
+                                      css: { 'chip--on': $vm.hasStatus($data) }, text: $data"></span>
+      </div>
+      <div class="muted" data-bind="text: t('atd.pbt.f.statusesHint')"></div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <div style="position:relative">
+          <input type="checkbox" id="pbt-appr" data-bind="checked: fApprovals"
+                 style="pointer-events:none">
+          <label for="pbt-appr" data-bind="text: t('atd.pbt.f.includeApprovals')"></label>
+        </div>
+      </div>
+      <div class="form-group">
+        <div style="position:relative">
+          <input type="checkbox" id="pbt-purge" data-bind="checked: fPurge"
+                 style="pointer-events:none">
+          <label for="pbt-purge" data-bind="text: t('atd.pbt.f.purgeMissing')"></label>
+        </div>
+        <div class="muted" data-bind="text: t('atd.pbt.f.purgeHint')"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ live monitor ============ -->
+  <!-- ko if: run -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.pbt.monitor.title')"></h2>
+      <div class="region-actions">
+        <span data-bind="css: statusClass(run().status), text: run().status"></span>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <tbody>
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.request')"></th>
+            <td data-bind="text: '#' + run().actionId + ' · ' + (run().scope || run().mode || '')"></td>
+          </tr>
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.worker')"></th>
+            <td data-bind="text: $data.run().workerVm || t('atd.pbt.waitingWorker')"></td>
+          </tr>
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.started')"></th>
+            <td data-bind="text: $data.run().startedAt || ''"></td>
+          </tr>
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.finished')"></th>
+            <td data-bind="text: ($data.run().finishedAt || '')
+                                 + ($data.run().durationSecs ? ' (' + $data.run().durationSecs + 's)' : '')"></td>
+          </tr>
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.rows')"></th>
+            <td data-bind="text: $vm.num($data.run().rowCount || 0)"></td>
+          </tr>
+          <!-- ko if: $data.run().detail -->
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.detail')"></th>
+            <td class="mono" data-bind="text: $data.run().detail"></td>
+          </tr>
+          <!-- /ko -->
+          <!-- ko if: $data.run().error -->
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.error')"></th>
+            <td class="mono" data-bind="text: $data.run().error"></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ============ recent runs ============ -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.pbt.runs.title')"></h2>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.request')"></th>
+            <th data-bind="text: t('atd.pbt.c.status')"></th>
+            <th data-bind="text: t('atd.pbt.c.scope')"></th>
+            <th data-bind="text: t('atd.pbt.c.worker')"></th>
+            <th data-bind="text: t('atd.pbt.c.started')"></th>
+            <th class="num" data-bind="text: t('atd.pbt.c.duration')"></th>
+            <th class="num" data-bind="text: t('atd.pbt.c.rows')"></th>
+            <th data-bind="text: t('atd.pbt.c.submittedBy')"></th>
+          </tr>
+        </thead>
+        <tbody data-bind="foreach: runs">
+          <tr style="cursor:pointer" data-bind="click: function(){ $vm.watchRun($data); }">
+            <td data-bind="text: '#' + $data.actionId"></td>
+            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td data-bind="text: $data.scope || $data.mode || ''"></td>
+            <td data-bind="text: $data.workerVm || ''"></td>
+            <td data-bind="text: $data.startedAt || ''"></td>
+            <td class="num" data-bind="text: $data.durationSecs || ''"></td>
+            <td class="num" data-bind="text: $vm.num($data.rowCount || 0)"></td>
+            <td data-bind="text: $data.submittedBy || ''"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- ko if: !runs().length -->
+    <div class="empty-state" data-bind="text: t('atd.pbt.noRuns')"></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ============ extracted data ============ -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.pbt.data.title')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: searchData, text: t('atd.common.search')"></button>
+      </div>
+    </div>
+
+    <div class="form-grid" style="margin-bottom:12px">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.type')"></label>
+        <select class="form-control" data-bind="value: qType">
+          <option value="" data-bind="text: t('atd.pbt.all')"></option>
+          <!-- ko foreach: types -->
+          <option data-bind="value: $data.code, text: $data.name"></option>
+          <!-- /ko -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.status')"></label>
+        <select class="form-control" data-bind="value: qStatus">
+          <option value="" data-bind="text: t('atd.pbt.all')"></option>
+          <!-- ko foreach: allStatuses -->
+          <option data-bind="value: $data, text: $data"></option>
+          <!-- /ko -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.businessUnit')"></label>
+        <select class="form-control" data-bind="value: qBu">
+          <option value="" data-bind="text: t('atd.pbt.all')"></option>
+          <!-- ko foreach: allBus -->
+          <option data-bind="value: $data, text: $data"></option>
+          <!-- /ko -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.search')"></label>
+        <input class="form-control" data-bind="textInput: qSearch"
+               placeholder="012185 / DCT-QH-3078-2026">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.dateFrom')"></label>
+        <input type="date" class="form-control" data-bind="value: qFrom">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.pbt.f.dateTo')"></label>
+        <input type="date" class="form-control" data-bind="value: qTo">
+      </div>
+    </div>
+
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th data-bind="text: t('atd.pbt.c.transactionNum')"></th>
+            <th data-bind="text: t('atd.pbt.c.type')"></th>
+            <th data-bind="text: t('atd.pbt.c.status')"></th>
+            <th data-bind="text: t('atd.pbt.c.transactionDate')"></th>
+            <th data-bind="text: t('atd.pbt.c.businessUnit')"></th>
+            <th data-bind="text: t('atd.pbt.c.decreeNo')"></th>
+            <th data-bind="text: t('atd.pbt.c.approver')"></th>
+            <th class="num" data-bind="text: t('atd.pbt.c.approvals')"></th>
+          </tr>
+        </thead>
+        <tbody data-bind="foreach: rows">
+          <tr style="cursor:pointer" data-bind="click: function(){ $vm.openDetail($data); }">
+            <td class="mono" data-bind="text: $data.transactionNum"></td>
+            <td data-bind="text: $data.transactionType"></td>
+            <td data-bind="text: $data.status || ''"></td>
+            <td data-bind="text: $data.transactionDate || ''"></td>
+            <td data-bind="text: $data.businessUnit || ''"></td>
+            <td data-bind="text: $data.decreeNo || ''"></td>
+            <td data-bind="text: $data.approver || ''"></td>
+            <td class="num" data-bind="text: $data.approvals || 0"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-heading-row" style="margin-top:10px">
+      <span class="muted"
+            data-bind="text: t('atd.pbt.showing') + ' ' + num(rows().length)
+                         + ' / ' + num(total()) + ' · ' + t('atd.pbt.page')
+                         + ' ' + page() + '/' + pageCount()"></span>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: prevPage, enable: page() > 1, text: t('atd.common.prev')"></button>
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: nextPage, enable: page() < pageCount(), text: t('atd.common.next')"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ drill drawer ============ -->
+  <!-- ko if: drawerOpen -->
+  <!-- .modal-box MUST be a CHILD of .modal-overlay: the overlay is the fixed,
+       flex-centering container and the box itself has no positioning of its
+       own. As siblings the overlay dims the screen while the box renders inline
+       at the foot of the page, invisible behind it. clickBubble:false stops a
+       click inside the box from reaching the overlay's close handler. -->
+  <div class="modal-overlay" data-bind="click: closeDrawer">
+  <div class="modal-box" style="max-width:min(1200px,96vw)"
+       data-bind="click: function(){ return true; }, clickBubble: false">
+    <div class="modal-header">
+      <h2 data-bind="text: t('atd.pbt.detail.title')
+                       + (detail() ? ' — ' + detail().header.transactionNum : '')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: closeDrawer, text: t('atd.common.close')"></button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <!-- ko if: drawerBusy -->
+      <div class="empty-state" data-bind="text: t('atd.common.loading')"></div>
+      <!-- /ko -->
+      <!-- ko if: detail -->
+      <div class="form-grid" style="margin-bottom:14px">
+        <div><span class="muted" data-bind="text: t('atd.pbt.c.type')"></span>
+          <div data-bind="text: detail().header.transactionType"></div></div>
+        <div><span class="muted" data-bind="text: t('atd.pbt.c.status')"></span>
+          <div data-bind="text: detail().header.status"></div></div>
+        <div><span class="muted" data-bind="text: t('atd.pbt.c.transactionDate')"></span>
+          <div data-bind="text: detail().header.transactionDate"></div></div>
+        <div><span class="muted" data-bind="text: t('atd.pbt.c.businessUnit')"></span>
+          <div data-bind="text: detail().header.businessUnit"></div></div>
+        <div><span class="muted" data-bind="text: t('atd.pbt.c.decreeNo')"></span>
+          <div data-bind="text: detail().header.decreeNo"></div></div>
+        <div><span class="muted" data-bind="text: t('atd.pbt.c.organization')"></span>
+          <div data-bind="text: detail().header.organization"></div></div>
+      </div>
+
+      <h3 class="section-heading" data-bind="text: t('atd.pbt.detail.lines')"></h3>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th data-bind="text: t('atd.pbt.c.project')"></th>
+              <th data-bind="text: t('atd.pbt.c.task')"></th>
+              <th data-bind="text: t('atd.pbt.c.costCenter')"></th>
+              <th data-bind="text: t('atd.pbt.c.expenditureType')"></th>
+              <th data-bind="text: t('atd.pbt.c.codeCombination')"></th>
+              <th class="num" data-bind="text: t('atd.pbt.c.amount')"></th>
+              <th data-bind="text: t('atd.pbt.c.lineStatus')"></th>
+            </tr>
+          </thead>
+          <tbody data-bind="foreach: detail().lines">
+            <tr>
+              <td data-bind="text: ($data.projectNum || '') + ' · ' + ($data.projectName || '')"></td>
+              <td data-bind="text: $data.taskNum || ''"></td>
+              <td data-bind="text: $data.costCenter || ''"></td>
+              <td data-bind="text: $data.expenditureType || ''"></td>
+              <td class="mono" data-bind="text: $data.codeCombination || ''"></td>
+              <td class="num" data-bind="text: $vm.num($data.amount)"></td>
+              <td data-bind="text: ($data.lineStatus || $data.baselineStatus || '')"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="section-heading" style="margin-top:16px"
+          data-bind="text: t('atd.pbt.detail.approvals')"></h3>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th data-bind="text: t('atd.pbt.c.seq')"></th>
+              <th data-bind="text: t('atd.pbt.c.submitter')"></th>
+              <th data-bind="text: t('atd.pbt.c.assignee')"></th>
+              <th data-bind="text: t('atd.pbt.c.state')"></th>
+              <th data-bind="text: t('atd.pbt.c.createdAt')"></th>
+            </tr>
+          </thead>
+          <tbody data-bind="foreach: detail().approvals">
+            <tr>
+              <td data-bind="text: $data.seq"></td>
+              <td data-bind="text: $data.submitter || ''"></td>
+              <td data-bind="text: $data.assignee || ''"></td>
+              <td data-bind="text: $data.state || ''"></td>
+              <td data-bind="text: $data.createdAt || ''"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- ko if: !detail().approvals.length -->
+      <div class="empty-state" data-bind="text: t('atd.pbt.noApprovals')"></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div><!-- /.modal-body -->
+  </div><!-- /.modal-box -->
+  </div><!-- /.modal-overlay -->
+  <!-- /ko -->
+</div>

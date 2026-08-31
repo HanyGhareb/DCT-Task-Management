@@ -1,0 +1,398 @@
+<title>Fusion BPM — Mockup B · Diwan (Executive Burgundy)</title>
+<style>
+  /* ============ MOCKUP B — "DIWAN" EXECUTIVE BURGUNDY ============
+     The app's own brand (#7D3243) treated as government stationery:
+     ivory paper, serif chapter headings, gold rules, bilingual header.
+     Paper   #F8F5EF     Panel  #FFFFFF     Ink   #2A1E22
+     Burgundy#7D3243     Deep   #5A2230     Gold  #A8823C
+     Rule    #E5DCD2     Muted  #7C6D71                          */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    background:#F8F5EF; color:#2A1E22; font-size:14px; line-height:1.5;
+  }
+  .serif { font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif; }
+  button { font:inherit; cursor:pointer; }
+  input,select,textarea { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid #A8823C; outline-offset:2px; }
+
+  .app { display:grid; grid-template-columns:240px minmax(0,1fr) 416px; min-height:100vh; }
+  @media (max-width:1360px){ .app { grid-template-columns:240px minmax(0,1fr); } .drawer { grid-column:1/-1; border-inline-start:none; border-top:1px solid #E5DCD2; } }
+  @media (max-width:900px){ .app { grid-template-columns:1fr; } .nav { display:none; } }
+
+  /* ---------- side nav : ivory, burgundy ink ---------- */
+  .nav { background:#F3EEE5; border-inline-end:1px solid #E5DCD2; padding:22px 0 28px; }
+  .nav-brand { padding:0 20px 18px; border-bottom:1px solid #E5DCD2; display:flex; gap:11px; align-items:center; }
+  .nav-cube { width:38px; height:38px; flex:none; background:#7D3243; color:#F1E3C8; display:grid; place-items:center;
+    font-family:Georgia,serif; font-size:15px; letter-spacing:1px; border:1px solid #5A2230; }
+  .nav-brand b { font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif; font-size:16px; letter-spacing:.2px; color:#5A2230; display:block; }
+  .nav-brand span { font-size:9.5px; letter-spacing:1.6px; color:#A8823C; font-weight:600; }
+  .nav-group { margin:18px 20px 6px; font-size:10px; letter-spacing:2px; color:#A8823C; font-weight:700; text-transform:uppercase;
+    border-bottom:1px solid #E5DCD2; padding-bottom:4px; }
+  .nav a { display:flex; align-items:center; gap:10px; padding:7px 20px; color:#4A383E; text-decoration:none; font-size:13.5px; }
+  .nav a:hover { background:#EDE6D9; }
+  .nav a.on { color:#5A2230; font-weight:600; background:#EDE2D3; box-shadow:inset 3px 0 0 #A8823C; }
+  .nav .cnt { margin-inline-start:auto; font-size:11px; color:#7C6D71; font-variant-numeric:tabular-nums; }
+  .nav a.on .cnt { color:#5A2230; font-weight:700; }
+
+  /* ---------- main ---------- */
+  .main { min-width:0; display:flex; flex-direction:column; }
+  .topbar { background:#5A2230; color:#F1E7DC; height:50px; display:flex; align-items:center; gap:16px; padding:0 24px; border-bottom:3px solid #A8823C; }
+  .topbar .crumb { font-size:12.5px; color:#CBA9AE; }
+  .topbar .crumb b { color:#F1E7DC; }
+  .topbar .sp { flex:1; }
+  .tb-btn { background:transparent; border:1px solid #8A5560; color:#F1E7DC; padding:4px 13px; font-size:12.5px; border-radius:2px; }
+  .tb-btn:hover { background:#6E2F3F; }
+  .tb-bell { position:relative; border:none; background:transparent; color:#F1E7DC; font-size:15px; width:32px; height:32px; }
+  .tb-bell i { position:absolute; top:-2px; right:-4px; background:#A8823C; color:#2A1E22; font-style:normal; font-size:9.5px; font-weight:700; padding:0 4px; border-radius:2px; }
+  .tb-user { display:flex; align-items:center; gap:9px; font-size:12.5px; }
+  .tb-av { width:28px; height:28px; border-radius:50%; background:#F1E3C8; color:#5A2230; display:grid; place-items:center; font-size:11px; font-weight:700; }
+
+  /* chapter header — bilingual, double gold rule */
+  .pagehead { padding:34px 32px 0; }
+  .ph-eyebrow { font-size:10.5px; letter-spacing:2.4px; text-transform:uppercase; color:#A8823C; font-weight:700; }
+  .ph-titles { display:flex; align-items:baseline; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-top:8px; }
+  .pagehead h1 { font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif; font-size:34px; font-weight:500; letter-spacing:-.3px; color:#2A1E22; }
+  .ph-ar { font-family:Georgia,serif; font-size:22px; color:#7C6D71; direction:rtl; }
+  .ph-rule { margin-top:14px; border-top:2px solid #5A2230; border-bottom:1px solid #A8823C; height:5px; }
+  .ph-sub { display:flex; align-items:center; gap:16px; padding:12px 0 0; flex-wrap:wrap; }
+  .ph-sub p { color:#7C6D71; max-width:62ch; font-size:13.5px; }
+  .ph-actions { margin-inline-start:auto; display:flex; gap:8px; }
+
+  .content { padding:20px 32px 44px; display:flex; flex-direction:column; gap:22px; }
+
+  /* ---------- buttons : near-square, formal ---------- */
+  .btn { border-radius:2px; padding:8px 18px; font-size:13px; font-weight:600; letter-spacing:.4px; border:1px solid transparent; display:inline-flex; align-items:center; gap:7px; }
+  .btn-pri { background:#7D3243; color:#F6EEE4; border-color:#5A2230; }
+  .btn-pri:hover { background:#5A2230; }
+  .btn-sec { background:transparent; color:#5A2230; border-color:#B99AA1; }
+  .btn-sec:hover { background:#F1E9DD; border-color:#7D3243; }
+  .btn-gold { background:transparent; color:#8A6A2C; border-color:transparent; text-decoration:underline; text-underline-offset:3px; text-decoration-color:#D8C193; }
+  .btn-gold:hover { color:#5A2230; }
+  .btn-danger { background:transparent; color:#A63A3A; border-color:#D8AFA9; }
+  .btn-danger:hover { background:#F6E9E4; border-color:#A63A3A; }
+  .btn-sm { padding:5px 13px; font-size:12.5px; }
+  .btn[disabled] { opacity:.45; cursor:not-allowed; }
+
+  /* ---------- KPI : ledger figures ---------- */
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:0; background:#FFFFFF; border:1px solid #E5DCD2; }
+  .kpi { padding:16px 20px; border-inline-end:1px solid #EDE6DA; }
+  .kpi:last-child { border-inline-end:none; }
+  .kpi label { font-size:10px; letter-spacing:1.8px; text-transform:uppercase; color:#A8823C; font-weight:700; }
+  .kpi b { font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif; display:block; font-size:30px; font-weight:500; margin-top:2px; font-variant-numeric:tabular-nums; color:#2A1E22; }
+  .kpi span { font-size:12px; color:#7C6D71; }
+  .kpi.alert b { color:#A63A3A; }
+
+  /* ---------- register (table) ---------- */
+  .panel { background:#fff; border:1px solid #E5DCD2; }
+  .panel-hd { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:2px solid #5A2230; }
+  .panel-hd h2 { font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif; font-size:17px; font-weight:500; }
+  .panel-hd .chip { font-size:11px; color:#A8823C; font-weight:700; letter-spacing:1px; }
+  .panel-hd .acts { margin-inline-start:auto; display:flex; gap:8px; }
+  .tbl-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; min-width:760px; }
+  thead th { text-align:start; font-size:10px; font-weight:700; letter-spacing:1.8px; text-transform:uppercase; color:#7C6D71; padding:10px 20px; border-bottom:1px solid #E5DCD2; white-space:nowrap; }
+  tbody td { padding:13px 20px; border-bottom:1px solid #F0EAE0; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:#FAF5EC; }
+  tbody tr.sel { background:#F6EFE3; box-shadow:inset 3px 0 0 #A8823C; }
+  .code { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:12px; letter-spacing:.3px; color:#5A2230; }
+  td .sub { display:block; font-size:12px; color:#9A8A8E; margin-top:1px; direction:rtl; text-align:start; }
+  .num { font-variant-numeric:tabular-nums; text-align:end; }
+
+  /* ---------- status : small-caps + dot, no fill ---------- */
+  .pill { display:inline-flex; align-items:center; gap:7px; font-size:10.5px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; }
+  .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .pill-ok  { color:#3E6B4F; }
+  .pill-wf  { color:#7D3243; }
+  .pill-neu { color:#8B7D80; }
+  .pill-warn{ color:#9A7420; }
+
+  /* ---------- steps : gold rosette markers ---------- */
+  .steps { padding:8px 20px 18px; }
+  .step { display:flex; gap:16px; padding:15px 0; border-bottom:1px solid #F0EAE0; }
+  .step:last-child { border-bottom:none; }
+  .step-no { width:36px; height:36px; flex:none; display:grid; place-items:center; color:#8A6A2C;
+    font-family:Georgia,serif; font-size:13px; font-weight:600;
+    background:
+      conic-gradient(from 22.5deg, #E7D7B4 0 45deg, #D8C193 45deg 90deg, #E7D7B4 90deg 135deg, #D8C193 135deg 180deg,
+                     #E7D7B4 180deg 225deg, #D8C193 225deg 270deg, #E7D7B4 270deg 315deg, #D8C193 315deg 360deg);
+    border-radius:50%; border:1px solid #C4A868; }
+  .step h3 { font-size:14.5px; font-weight:600; display:inline; }
+  .step .ar { color:#9A8A8E; font-size:13.5px; margin-inline-start:10px; font-family:Georgia,serif; }
+  .step-meta { margin-top:6px; display:flex; gap:20px; flex-wrap:wrap; font-size:12.5px; color:#5C4C51; }
+  .step-meta b { font-size:9.5px; letter-spacing:1.6px; color:#A8823C; font-weight:700; margin-inline-end:6px; }
+  .who { border:1px solid #D9C9B4; padding:1px 9px; font-size:11.5px; font-weight:600; color:#5A2230; }
+  .step .edit { margin-inline-start:auto; align-self:center; }
+
+  /* ---------- drawer ---------- */
+  .drawer { background:#FFFDF9; border-inline-start:1px solid #E5DCD2; display:flex; flex-direction:column; min-width:0; }
+  .dr-hd { padding:18px 22px 14px; border-bottom:2px solid #5A2230; display:flex; align-items:flex-end; gap:10px; }
+  .dr-hd .eyebrow { font-size:9.5px; letter-spacing:2.2px; text-transform:uppercase; color:#A8823C; font-weight:700; display:block; margin-bottom:3px; }
+  .dr-hd h2 { font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif; font-size:19px; font-weight:500; }
+  .dr-hd .acts { margin-inline-start:auto; display:flex; gap:8px; }
+  .dr-bd { padding:20px 22px 32px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; }
+  .fld label { display:block; font-size:10.5px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#7C6D71; margin-bottom:5px; }
+  .fld label i { color:#A63A3A; font-style:normal; }
+  .in { width:100%; border:none; border-bottom:1px solid #C9B9A8; background:transparent; padding:6px 2px 7px; font-size:14px; border-radius:0; }
+  .in:focus { border-bottom:2px solid #7D3243; padding-bottom:6px; outline:none; }
+  .in[dir=rtl] { text-align:right; font-family:Georgia,serif; }
+  select.in { border:1px solid #C9B9A8; padding:7px 10px; background:#fff; }
+  textarea.in { border:1px solid #C9B9A8; padding:8px 10px; background:#fff; resize:vertical; min-height:64px; }
+  .fld-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .hint { font-size:11.5px; color:#9A8A8E; margin-top:4px; letter-spacing:0; text-transform:none; }
+  .sw { display:flex; align-items:center; gap:10px; }
+  .sw-track { width:36px; height:18px; border-radius:9px; background:#3E6B4F; position:relative; flex:none; }
+  .sw-track::after { content:""; position:absolute; top:2px; inset-inline-end:2px; width:14px; height:14px; border-radius:50%; background:#F6EEE4; }
+  .sw-track.off { background:#C9B9A8; } .sw-track.off::after { inset-inline-end:auto; inset-inline-start:2px; }
+  .dr-sec { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#A8823C; border-bottom:1px solid #E5DCD2; padding-bottom:5px; margin-top:6px; }
+
+  /* attachments — annexes */
+  .drop { border:1px solid #C9B9A8; outline:1px dashed #C9B9A8; outline-offset:-6px; background:#F8F3EA; padding:20px; text-align:center; color:#7C6D71; font-size:13px; }
+  .drop b { color:#7D3243; font-weight:600; }
+  .file { display:flex; align-items:center; gap:12px; border:1px solid #E5DCD2; background:#fff; padding:10px 13px; }
+  .f-ico { width:34px; height:40px; flex:none; display:grid; place-items:center; font-size:9px; font-weight:700; letter-spacing:.8px; color:#F6EEE4; }
+  .f-pdf { background:#7D3243; } .f-xls { background:#3E6B4F; }
+  .file b { font-size:13px; font-weight:600; display:block; }
+  .file span { font-size:11.5px; color:#9A8A8E; }
+  .file .fa { margin-inline-start:auto; display:flex; gap:2px; }
+  .icobtn { border:none; background:transparent; width:28px; height:28px; color:#5C4C51; font-size:14px; }
+  .icobtn:hover { color:#7D3243; }
+
+  /* ---------- design language ---------- */
+  .dl { border-top:2px solid #5A2230; padding-top:4px; }
+  .dl > .dl-rule { border-top:1px solid #A8823C; margin-bottom:16px; }
+  .dl > h2 { font-size:10.5px; font-weight:700; letter-spacing:2.4px; text-transform:uppercase; color:#A8823C; margin:10px 0 14px; }
+  .dl-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; }
+  .dl-card { background:#fff; border:1px solid #E5DCD2; padding:16px 18px; }
+  .dl-card h3 { font-size:12px; font-weight:600; color:#5C4C51; margin-bottom:11px; }
+  .sw-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .swatch { width:64px; }
+  .swatch i { display:block; height:34px; border:1px solid rgba(0,0,0,.08); }
+  .swatch span { font-size:10px; color:#9A8A8E; display:block; margin-top:3px; font-family:ui-monospace,Menlo,monospace; }
+  .row-wrap { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+</style>
+
+<div class="app">
+  <!-- =============== NAV =============== -->
+  <aside class="nav">
+    <div class="nav-brand">
+      <div class="nav-cube">بم</div>
+      <div><b>Fusion BPM</b><span>WORKFLOW DIWAN · 214</span></div>
+    </div>
+    <a href="#">Home</a>
+    <div class="nav-group">My workspace</div>
+    <a href="#">My Worklist<span class="cnt">3</span></a>
+    <a href="#">Pending Approvals<span class="cnt">12</span></a>
+    <a href="#">My Delegations</a>
+    <div class="nav-group">Process design</div>
+    <a href="#" class="on">Approval Processes</a>
+    <a href="#">Role Assignments</a>
+    <div class="nav-group">Oversight</div>
+    <a href="#">Approval Monitor</a>
+    <a href="#">Approval Templates</a>
+    <a href="#">Delegations</a>
+    <a href="#">Notifications</a>
+  </aside>
+
+  <!-- =============== MAIN =============== -->
+  <div class="main">
+    <div class="topbar">
+      <span class="crumb">Fusion i-Finance&nbsp;&nbsp;·&nbsp;&nbsp;<b>Fusion BPM</b></span>
+      <span class="sp"></span>
+      <button class="tb-btn">APEX</button>
+      <button class="tb-btn">EN · ع</button>
+      <button class="tb-bell">🔔<i>36</i></button>
+      <span class="tb-user"><span class="tb-av">SA</span>System Administrator</span>
+    </div>
+
+    <div class="pagehead">
+      <div class="ph-eyebrow">Process design</div>
+      <div class="ph-titles">
+        <h1>Approval Processes</h1>
+        <div class="ph-ar">عمليات الاعتماد</div>
+      </div>
+      <div class="ph-rule"></div>
+      <div class="ph-sub">
+        <p>Edit approval chains — no code, no deploy. Changes publish as a new version; work already in progress is unaffected.</p>
+        <div class="ph-actions">
+          <button class="btn btn-sec">Enable test mode</button>
+          <button class="btn btn-sec">Simulate</button>
+          <button class="btn btn-pri">Edit chain</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- KPI ledger -->
+      <div class="kpis">
+        <div class="kpi"><label>Open tasks</label><b>12</b><span>across 2 processes</span></div>
+        <div class="kpi"><label>Avg cycle</label><b>2.4 d</b><span>last 30 days</span></div>
+        <div class="kpi"><label>Processes</label><b>2</b><span>1 routed to engine</span></div>
+        <div class="kpi alert"><label>SLA breaches</label><b>1</b><span>needs escalation</span></div>
+      </div>
+
+      <!-- register -->
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>Register of Processes</h2><span class="chip">2 ENTRIES</span>
+          <div class="acts">
+            <button class="btn btn-gold btn-sm">Export register</button>
+            <button class="btn btn-pri btn-sm">＋ New process</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Code</th><th>Module</th><th>Name</th><th>Published</th><th>Routed to</th><th class="num">Steps</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td class="code">DEMO_APPROVAL</td>
+              <td>DEMO</td>
+              <td>Demo Approval Process<span class="sub">عملية الاعتماد التجريبية</span></td>
+              <td><span class="pill pill-ok">v1 Published</span></td>
+              <td><span class="pill pill-neu">Legacy</span></td>
+              <td class="num">4</td>
+            </tr>
+            <tr class="sel">
+              <td class="code">KPI_RESULT_APPROVAL</td>
+              <td>KPI_MGMT</td>
+              <td>KPI Result Approval<span class="sub">اعتماد نتائج مؤشرات الأداء</span></td>
+              <td><span class="pill pill-ok">v1 Published</span></td>
+              <td><span class="pill pill-wf">Workflow engine</span></td>
+              <td class="num">2</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- steps -->
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>KPI Result Approval — Chain of Endorsement</h2><span class="pill pill-ok">v1 Published</span>
+          <div class="acts"><button class="btn btn-gold btn-sm">View diagram</button><button class="btn btn-sec btn-sm">Edit chain</button></div>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-no">١٠</div>
+            <div style="min-width:0;flex:1">
+              <h3>Section Head review</h3><span class="ar">مراجعة رئيس القسم</span>
+              <div class="step-meta">
+                <span><b>Who</b><span class="who">LINE_MANAGER</span></span>
+                <span><b>Choices</b>Approve · Reject · Return</span>
+                <span><b>SLA</b>72 h</span>
+              </div>
+            </div>
+            <button class="btn btn-gold btn-sm edit">Edit</button>
+          </div>
+          <div class="step">
+            <div class="step-no">٢٠</div>
+            <div style="min-width:0;flex:1">
+              <h3>Finance Director approval</h3><span class="ar">اعتماد مدير المالية</span>
+              <div class="step-meta">
+                <span><b>Who</b><span class="who">KPI_FIN_DIRECTOR</span></span>
+                <span><b>Choices</b>Approve · Reject · Return</span>
+                <span><b>SLA</b>72 h</span>
+                <span class="pill pill-warn">Final approval</span>
+              </div>
+            </div>
+            <button class="btn btn-gold btn-sm edit">Edit</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============== DESIGN LANGUAGE =============== -->
+      <section class="dl">
+        <div class="dl-rule"></div>
+        <h2>Design language — Diwan</h2>
+        <div class="dl-grid">
+          <div class="dl-card">
+            <h3>Palette</h3>
+            <div class="sw-row">
+              <div class="swatch"><i style="background:#7D3243"></i><span>#7D3243<br>burgundy</span></div>
+              <div class="swatch"><i style="background:#5A2230"></i><span>#5A2230<br>deep</span></div>
+              <div class="swatch"><i style="background:#A8823C"></i><span>#A8823C<br>gold</span></div>
+              <div class="swatch"><i style="background:#F8F5EF"></i><span>#F8F5EF<br>paper</span></div>
+              <div class="swatch"><i style="background:#3E6B4F"></i><span>#3E6B4F<br>success</span></div>
+              <div class="swatch"><i style="background:#A63A3A"></i><span>#A63A3A<br>danger</span></div>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Buttons — near-square, formal; gold links for tertiary actions</h3>
+            <div class="row-wrap">
+              <button class="btn btn-pri">Save changes</button>
+              <button class="btn btn-sec">Simulate</button>
+              <button class="btn btn-gold">View history</button>
+              <button class="btn btn-danger">Reject</button>
+              <button class="btn btn-pri btn-sm">＋ New</button>
+              <button class="btn btn-pri" disabled>Publishing…</button>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Status — small caps with a dot; no filled chips</h3>
+            <div class="row-wrap">
+              <span class="pill pill-ok">Published</span>
+              <span class="pill pill-wf">Workflow engine</span>
+              <span class="pill pill-neu">Legacy</span>
+              <span class="pill pill-warn">SLA at risk</span>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Form control — underline fields; focus thickens to burgundy</h3>
+            <div class="fld"><label>Process name <i>*</i></label>
+              <input class="in" value="KPI Result Approval" style="border-bottom:2px solid #7D3243;padding-bottom:6px"></div>
+            <p class="hint">Focused state shown. Selects and text areas keep a full border.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- =============== DRAWER =============== -->
+  <aside class="drawer">
+    <div class="dr-hd">
+      <div><span class="eyebrow">Edit step</span><h2>Section Head review</h2></div>
+      <div class="acts">
+        <button class="btn btn-gold btn-sm">Cancel</button>
+        <button class="btn btn-pri btn-sm">Save</button>
+      </div>
+    </div>
+    <div class="dr-bd">
+      <div class="fld-row">
+        <div class="fld"><label>Step name — English <i>*</i></label><input class="in" value="Section Head review"></div>
+        <div class="fld"><label>Step name — Arabic <i>*</i></label><input class="in" dir="rtl" value="مراجعة رئيس القسم"></div>
+      </div>
+      <div class="fld"><label>Assigned to <i>*</i></label>
+        <select class="in"><option>Line manager of the requester</option><option>Role — KPI_FIN_DIRECTOR</option><option>Named user…</option></select>
+        <p class="hint">Resolved when the request is submitted, from the requester's reporting line.</p>
+      </div>
+      <div class="fld"><label>Decisions offered <i>*</i></label>
+        <select class="in"><option>Approve · Reject · Return</option><option>Endorse · Return for info · Reject</option><option>Acknowledge (FYI)</option></select>
+      </div>
+      <div class="fld-row">
+        <div class="fld"><label>SLA — hours</label><input class="in" value="72"></div>
+        <div class="fld"><label>Reminders before due</label><input class="in" value="48, 24, 4"></div>
+      </div>
+      <div class="fld sw">
+        <span class="sw-track off" aria-hidden="true"></span>
+        <div><label style="margin:0">Final approval</label><p class="hint" style="margin:0">Completing this step completes the request.</p></div>
+      </div>
+      <div class="fld"><label>Notes</label><textarea class="in">Escalates to the Finance Director after 72 hours with no decision.</textarea></div>
+
+      <div class="dr-sec">Annexes · Attachments</div>
+      <div class="drop">Drag files here, or <b>browse</b> — up to 10 MB each</div>
+      <div class="file">
+        <div class="f-ico f-pdf">PDF</div>
+        <div><b>KPI-policy-2026.pdf</b><span>412 KB · S. Administrator · 01-08-2026</span></div>
+        <div class="fa"><button class="icobtn" title="Download">⤓</button><button class="icobtn" title="Remove">✕</button></div>
+      </div>
+      <div class="file">
+        <div class="f-ico f-xls">XLSX</div>
+        <div><b>Approval-matrix-2026.xlsx</b><span>88 KB · H. Ghareb · 28-07-2026</span></div>
+        <div class="fa"><button class="icobtn" title="Download">⤓</button><button class="icobtn" title="Remove">✕</button></div>
+      </div>
+    </div>
+  </aside>
+</div>

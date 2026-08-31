@@ -45,7 +45,6 @@ export function AtdRunsScreen() {
         <FlashList<AtdRun>
           data={runs}
           keyExtractor={(r: AtdRun) => String(r.runId)}
-          estimatedItemSize={84}
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
           onEndReachedThreshold={0.4}

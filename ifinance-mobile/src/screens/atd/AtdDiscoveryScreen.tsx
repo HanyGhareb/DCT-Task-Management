@@ -9,7 +9,6 @@ import { Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
 import {
   getAtdSubjectAreas,
   getAtdDiscoveryRuns,
@@ -109,7 +108,6 @@ export function AtdDiscoveryScreen() {
           <FlashList<AtdSubjectArea>
             data={areasQ.data ?? []}
             keyExtractor={(s: AtdSubjectArea) => s.subjectArea}
-            estimatedItemSize={84}
             refreshing={areasQ.isRefetching}
             onRefresh={() => void areasQ.refetch()}
             contentContainerStyle={{ padding: spacing.lg }}
@@ -143,7 +141,6 @@ export function AtdDiscoveryScreen() {
         <FlashList<AtdDiscoveryRun>
           data={runs}
           keyExtractor={(r: AtdDiscoveryRun) => String(r.runId)}
-          estimatedItemSize={76}
           refreshing={histQ.isRefetching}
           onRefresh={() => void histQ.refetch()}
           onEndReachedThreshold={0.4}

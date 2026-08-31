@@ -38,20 +38,28 @@ BEGIN
   -- part 1: sector master details + KPI summary (single row, key-value layout)
   l_intro := q'!SELECT s.value_code AS sector_code, s.name_en AS sector_name, s.name_ar AS sector_name_arabic, s.cost_centres AS mapped_cost_centres, b.projects, b.tasks, b.budget_lines, b.budget, b.actual_ap, b.actual_grn, b.commitment_pr, b.obligation_po, b.fund_available, b.utilization_pct FROM (SELECT MAX(v.value_code) AS value_code, MAX(v.name_en) AS name_en, MAX(v.name_ar) AS name_ar, LISTAGG(DISTINCT m.segment_value, ', ' ON OVERFLOW TRUNCATE) WITHIN GROUP (ORDER BY m.segment_value) AS cost_centres FROM prod.dct_gl_class_value v LEFT JOIN prod.dct_gl_seg_class_map m ON m.class_value_id = v.class_value_id AND m.class_type_code = 'SECTOR' AND TRUNC(SYSDATE) BETWEEN m.start_date AND NVL(m.end_date, DATE '9999-12-31') WHERE v.class_type_code = 'SECTOR' AND UPPER(v.name_en) = UPPER([COLON]sector)) s CROSS JOIN (SELECT COUNT(DISTINCT project_number) AS projects, COUNT(DISTINCT task_number) AS tasks, COUNT(*) AS budget_lines, SUM(budget) AS budget, SUM(actual_ap) AS actual_ap, SUM(actual_grn) AS actual_grn, SUM(commitment_pr) AS commitment_pr, SUM(obligation_po) AS obligation_po, SUM(fund_available) AS fund_available, ROUND(100 * (SUM(actual_ap) + SUM(actual_grn) + SUM(commitment_pr) + SUM(obligation_po)) / NULLIF(SUM(budget),0), 1) AS utilization_pct FROM prod.dct_budget_utilization_v WHERE budget_year = [COLON]year AND sector = [COLON]sector AND ([COLON]projecttype IS NULL OR project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR cost_centre = [COLON]costcenter)) b!';
   -- part 2: budget utilization rows (same figures as the GL Budget Utilization page)
-  l_util := q'!SELECT x.department, x.cost_centre, x.project_number, x.project_name, x.task_number, x.gl_account, x.chapter, x.program, x.expenditure_type, x.budget, x.actual_ap, x.actual_grn, x.commitment_pr, x.obligation_po, x.fund_available FROM prod.dct_budget_utilization_v x WHERE x.budget_year = [COLON]year AND x.sector = [COLON]sector AND ([COLON]projecttype IS NULL OR x.project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR x.cost_centre = [COLON]costcenter) ORDER BY x.project_number, x.task_number, x.expenditure_type!';
+  l_util := q'!SELECT x.department, x.cost_centre, x.project_number, x.project_name, x.task_number, x.gl_account, x.chapter, x.program, x.expenditure_type, x.budget, x.actual_ap, x.actual_grn, x.commitment_pr, x.obligation_po, x.fund_available FROM prod.dct_budget_utilization_v x WHERE x.budget_year = [COLON]year AND x.sector = [COLON]sector AND ([COLON]projecttype IS NULL OR x.project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR x.cost_centre = [COLON]costcenter) ORDER BY x.chapter, x.cost_centre, x.project_number, x.task_number, x.expenditure_type!';
   -- part 3: unpaid + partially paid invoices
   l_inv := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.invoice_number, x.invoice_date, x.supplier_name, x.invoice_currency AS currency, x.invoice_amount, x.invoice_amount_paid AS amount_paid, x.balance_due, x.payment_status, x.has_po FROM prod.dct_unpaid_invoices_v x WHERE x.budget_year = [COLON]year AND x.payment_status IN ('Unpaid','Partially Paid')!' || l_scope ||
            q'! ORDER BY x.project_number, x.task_number, x.expenditure_type, x.invoice_date!';
   -- part 4: uninvoiced GRN
   l_grn := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.po_number, x.po_line, x.supplier_name, x.last_receipt_date, x.receipt_lines, x.received_aed, x.invoiced_aed, x.uninvoiced_aed FROM prod.dct_uninvoiced_grn_v x WHERE x.budget_year = [COLON]year!' || l_scope ||
-           q'! ORDER BY x.uninvoiced_aed DESC!';
+           q'! ORDER BY x.project_number, x.task_number, x.expenditure_type, x.po_number, x.po_line!';
   -- part 5: open purchase orders (GRN-netted)
   l_po := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.po_number, x.po_line, x.budget_date, x.supplier_name, x.funds_status, x.line_aed, x.received_aed, x.open_aed FROM prod.dct_open_po_lines_v x WHERE x.budget_year = [COLON]year!' || l_scope ||
-          q'! ORDER BY x.open_aed DESC!';
+          q'! ORDER BY x.project_number, x.task_number, x.expenditure_type, x.po_number, x.po_line!';
   -- part 6: reserved purchase requisitions
   l_pr := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.pr_number, x.description, x.budget_date, x.currency_code AS currency, x.distribution_amount, x.amount_aed FROM prod.dct_reserved_pr_lines_v x WHERE x.budget_year = [COLON]year!' || l_scope ||
-          q'! ORDER BY x.amount_aed DESC!';
-  l_src := '{"orientation":"landscape","required":["year","sector"],"sections":['
+          q'! ORDER BY x.project_number, x.task_number, x.expenditure_type, x.pr_number!';
+  -- Budget change (2026-08-18): pre_sql sets GL_CTX.BUTIL_OVR exactly like the
+  -- /gl/butil page handler and the Book/Register reports, so ovr=Y makes every
+  -- budget figure in this pack include the end-user signed change; post_sql
+  -- ALWAYS clears it (a worker keeps ONE session across runs, so a leaked
+  -- context would silently contaminate the next report).
+  l_src := '{"orientation":"landscape","required":["year","sector"],'
+        || '"pre_sql":"BEGIN prod.dct_gl_class_pkg.set_butil_ovr([COLON]ovr); END;",'
+        || '"post_sql":"BEGIN prod.dct_gl_class_pkg.clear_butil_ovr; END;",'
+        || '"sections":['
         || '{"key":"intro","title":"Sector Overview","layout":"kv","sql":"' || l_intro || '"}' || ','
         || '{"key":"utilization","title":"Budget Utilization","layout":"table","sql":"' || l_util || '"}'  || ','
         || '{"key":"unpaid_invoices","title":"Unpaid and Partially Paid Invoices","layout":"table","sql":"' || l_inv || '"}'   || ','
@@ -77,12 +85,12 @@ BEGIN
     ('BUDGET_UTIL_SECTOR',
      'Budget Utilization by Sector (Executive)',
      UNISTR('\0627\0633\062A\062E\062F\0627\0645 \0627\0644\0645\0648\0627\0632\0646\0629 \062D\0633\0628 \0627\0644\0642\0637\0627\0639'),
-     '6-part executive pack per sector: overview, budget utilization (budget / AP / GRN / PR / PO / fund available), unpaid and partially paid invoices, uninvoiced GRN, open POs and reserved PRs. Parameters: year + sector (required), projecttype + costcenter (optional).',
+     '6-part executive pack per sector: overview, budget utilization (budget / AP / GRN / PR / PO / fund available), unpaid and partially paid invoices, uninvoiced GRN, open POs and reserved PRs. Parameters: year + sector (required), projecttype + costcenter + ovr (optional; ovr=Y adds the end-user signed Budget Change to every budget figure).',
      'General Ledger', 'MULTI', l_src, 'PYTHON', 'PDF,XLSX',
      'budget_util_sector.html.j2',
      'Budget Utilization - {{ params.sector }} - {{ params.year }}',
      l_body,
-     '{"year":null,"sector":null,"projecttype":null,"costcenter":null}',
+     '{"year":null,"sector":null,"projecttype":null,"costcenter":null,"ovr":null}',
      'Y', 'SETUP', 'SETUP')
   WHEN MATCHED THEN UPDATE SET
      t.source_type       = 'MULTI',
@@ -91,7 +99,7 @@ BEGIN
      t.pdf_template      = 'budget_util_sector.html.j2',
      t.email_subject_tpl = 'Budget Utilization - {{ params.sector }} - {{ params.year }}',
      t.email_body_tpl    = l_body,
-     t.params_json       = '{"year":null,"sector":null,"projecttype":null,"costcenter":null}',
+     t.params_json       = '{"year":null,"sector":null,"projecttype":null,"costcenter":null,"ovr":null}',
      t.updated_by        = 'SETUP',
      t.updated_at        = SYSTIMESTAMP;
   MERGE INTO prod.dct_rpt_recipient t

@@ -44,7 +44,10 @@
             <td data-bind="text: nameEn"></td>
             <td><span class="badge" data-bind="text: $data.publishedVersion ? ('v' + $data.publishedVersion) : $root.t('wf.dz.noVersion')"></span></td>
             <td><span class="badge" data-bind="text: routedTo,
-                      css: routedTo === 'WF' ? 'wf-badge-sys' : ''"></span></td>
+                      css: routedTo === 'WF' ? 'wf-badge-sys' : ''"></span>
+                <!-- ko if: $data.testMode === 'Y' -->
+                <span class="badge badge--warning" data-bind="text: $root.t('wf.dz.testBadge')"></span>
+                <!-- /ko --></td>
             <td data-bind="text: steps"></td>
           </tr>
         </tbody>
@@ -67,6 +70,14 @@
         <!-- /ko -->
       </div>
       <div class="region-actions">
+        <!-- ko if: $component.testMode() -->
+        <span class="badge badge--warning" data-bind="text: $root.t('wf.dz.testBadge')"
+              style="align-self:center"></span>
+        <!-- /ko -->
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: $component.toggleTestMode, disable: busy(),
+                           text: $component.testMode() ? $root.t('wf.dz.testDisable')
+                                                       : $root.t('wf.dz.testEnable')"></button>
         <button type="button" class="btn btn-secondary btn-sm"
                 data-bind="click: $component.openSim, text: $root.t('wf.dz.simulate')"></button>
         <!-- ko ifnot: editable() -->
@@ -87,18 +98,33 @@
     <!-- steps -->
     <div class="section-heading-row wf-dz-sub">
       <h3 class="section-heading" data-bind="text: $root.t('wf.dz.steps')"></h3>
-      <!-- ko if: editable() -->
       <div class="region-actions">
+        <div class="wf-viewtoggle">
+          <button type="button" class="btn btn-sm"
+                  data-bind="click: function () { $component.viewMode('list'); },
+                             css: { 'btn-primary': viewMode() === 'list', 'btn-secondary': viewMode() !== 'list' },
+                             text: $root.t('wf.dg.list')"></button>
+          <button type="button" class="btn btn-sm"
+                  data-bind="click: function () { $component.viewMode('diagram'); },
+                             css: { 'btn-primary': viewMode() === 'diagram', 'btn-secondary': viewMode() !== 'diagram' },
+                             text: $root.t('wf.dg.diagram')"></button>
+        </div>
+        <!-- ko if: editable() -->
         <button type="button" class="btn btn-secondary btn-sm"
                 data-bind="click: $component.newStep, text: $root.t('wf.dz.addStep')"></button>
+        <!-- /ko -->
       </div>
-      <!-- /ko -->
     </div>
 
     <!-- ko if: !design().steps.length -->
     <div class="empty-state"><p data-bind="text: $root.t('wf.dz.noSteps')"></p></div>
     <!-- /ko -->
 
+    <!-- ko if: viewMode() === 'diagram' && design().steps.length -->
+    <wf-diagram params="nodes: diagramNodes"></wf-diagram>
+    <!-- /ko -->
+
+    <!-- ko if: viewMode() === 'list' -->
     <ol class="wf-dz-steps" data-bind="foreach: design().steps">
       <li class="wf-dz-step">
         <span class="wf-dz-seq" data-bind="text: stepSeq"></span>
@@ -144,6 +170,7 @@
         <!-- /ko -->
       </li>
     </ol>
+    <!-- /ko -->
 
     <!-- conditions -->
     <div class="section-heading-row wf-dz-sub">
@@ -217,6 +244,28 @@
             <label class="form-label" data-bind="text: $root.t('wf.dz.finalGate')"></label></div>
         </div>
 
+        <!-- timers: reminders / escalation / expiration (executed by the engine sweep) -->
+        <div class="section-heading-row wf-dz-sub">
+          <h4 class="section-heading" data-bind="text: $root.t('wf.dz.timers')"></h4>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.reminders')"></label>
+            <input class="form-control mono" placeholder="48,24,4" data-bind="textInput: fmReminders">
+            <div class="wf-dz-hint" data-bind="text: $root.t('wf.dz.remindersHint')"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.escRole')"></label>
+            <input class="form-control mono" placeholder="FIN_DIRECTOR" data-bind="textInput: fmEscRole"
+                   style="text-transform:uppercase">
+            <div class="wf-dz-hint" data-bind="text: $root.t('wf.dz.escRoleHint')"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.escHours')"></label>
+            <input class="form-control" type="number" min="1" data-bind="textInput: fmEscHours"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.autoOutcome')"></label>
+            <input class="form-control mono" placeholder="APPROVE" data-bind="textInput: fmAutoOutcome"
+                   style="text-transform:uppercase">
+            <div class="wf-dz-hint" data-bind="text: $root.t('wf.dz.autoOutcomeHint')"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.autoHours')"></label>
+            <input class="form-control" type="number" min="1" data-bind="textInput: fmAutoHours"></div>
+        </div>
+
         <!-- participants -->
         <div class="section-heading-row wf-dz-sub">
           <h4 class="section-heading" data-bind="text: $root.t('wf.dz.who')"></h4>
@@ -231,11 +280,33 @@
             <!-- ko if: resolverType() === 'ROLE' || resolverType() === 'ROLE_SCOPED_ORG' -->
             <input class="form-control mono" data-bind="textInput: roleCode, attr:{ placeholder: 'FL_MANAGER' }">
             <!-- /ko -->
+            <!-- ko if: resolverType() === 'ASSIGNED_ROLE' -->
+            <input class="form-control mono" data-bind="textInput: roleCode, attr:{ placeholder: 'WF_FBP' }">
+            <select class="form-control" data-bind="value: objectTypeCode,
+                    options: $component.objTypes, optionsText: 'nameEn', optionsValue: 'code',
+                    optionsCaption: $root.t('wf.dz.objectType')"></select>
+            <input class="form-control mono" data-bind="textInput: factPath, attr:{ placeholder: '$.projectNumber' }">
+            <!-- ko if: $component.typeTwoPart(objectTypeCode()) -->
+            <input class="form-control mono" data-bind="textInput: key2FactPath, attr:{ placeholder: '$.taskNumber' }">
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: resolverType() === 'ASSIGNED_ROLE_CASCADE' -->
+            <input class="form-control mono" data-bind="textInput: roleCode, attr:{ placeholder: 'WF_FBP' }">
+            <span class="wf-dz-hint" data-bind="text: $root.t('wf.dz.cascadeHint')"></span>
+            <!-- /ko -->
             <!-- ko if: resolverType() === 'FACT_USER' -->
             <input class="form-control mono" data-bind="textInput: factPath, attr:{ placeholder: '$.lineManagerUserId' }">
             <!-- /ko -->
             <!-- ko if: resolverType() === 'STATIC_USER' -->
             <input class="form-control" type="number" data-bind="textInput: staticUserId, attr:{ placeholder: 'user id' }">
+            <!-- /ko -->
+            <!-- ko if: resolverType() === 'FACT_LINE_MANAGER' -->
+            <input class="form-control mono" data-bind="textInput: factPath, attr:{ placeholder: '$.onBehalfOfUserId' }">
+            <!-- /ko -->
+            <!-- ko if: resolverType() === 'LINE_MANAGER' || resolverType() === 'ORG_HEAD' || resolverType() === 'FACT_LINE_MANAGER' -->
+            <input class="form-control" type="number" min="0" style="max-width:7rem"
+                   title="levels up (0 = direct manager)"
+                   data-bind="textInput: levelsUp, attr:{ placeholder: 'levels up' }">
             <!-- /ko -->
             <select class="form-control" data-bind="value: fallbackRule, options: $component.FALLBACKS"></select>
             <label class="wf-dz-mini"><span class="wf-dz-toggle"><input type="checkbox" data-bind="checked: excludeInitiator"></span>

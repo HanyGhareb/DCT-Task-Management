@@ -1,0 +1,88 @@
+<!-- shared/js/components/wfDiagram.html — <wf-diagram>
+     Read-only flowchart of an approval chain (design preview OR runtime tracker).
+     Connectors are CSS only, so the top-down flow mirrors in RTL for free. -->
+<div class="wf-dg-wrap">
+
+  <!-- ko if: loading() -->
+  <list-skeleton params="rows: 3, cols: 1"></list-skeleton>
+  <!-- /ko -->
+
+  <!-- ko if: error() -->
+  <div class="empty-state"><p data-bind="text: error()"></p></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+
+    <!-- ko if: !nodes().length && !error() -->
+    <div class="empty-state"><p data-bind="text: $root.t('wf.dg.empty')"></p></div>
+    <!-- /ko -->
+
+    <!-- ko if: nodes().length -->
+    <div class="wf-dg">
+
+      <!-- start marker -->
+      <div class="wf-dg-term wf-dg-term--start" data-bind="text: $root.t('wf.dg.submitted')"></div>
+      <div class="wf-dg-conn"></div>
+
+      <!-- ko foreach: rows -->
+      <div class="wf-dg-rowwrap">
+
+        <!-- parallel-group tag -->
+        <!-- ko if: $data.group && $data.nodes.length > 1 -->
+        <div class="wf-dg-grouptag" data-bind="text: $root.t('wf.dg.parallel')"></div>
+        <!-- /ko -->
+
+        <div class="wf-dg-row" data-bind="foreach: $data.nodes">
+          <div class="wf-dg-node" data-bind="css: $component.nodeClass($data)">
+
+            <!-- condition branch pill -->
+            <!-- ko if: $data.condition -->
+            <div class="wf-dg-cond">
+              <span class="wf-dg-diamond">&#9670;</span>
+              <span data-bind="text: $root.t('wf.dg.if') + ' ' + $data.condition"></span>
+            </div>
+            <!-- /ko -->
+
+            <div class="wf-dg-head">
+              <span class="wf-dg-name" data-bind="text: $component.title($data)"></span>
+              <!-- ko if: $data.state -->
+              <span class="badge wf-dg-badge" data-bind="text: $component.stateLabel($data)"></span>
+              <!-- /ko -->
+              <!-- ko if: $data.isFinalGate -->
+              <span class="badge wf-dg-final" data-bind="text: $root.t('wf.dg.final')"></span>
+              <!-- /ko -->
+            </div>
+
+            <!-- ko if: $data.who -->
+            <div class="wf-dg-who">
+              <span class="wf-dg-ico">&#128100;</span>
+              <span data-bind="text: $data.who"></span>
+            </div>
+            <!-- /ko -->
+
+            <!-- ko if: $data.outcomeSet -->
+            <div class="wf-dg-oset" data-bind="text: $data.outcomeSet"></div>
+            <!-- /ko -->
+
+            <!-- ko if: $data.meta -->
+            <div class="wf-dg-meta" data-bind="text: $data.meta"></div>
+            <!-- /ko -->
+
+            <!-- ko if: $data.comment -->
+            <div class="wf-dg-cmt" data-bind="text: $data.comment"></div>
+            <!-- /ko -->
+          </div>
+        </div>
+      </div>
+
+      <!-- connector after every row except the last -->
+      <!-- ko if: $index() < $parent.rows().length - 1 -->
+      <div class="wf-dg-conn"></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+    </div>
+    <!-- /ko -->
+
+  <!-- /ko -->
+</div>

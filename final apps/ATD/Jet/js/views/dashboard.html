@@ -1,4 +1,4 @@
-<div class="page">
+<div class="page" data-bind="atdMfaAutoRefresh: true">
   <div class="page-header-row">
     <h1 class="page-title" data-bind="text: t('atd.dash.title')"></h1>
     <div class="page-actions">
@@ -20,6 +20,18 @@
     <span class="badge" style="margin-inline-start:8px"
           data-bind="text: (breakInfo().active==='Y' ? t('atd.dash.break.active') : t('atd.dash.break.inactive')),
                      css:{ 'badge--idle': breakInfo().active==='Y', 'badge--active': breakInfo().active!=='Y' }"></span>
+  </div>
+  <!-- /ko -->
+
+  <!-- Worker-offline alert: a red dot in the fleet table is easy to miss -->
+  <!-- ko if: offlineWorkers().length > 0 -->
+  <div class="card" style="margin-bottom:12px; padding:10px 14px; border-inline-start:4px solid #C13A30;">
+    <span style="font-weight:700; color:#C13A30" data-bind="text: '⚠ ' + t('atd.workers.offline.title')"></span>
+    <!-- ko foreach: offlineWorkers -->
+    <span class="mono" style="margin-inline-start:10px; font-weight:600" data-bind="text: $data.workerId"></span>
+    <span class="muted" data-bind="text: '— ' + $root.t('atd.workers.offline.item').replace('{age}', $vm.workerAge($data))"></span>
+    <!-- /ko -->
+    <span class="muted" style="margin-inline-start:10px" data-bind="text: t('atd.workers.offline.hint')"></span>
   </div>
   <!-- /ko -->
 
@@ -63,6 +75,46 @@
     <!-- /ko -->
   </div>
 
+  <div class="card attn" style="margin-top:16px;">
+    <div class="section-heading-row">
+      <div>
+        <div class="section-heading" data-bind="text: t('atd.attn.title')"></div>
+        <div class="muted attn__sub" data-bind="text: t('atd.attn.subtitle')"></div>
+      </div>
+      <!-- ko ifnot: attentionLoading -->
+      <span class="attn__count" data-bind="text: attention().length"></span>
+      <!-- /ko -->
+    </div>
+    <!-- ko if: attentionLoading -->
+    <div class="muted" data-bind="text: t('atd.common.loading')"></div>
+    <!-- /ko -->
+    <!-- ko if: !attentionLoading() && attention().length === 0 -->
+    <div class="attn-ok">
+      <span class="attn-ok__mark" aria-hidden="true">✓</span>
+      <div><div class="attn-ok__title" data-bind="text: t('atd.attn.clear')"></div>
+        <div class="muted" data-bind="text: t('atd.attn.clearHint')"></div></div>
+    </div>
+    <!-- /ko -->
+    <!-- ko if: !attentionLoading() && attention().length > 0 -->
+    <div class="attn-list" data-bind="foreach: attention">
+      <button type="button" data-bind="css: $vm.attentionClass($data), click: function(){ $vm.openAttention($data); }">
+        <span class="attn-row__rail" aria-hidden="true"></span>
+        <span class="attn-row__body">
+          <span class="attn-row__top"><span class="mono attn-row__job" data-bind="text: jobName"></span>
+            <span data-bind="css: $vm.statusClass(severity), text: $root.t('atd.attn.' + severity)"></span></span>
+          <span class="attn-row__detail" data-bind="text: $vm.attentionText($data)"></span>
+        </span>
+        <!-- $data.occurred, NEVER bare: APEX_JSON omits NULL keys and a missing
+             binding identifier THROWS, killing every binding after this row
+             (the whole lower dashboard went blank on 2026-08-11 when a
+             Review attention item arrived with no timestamp) -->
+        <span class="attn-row__when" data-bind="text: $data.occurred || '—'"></span>
+        <span class="attn-row__arrow" aria-hidden="true">›</span>
+      </button>
+    </div>
+    <!-- /ko -->
+  </div>
+
   <div style="display:grid; grid-template-columns:340px 1fr; gap:16px; margin-top:16px;">
     <div class="card">
       <div class="section-heading" data-bind="text: t('atd.dash.queueState')"></div>
@@ -82,7 +134,7 @@
           <tbody data-bind="foreach: recent">
             <tr>
               <td class="mono" data-bind="text: $data.jobName"></td>
-              <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+              <td><span data-bind="css: $vm.statusClass($data.status), text: $vm.statusText($data)"></span></td>
               <td data-bind="text: $data.rowCount"></td>
               <td class="mono" data-bind="text: $data.host || '—'"></td>
               <td data-bind="text: $data.finished || $data.started || '—'"></td>
@@ -97,7 +149,17 @@
   </div>
 
   <div class="card" style="margin-top:16px;">
-    <div class="section-heading" data-bind="text: t('atd.dash.workers')"></div>
+    <div class="section-heading-row">
+      <div class="section-heading" data-bind="text: t('atd.dash.workers')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" type="button"
+                data-bind="click: loadFleet, disable: fleetLoading,
+                           attr:{ title: t('atd.workers.reload.hint') }">
+          <span aria-hidden="true">&#8635;</span>
+          <span data-bind="text: t('atd.workers.reload')"></span>
+        </button>
+      </div>
+    </div>
     <!-- ko if: workers().length === 0 -->
     <div class="empty-state" data-bind="text: t('atd.dash.noWorkers')"></div>
     <!-- /ko -->
@@ -105,32 +167,156 @@
     <div class="data-table-wrap">
       <table class="data-table">
         <thead><tr>
-          <th data-bind="text: t('atd.workers.vm')"></th>
-          <th data-bind="text: t('atd.col.status')"></th>
-          <th data-bind="text: t('atd.workers.currentJob')"></th>
-          <th data-bind="text: t('atd.workers.lastSeen')"></th>
-          <th data-bind="text: t('atd.workers.sessionAge')"></th>
-          <th data-bind="text: t('atd.workers.runs24')"></th>
-          <th data-bind="text: t('atd.workers.refresh')"></th>
+          <th data-bind="attr: { title: t('atd.workers.vm.hint') }">
+            <span data-bind="text: t('atd.workers.vm')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.status.hint') }">
+            <span data-bind="text: t('atd.col.status')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.currentJob.hint') }">
+            <span data-bind="text: t('atd.workers.currentJob')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.account.hint') }">
+            <span data-bind="text: t('atd.workers.account')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.lastSeen.hint') }">
+            <span data-bind="text: t('atd.workers.lastSeen')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.sessionAge.hint') }">
+            <span data-bind="text: t('atd.workers.sessionAge')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.loginTime.hint') }">
+            <span data-bind="text: t('atd.workers.loginTime')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.mfa.hint') }">
+            <span data-bind="text: t('atd.workers.mfa')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.lastSuccess.hint') }">
+            <span data-bind="text: t('atd.workers.lastSuccess')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.runs24.hint') }">
+            <span data-bind="text: t('atd.workers.runs24')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
+          <th data-bind="attr: { title: t('atd.workers.actions.hint') }">
+            <span data-bind="text: t('atd.workers.actions')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
         </tr></thead>
         <tbody data-bind="foreach: workers">
           <tr>
             <td class="mono">
               <span data-bind="style:{ color: $vm.workerDot($data) }">&#9679;</span>
-              <span data-bind="text: $data.workerId"></span>
+              <span class="wk-link" data-bind="text: $data.workerId,
+                        click: function(){ $vm.openWorkerRuns($data); },
+                        attr:{ title: $root.t('atd.workers.drill.hint') }"></span>
             </td>
-            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td><span data-bind="css: $vm.statusClass($vm.workerStatusText($data)),
+                                 text: $vm.workerStatusText($data)"></span></td>
             <td class="mono" data-bind="text: $data.currentJob || '—'"></td>
+            <td class="mono">
+              <div data-bind="text: $data.sessionAccount || '—'"></div>
+              <!-- ko foreach: $vm.workerSessions($data) -->
+              <div class="wk-sess">
+                <span data-bind="text: account"></span>
+                <span class="wk-sess-meta" data-bind="text: kind + (age ? ' · ' + age : '')"></span>
+              </div>
+              <!-- /ko -->
+            </td>
             <td data-bind="text: $vm.workerAge($data) + ' ' + $root.t('atd.workers.ago')"></td>
             <td data-bind="text: $vm.sessionAge($data), style:{ color: ($vm.sessionAged($data) ? '#B5651A' : ''), fontWeight: ($vm.sessionAged($data) ? '600' : '') }"></td>
+            <td data-bind="text: $vm.loginTime($data), attr:{ title: $data.lastLoginStatus || '' }"></td>
+            <td data-bind="attr:{ title: $vm.mfaState($data).error() || $vm.mfaState($data).updated() || '' }">
+              <span data-bind="css: $vm.statusClass($vm.mfaState($data).status()), text: $vm.mfaLabel($data)"></span>
+              <!-- ko if: $vm.mfaPending($data) && $vm.mfaState($data).number() -->
+              <strong class="mfa-number" data-bind="text: $vm.mfaState($data).number"></strong>
+              <!-- /ko -->
+            </td>
+            <td data-bind="text: $data.lastSuccess || '—'"></td>
             <td data-bind="text: $data.runs24h"></td>
             <td>
               <button class="btn btn-xs btn-secondary"
+                      data-bind="click: function(){ $vm.checkWorkerSession($data); },
+                                 attr:{ title: $root.t('atd.workers.check.hint') }">
+                <span data-bind="text: $root.t('atd.workers.check')"></span>
+              </button>
+              <button class="btn btn-xs btn-secondary"
+                      style="margin-inline-start:5px"
                       data-bind="click: function(){ $vm.refreshWorker($data); },
                                  attr:{ title: $root.t('atd.workers.refresh.hint') }">
                 <span data-bind="text: $root.t('atd.workers.refresh')"></span>
               </button>
+              <!-- ko if: $data.paused !== 'Y' -->
+              <button class="btn btn-xs btn-secondary"
+                      style="margin-inline-start:5px"
+                      data-bind="click: function(){ $vm.pauseWorker($data); },
+                                 attr:{ title: $root.t('atd.workers.pause.hint') }">
+                <span aria-hidden="true">&#9208;</span>
+                <span data-bind="text: $root.t('atd.workers.pause')"></span>
+              </button>
+              <!-- /ko -->
+              <!-- ko if: $data.paused === 'Y' -->
+              <button class="btn btn-xs btn-primary"
+                      style="margin-inline-start:5px"
+                      data-bind="click: function(){ $vm.resumeWorker($data); },
+                                 attr:{ title: $root.t('atd.workers.resume.hint') }">
+                <span aria-hidden="true">&#9654;</span>
+                <span data-bind="text: $root.t('atd.workers.resume')"></span>
+              </button>
+              <!-- /ko -->
+              <!-- ko if: $vm.verdictOn($data) -->
+              <div data-bind="css: $vm.verdictClass($data), text: $vm.verdictText($data)"></div>
+              <!-- /ko -->
             </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="section-heading-row">
+      <div class="section-heading" data-bind="text: t('atd.dash.actionsRecent')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: function(){ go('actions'); }, text: t('atd.dash.actionsAll')"></button>
+      </div>
+    </div>
+    <!-- ko if: recentActions().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.actions.empty')"></div>
+    <!-- /ko -->
+    <!-- ko if: recentActions().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.actions.col.type')"></th>
+          <th data-bind="text: t('atd.actions.col.source')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.workers.vm')"></th>
+          <th data-bind="text: t('atd.actions.col.started')"></th>
+          <th data-bind="text: t('atd.actions.col.finished')"></th>
+          <th data-bind="text: t('atd.actions.col.duration')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: recentActions">
+          <tr>
+            <td class="mono" data-bind="text: $data.actionType"></td>
+            <td class="mono" data-bind="text: $data.sourceRef || ('#' + $data.actionId)"></td>
+            <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
+            <td class="mono" data-bind="text: $data.workerVm || $data.claimedBy || '—'"></td>
+            <td data-bind="text: $data.startedAt || '—'"></td>
+            <td data-bind="text: $data.finishedAt || '—'"></td>
+            <td data-bind="text: ($data.durationSecs === undefined || $data.durationSecs === null)
+                                 ? '—' : $data.durationSecs + 's'"></td>
           </tr>
         </tbody>
       </table>

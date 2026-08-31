@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ report_name }}</title>
+{#- section lookup -#}
+{%- set S = {} -%}
+{%- for s in sections %}{% set _ = S.update({s.key: s}) %}{% endfor -%}
+{%- set SUM = S.summary.data if S.summary else [] -%}
+{%- set REG = S.register.data if S.register else [] -%}
+{%- set LIN = S.lines.data if S.lines else [] -%}
+{%- set INV = S.invoices.data if S.invoices else [] -%}
+{%- set EXC = S.exceptions.data if S.exceptions else [] -%}
+{%- set total_aed = SUM|sum(attribute='amount_aed') -%}
+{%- set total_trx = SUM|sum(attribute='transactions') -%}
+{%- set total_inv = SUM|sum(attribute='invoiced') -%}
+{%- macro money(v) -%}
+  {%- if v is none %}&mdash;{%- else %}{{ v|round(2)|fmt }}{%- endif -%}
+{%- endmacro -%}
+<style>
+  :root { --brand: #14682F; --brand-d: #0E4A21; --red: #B3352B; --red-soft: #FBEBE9;
+          --amber: #B58900; --amber-soft: #FCF7E3; --ink: #1F2933; --mut: #7B8794; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink);
+         margin: 0; font-size: 10px; }
+  @page { size: A4 landscape; }
+  .hd { border-bottom: 4px solid var(--brand); padding: 0 0 10px; margin-bottom: 12px; }
+  .hd .org { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
+  .hd h1 { font-size: 21px; font-weight: 700; color: var(--brand); margin: 3px 0 2px; }
+  .hd .sub { font-size: 10.5px; color: #52606d; }
+  .kpis { display: flex; gap: 10px; margin: 12px 0 14px; }
+  .kpi { flex: 1; border: 1px solid #DCE3DC; border-left: 4px solid var(--brand);
+         border-radius: 7px; padding: 8px 12px; }
+  .kpi.warn { border-left-color: var(--red); }
+  .kpi.amb { border-left-color: var(--amber); }
+  .kpi .v { font-size: 17px; font-weight: 700; color: var(--brand-d); }
+  .kpi.warn .v { color: var(--red); }
+  .kpi.amb .v { color: var(--amber); }
+  .kpi .l { font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); margin-top: 2px; }
+  h2 { font-size: 13.5px; color: var(--brand-d); border-bottom: 2px solid var(--brand);
+       padding-bottom: 4px; margin: 18px 0 4px; page-break-after: avoid; }
+  .note { font-size: 9px; color: var(--mut); margin: 2px 0 8px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 6px; }
+  thead th { background: var(--brand); color: #fff; font-weight: 600; text-align: left;
+             padding: 5px 7px; font-size: 8.7px; border: 1px solid var(--brand); }
+  tbody td { padding: 4px 7px; border: 1px solid #e4e7eb; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #F5F8F5; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tfoot td { padding: 5px 7px; border: 1px solid #d7dbe0; background: #EDF3ED;
+             font-weight: 700; }
+  .pill { display: inline-block; border-radius: 8px; padding: 0 6px; font-size: 8px; font-weight: 700; }
+  .p-ok { background: #E6F4EA; color: #1E7A3C; }
+  .p-warn { background: var(--amber-soft); color: var(--amber); }
+  .p-err { background: var(--red-soft); color: var(--red); }
+  .p-mut { background: #EEF0F3; color: #5C6673; }
+  tr.bad td { background: var(--red-soft) !important; }
+  .disc { margin-top: 14px; padding: 8px 12px; border: 1px solid #E7D9A8; background: var(--amber-soft);
+          border-radius: 7px; font-size: 9px; color: #6b5d1f; }
+  .foot { margin-top: 10px; font-size: 8.5px; color: var(--mut); text-align: center; }
+</style>
+</head>
+<body>
+
+  <div class="hd">
+    <div class="org">Oracle Fusion i-Finance &middot; Reporting Platform</div>
+    <h1>Procash Transactions Register</h1>
+    <div class="sub">Manual payments pushed through the bank portal directly, outside Fusion Payables
+      {% if params.status %}&middot; status {{ params.status }}{% endif %}
+      {% if params.bu %}&middot; {{ params.bu }}{% endif %}
+      {% if params.datefrom or params.dateto %}&middot; paid {{ params.datefrom or '&hellip;' }} to {{ params.dateto or '&hellip;' }}{% endif %}
+      {% if params.search %}&middot; matching &ldquo;{{ params.search }}&rdquo;{% endif %}
+      &middot; generated {{ generated_at_pretty or generated_at }}</div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">{{ total_trx|fmt }}</div><div class="l">Transactions</div></div>
+    <div class="kpi"><div class="v">{{ money(total_aed) }}</div><div class="l">Total paid (AED)</div></div>
+    <div class="kpi"><div class="v">{{ total_inv|fmt }}</div><div class="l">Linked to an invoice</div></div>
+    <div class="kpi {% if EXC %}amb{% endif %}"><div class="v">{{ EXC|length|fmt }}</div><div class="l">Open exceptions</div></div>
+  </div>
+
+  <h2>1. Summary by status</h2>
+  <div class="note">Every status the filtered set contains, with what it is worth in AED.</div>
+  <table>
+    <thead><tr>
+      <th>Status</th><th>Transactions</th><th>Amount (AED)</th><th>Detail lines</th>
+      <th>Invoiced</th><th>Amount mismatched</th>
+    </tr></thead>
+    <tbody>
+    {% for r in SUM %}
+      <tr>
+        <td><span class="pill {% if r.status in ('PROCESSED','APPROVED','INVOICED') %}p-ok{% elif r.status in ('REJECTED','CANCELLED') %}p-err{% elif r.status == 'DRAFT' %}p-mut{% else %}p-warn{% endif %}">{{ r.status }}</span></td>
+        <td class="num">{{ r.transactions|fmt }}</td>
+        <td class="num">{{ money(r.amount_aed) }}</td>
+        <td class="num">{{ r.detail_lines|fmt }}</td>
+        <td class="num">{{ r.invoiced|fmt }}</td>
+        <td class="num">{{ r.mismatched|fmt }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">No procash transactions match these criteria.</td></tr>
+    {% endfor %}
+    </tbody>
+    {% if SUM %}
+    <tfoot><tr>
+      <td>Total</td><td class="num">{{ total_trx|fmt }}</td><td class="num">{{ money(total_aed) }}</td>
+      <td class="num">{{ SUM|sum(attribute='detail_lines')|fmt }}</td>
+      <td class="num">{{ total_inv|fmt }}</td>
+      <td class="num">{{ SUM|sum(attribute='mismatched')|fmt }}</td>
+    </tr></tfoot>
+    {% endif %}
+  </table>
+
+  <h2>2. Payment register</h2>
+  <div class="note">One row per payment. Lines total is what the detail coding adds up to &mdash; it must
+    equal the payment amount before a transaction can be submitted.</div>
+  <table>
+    <thead><tr>
+      <th>Payment</th><th>Bank reference</th><th>Business unit</th><th>Payee</th><th>Paid</th>
+      <th>Cur</th><th>Amount</th><th>AED</th><th>Status</th><th>Lines</th><th>Lines total</th>
+      <th>Invoice</th><th>Created by</th><th>Processed by</th>
+    </tr></thead>
+    <tbody>
+    {% for r in REG %}
+      <tr {% if r.amount_mismatch == 'Y' %}class="bad"{% endif %}>
+        <td>{{ r.payment_number }}</td>
+        <td>{{ r.bank_reference }}</td>
+        <td>{{ r.business_unit }}</td>
+        <td>{{ (r.payee or '')|string|truncate(34) }}</td>
+        <td>{{ r.payment_date }}</td>
+        <td>{{ r.currency_code }}</td>
+        <td class="num">{{ money(r.amount) }}</td>
+        <td class="num">{{ money(r.amount_aed) }}</td>
+        <td><span class="pill {% if r.status in ('PROCESSED','APPROVED','INVOICED') %}p-ok{% elif r.status in ('REJECTED','CANCELLED') %}p-err{% elif r.status == 'DRAFT' %}p-mut{% else %}p-warn{% endif %}">{{ r.status }}</span></td>
+        <td class="num">{{ r.lines }}</td>
+        <td class="num">{{ money(r.lines_total) }}</td>
+        <td>{{ r.invoice_number or '&mdash;' }}</td>
+        <td>{{ (r.created_by or '')|string|truncate(22) }}</td>
+        <td>{{ (r.processed_by or '')|string|truncate(22) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="14">Nothing to show.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>3. Detail lines</h2>
+  <div class="note">Budget coding behind each payment &mdash; a line is coded either by project, task and
+    expenditure type, or by GL combination.</div>
+  <table>
+    <thead><tr>
+      <th>Payment</th><th>Line</th><th>Basis</th><th>Project</th><th>Task</th>
+      <th>Expenditure type</th><th>GL combination</th><th>Amount</th><th>AED</th><th>Comment</th>
+    </tr></thead>
+    <tbody>
+    {% for r in LIN %}
+      <tr>
+        <td>{{ r.payment_number }}</td>
+        <td class="num">{{ r.line_num }}</td>
+        <td>{{ r.coding_basis }}</td>
+        <td>{{ r.project_number or '&mdash;' }}{% if r.project_name %}<br><span style="color:#7B8794">{{ r.project_name|string|truncate(28) }}</span>{% endif %}</td>
+        <td>{{ r.task_number or '&mdash;' }}</td>
+        <td>{{ (r.expenditure_type or '')|string|truncate(38) }}</td>
+        <td>{{ r.gl_combination or '&mdash;' }}</td>
+        <td class="num">{{ money(r.amount) }}</td>
+        <td class="num">{{ money(r.amount_aed) }}</td>
+        <td>{{ (r.comments or '')|string|truncate(28) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="10">No detail lines.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if INV %}
+  <h2>4. Invoice reconciliation</h2>
+  <div class="note">Payments matched to the Fusion payable invoice created afterwards. A difference
+    means the invoice was raised for a different amount than was actually paid.</div>
+  <table>
+    <thead><tr>
+      <th>Payment</th><th>Payee</th><th>Paid</th><th>Amount paid</th><th>Invoice</th>
+      <th>Invoice date</th><th>Invoice supplier</th><th>Invoice amount</th><th>Difference</th>
+      <th>Linked by</th><th>Days to invoice</th>
+    </tr></thead>
+    <tbody>
+    {% for r in INV %}
+      <tr {% if r.amount_mismatch == 'Y' %}class="bad"{% endif %}>
+        <td>{{ r.payment_number }}</td>
+        <td>{{ (r.payee or '')|string|truncate(30) }}</td>
+        <td>{{ r.payment_date }}</td>
+        <td class="num">{{ money(r.paid_amount) }}</td>
+        <td>{{ r.invoice_number }}</td>
+        <td>{{ r.invoice_date }}</td>
+        <td>{{ (r.invoice_supplier or '')|string|truncate(30) }}</td>
+        <td class="num">{{ money(r.invoice_amount) }}</td>
+        <td class="num">{{ money(r.difference) }}</td>
+        <td>{{ (r.linked_by or '')|string|truncate(22) }}</td>
+        <td class="num">{{ r.days_to_invoice if r.days_to_invoice is not none else '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h2>{{ '5' if INV else '4' }}. Exceptions</h2>
+  <div class="note">What still needs someone's attention: lines that do not add up, payments made but
+    not yet invoiced, and invoices whose amount differs from the payment.</div>
+  <table>
+    <thead><tr>
+      <th>Reason</th><th>Payment</th><th>Bank reference</th><th>Business unit</th><th>Payee</th>
+      <th>Paid</th><th>Status</th><th>Amount</th><th>AED</th><th>Detail</th><th>Days open</th>
+    </tr></thead>
+    <tbody>
+    {% for r in EXC %}
+      <tr {% if (r.days_open or 0) > 30 %}class="bad"{% endif %}>
+        <td>{{ r.reason }}</td>
+        <td>{{ r.payment_number }}</td>
+        <td>{{ r.bank_reference }}</td>
+        <td>{{ r.business_unit }}</td>
+        <td>{{ (r.payee or '')|string|truncate(28) }}</td>
+        <td>{{ r.payment_date }}</td>
+        <td>{{ r.status }}</td>
+        <td class="num">{{ money(r.amount) }}</td>
+        <td class="num">{{ money(r.amount_aed) }}</td>
+        <td>{{ (r.detail or '')|string|truncate(46) }}</td>
+        <td class="num">{{ r.days_open }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="11">No open exceptions &mdash; every payment balances and is reconciled.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="disc">
+    <strong>How to read this book.</strong> A procash transaction is a record of a payment already
+    pushed through the bank portal; it consumes no budget in Fusion until the payable invoice behind
+    it is posted. Until that invoice exists, the spend is visible here and nowhere else &mdash; which
+    is what the &ldquo;paid but no Fusion invoice yet&rdquo; exception is for.
+  </div>
+
+  <div class="foot">
+    Prepared by Financial Planning and Budgeting &middot; Finance Department &middot;
+    {{ generated_at_pretty or generated_at }} &middot; i-Finance Reporting Platform
+  </div>
+
+</body>
+</html>

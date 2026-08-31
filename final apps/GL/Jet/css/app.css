@@ -21,6 +21,15 @@ html[dir=rtl] body{font-family:var(--ar)}
 a{color:var(--brand);text-decoration:none}
 em{font-style:normal;color:var(--brand)}
 .mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";letter-spacing:.01em}
+
+/* Revenue Categories — Settings hierarchy, aligned to the GL navy/gold shell */
+.rc-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 18px}
+.rc-kpi{position:relative;overflow:hidden;background:linear-gradient(135deg,#fff 65%,#f3f6fb);border:1px solid var(--line,#dce3ea);border-radius:12px;padding:15px 18px;box-shadow:0 10px 28px -25px #18314f}
+.rc-kpi:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:#d1a744}
+[dir=rtl] .rc-kpi:before{inset:0 0 0 auto}.rc-kpi>span{display:block;color:#66778b;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700}.rc-kpi>b{display:block;color:#263a55;font-family:Fraunces,serif;font-size:1.8rem;line-height:1.25}.rc-kpi small{color:#768699}
+.rc-tabs{margin-bottom:14px}.rc-body{min-height:250px}.rc-search{min-width:320px}.rc-table .rc-main{background:#f6f8fb}.rc-table .rc-main td:first-child{box-shadow:inset 4px 0 #405cc7}.rc-table .rc-child td:nth-child(2){padding-inline-start:34px}.rc-branch{color:#7c8ba0;margin-inline-end:8px}.rc-desc,.rc-path{display:block;color:#7b899a;font-size:.72rem;margin-top:2px}.rc-note{padding:10px 13px;margin:0 0 13px;background:#fff8e8;border-inline-start:4px solid #d1a744;border-radius:7px;color:#6e5622;font-size:.8rem}.rc-check{display:flex!important;flex-direction:row!important;align-items:center;gap:9px;background:#f3f6fb;padding:12px;border-radius:8px}.st--info{background:#e8eeff!important;color:#3653b3!important}.danger{color:#b33c3c!important}
+.req{color:#c62828;font-style:normal;font-weight:800;margin-inline-start:4px}.rc-audit{margin:15px 0;padding:13px 15px;border:1px solid #dce3ea;border-radius:9px;background:#f7f9fb}.rc-audit>b{display:block;color:#263a55;margin-bottom:9px}.rc-audit dl{display:grid;grid-template-columns:1fr 1fr;gap:9px 18px;margin:0}.rc-audit dl div{min-width:0}.rc-audit dt{color:#718095;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}.rc-audit dd{margin:2px 0 0;color:#263a55;font-weight:600;overflow-wrap:anywhere}
+@media(max-width:800px){.rc-kpis{grid-template-columns:1fr}.rc-search{min-width:0;width:100%}}
 .grow{flex:1}
 
 /* ── top bar ─────────────────────────────────────────────────────── */
@@ -55,6 +64,25 @@ em{font-style:normal;color:var(--brand)}
 .pnav a{padding:13px 16px;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap}
 .pnav a:hover{color:var(--ink)}
 .pnav a.on{color:var(--brand-dark);border-bottom-color:var(--brand)}
+/* ---- two-level navigation (group row + sub-tab row) --------------------
+   The group row is the primary; the sub row sits under it on a tinted band so
+   the two read as a hierarchy rather than two competing tab bars. */
+.pnav--grp{top:59px;z-index:40}
+.pnav--grp a{font-size:14px;padding:14px 18px;letter-spacing:.005em}
+.pnav--sub{top:107px;z-index:39;background:var(--bg,#F6F8F7);
+           border-bottom:1px solid var(--line);padding-inline-start:22px;gap:2px}
+.pnav--sub a{padding:9px 14px;font-size:12.75px;font-weight:600;border-bottom-width:2px}
+.pnav--sub a.on{color:var(--brand-dark);border-bottom-color:var(--brand);
+                background:var(--surface);border-radius:5px 5px 0 0}
+@media(max-width:900px){.pnav--grp a{padding:12px 12px}.pnav--sub{overflow-x:auto}}
+
+/* ── Chart of Accounts (Settings) sub-tabs — one tab per former region ── */
+.coa-tabs{display:flex;gap:2px;border-bottom:2px solid var(--line);margin-bottom:18px;flex-wrap:wrap}
+.coa-tabs a{padding:10px 16px;font-weight:600;font-size:13px;color:var(--muted);cursor:pointer;
+            border-bottom:2.5px solid transparent;margin-bottom:-2px;white-space:nowrap;user-select:none}
+.coa-tabs a:hover{color:var(--ink)}
+.coa-tabs a.on{color:var(--brand-dark);border-bottom-color:var(--brand);
+               background:var(--brand-soft);border-radius:6px 6px 0 0}
 
 /* ── content ─────────────────────────────────────────────────────── */
 .wrap{max-width:1560px;margin:0 auto;padding:28px 26px 70px}
@@ -246,10 +274,16 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 
 /* ── search-criteria card ─────────────────────────────────────────── */
 .filter-card{padding:16px 18px;margin-bottom:16px}
-.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px;align-items:end}
+/* 7 columns => the search criteria lay out in 2 tidy rows on wide screens;
+   reflow to fewer columns as the viewport narrows */
+.filter-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:13px;align-items:end}
+@media (max-width:1500px){.filter-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (max-width:1100px){.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:720px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .filter-grid .field{gap:5px}
-.filter-actions{flex-direction:row;gap:9px;align-items:end}
-.filter-actions .btn{flex:1;justify-content:center}
+.filter-grid .filter-actions{grid-column:1 / -1}      /* action buttons on their own row */
+.filter-actions{flex-direction:row;gap:9px;align-items:end;justify-content:flex-end}
+.filter-actions .btn{flex:0 0 auto;min-width:130px;justify-content:center}
 
 /* ── KPI / business-question strip ────────────────────────────────── */
 .kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:18px}
@@ -288,6 +322,16 @@ table.tbl th.num,table.tbl td.num{text-align:end}
 .actuals-tbl th .hint-i:hover{opacity:1;color:var(--brand-dark)}
 .lbl .hint-i{font-style:normal;font-size:11px;color:var(--muted);cursor:help;margin-inline-start:4px;opacity:.7}
 .lbl .hint-i:hover{opacity:1;color:var(--brand-dark)}
+/* generic info-hint icon (KPI tiles, chart titles, region heads, table cols) */
+.hint-i{font-style:normal;font-size:11px;line-height:1;color:var(--muted);cursor:help;
+  margin-inline-start:5px;opacity:.55;vertical-align:middle;transition:opacity .15s,color .15s}
+.hint-i:hover{opacity:1;color:var(--brand-dark)}
+.rc-tile-k .hint-i,.rc-chart-t .hint-i{opacity:.5}
+.rc-tile-k .hint-i:hover,.rc-chart-t .hint-i:hover{opacity:1}
+.rc-table th .hint-i{opacity:.45}
+/* on the brand-gradient region header the icon must read light */
+.bu-sec-h .hint-i{color:rgba(255,255,255,.72);opacity:1}
+.bu-sec-h .hint-i:hover{color:#fff}
 .actuals-tbl td .sub-d{color:var(--muted);font-size:11px;margin-top:1px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .actuals-tbl td.combo{min-width:330px;max-width:330px;overflow:hidden;text-overflow:ellipsis}
 .actuals-tbl td.num{white-space:nowrap}
@@ -387,7 +431,7 @@ html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--bra
 
 /* classification assignments drawer (extra-wide, editable rows) */
 .dw-drawer.dw-xw{width:min(1120px,96vw)}
-.dw-drawer.dw-wide{width:min(1360px,96vw)}
+.dw-drawer.dw-wide{width:min(1680px,97vw)}
 .dw-drawer.dw-full{width:100vw !important;max-width:none}
 .dw-h .btn.solid{background:#fff;color:var(--brand-dark);border-color:#fff;font-weight:700}
 .dw-h .btn.solid:hover{background:rgba(255,255,255,.88);color:var(--brand-dark)}
@@ -412,6 +456,23 @@ html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--bra
    region. Brand-colored header bar (echoes the platform region theming),
    chevron collapse with a collapsed-state summary, and a full-screen
    table mode (⤢ toggles, Esc restores; drawers/toasts layer above). */
+/* CRITICAL data-quality alert band — budget lines with NO cost centre.
+   Rendered only when the current /butil result set carries missingCc > 0;
+   the whole band is a click target that drills to the lines drawer. */
+.bu-alert{display:flex;align-items:center;gap:13px;margin-bottom:16px;padding:12px 16px;cursor:pointer;
+  background:linear-gradient(120deg,#FDECEA,#FBE0DD);border:1px solid #E5A29A;
+  border-inline-start:5px solid var(--bad);border-radius:var(--r);box-shadow:var(--shadow);
+  transition:box-shadow .15s ease,transform .15s ease}
+.bu-alert:hover{box-shadow:0 10px 26px -12px rgba(192,57,43,.45);transform:translateY(-1px)}
+.bu-alert-ic{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:9px;
+  background:var(--bad);color:#fff}
+.bu-alert-ic svg{width:19px;height:19px}
+.bu-alert-tx{flex:1;min-width:0;font-size:13px;line-height:1.45;color:#7C1D12}
+.bu-alert-tx b{display:block;font-size:13.5px;font-weight:800;color:var(--bad);letter-spacing:.01em}
+.bu-alert-cta{flex:none;font-size:12.5px;font-weight:700;color:#fff;background:var(--bad);
+  padding:7px 14px;border-radius:999px;white-space:nowrap}
+.bu-alert:hover .bu-alert-cta{background:#A93226}
+
 .bu-sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
   margin-bottom:16px;overflow:hidden}
 .bu-sec-h{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;-webkit-user-select:none;user-select:none;
@@ -527,6 +588,12 @@ html[dir=rtl] .kg{padding:13px 17px 12px 15px}
 .kg-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}
 .kg-rl{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kg-rv{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap}
+/* drillable KPI figures (aggregate drill across the filtered set) */
+.kg-v.kg-drill{cursor:pointer;border-radius:6px;transition:color .12s}
+.kg-row.kg-drill{cursor:pointer;border-radius:6px;margin:0 -6px;padding:0 6px;transition:background .12s}
+.kg-v.kg-drill:hover{color:var(--brand);text-decoration:underline;text-underline-offset:3px}
+.kg-row.kg-drill:hover{background:var(--brand-soft)}
+.kg-row.kg-drill:hover .kg-rl,.kg-row.kg-drill:hover .kg-rv{color:var(--brand)}
 .kg-rv.neg{color:var(--bad)}
 .kg-budget{--kg-c:#3A6EA5;--kg-soft:#E9F0F8}
 .kg-pr{--kg-c:#2E8C9E;--kg-soft:#E3F1F4}
@@ -571,7 +638,22 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .bk-duo-row .v{margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap}
 .bk-duo-row .pp{font-size:10.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .bk-duo-row:hover .pp{color:var(--ink)}
-.mchips-bar{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line)}
+/* applied-criteria tray — the Search region's OUTPUT: a brand-tinted band
+   opened by the GL gold diamond + an "Applied filters" eyebrow; chips invert
+   to white surfaces so they read against the tint. Logical props = RTL-safe. */
+.mchips-bar{margin-top:12px;padding:9px 13px;border-radius:10px;align-items:center;
+  background:linear-gradient(180deg,rgba(var(--brand-rgb),.10),rgba(var(--brand-rgb),.045));
+  border:1px solid rgba(var(--brand-rgb),.22);
+  border-inline-start:3px solid var(--brand);
+  animation:mchipsIn .28s ease}
+@keyframes mchipsIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.mchips-bar{animation:none}}
+.mchips-lab{display:inline-flex;align-items:center;gap:7px;font-size:9.5px;font-weight:800;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--brand-dark);opacity:.8;
+  margin-inline-end:4px;white-space:nowrap}
+.mchips-lab .mlab-diamond{width:8px;height:8px;background:linear-gradient(135deg,var(--gold),#a9842f);
+  transform:rotate(45deg);border-radius:1.5px;flex:none}
+.mchips-bar .mchip{background:#fff;border-color:rgba(var(--brand-rgb),.35);box-shadow:0 1px 2px rgba(27,42,39,.05)}
 .mchip b{font-weight:800;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;opacity:.6;margin-inline-end:2px}
 
 /* ═══════════ Projects Encumbrances tab — shared <interactive-report> bridge ═══
@@ -614,6 +696,7 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .pn-kpis .pn-row-bad .l,.pn-kpis .pn-row-bad .v{color:var(--bad)}
 /* first-load overlay needs somewhere to sit before anything has rendered */
 .bu-body.pn-loading{min-height:320px}
+.bu-body.rc-loading{min-height:340px}
 /* register: Document # cells deep-link to Oracle Fusion (hover affordance) */
 .pn-doclink{cursor:pointer;color:var(--brand-dark);text-decoration:underline dotted;text-underline-offset:3px}
 
@@ -644,3 +727,1091 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
   background:rgba(27,42,39,.05);font-weight:700}
 .pn-days.bad{background:#F8E9E6;color:#B3352B}
 .pn-um{margin-top:12px}
+
+/* ── "Generate Report" split dropdown (Budget Utilization page actions) ── */
+.gen{position:relative;display:inline-block}
+.gen-btn::after{content:"";display:inline-block}
+.gen-back{position:fixed;inset:0;z-index:40}
+.gen-menu{position:absolute;top:calc(100% + 6px);inset-inline-end:0;z-index:41;min-width:270px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);
+  box-shadow:var(--shadow);padding:6px;overflow:hidden}
+.gen-item{display:flex;align-items:center;gap:11px;width:100%;text-align:start;
+  background:transparent;border:0;border-radius:8px;padding:9px 11px;cursor:pointer;color:var(--ink)}
+.gen-item:hover{background:var(--brand-soft)}
+.gen-ic{font-size:18px;line-height:1;flex:none;width:24px;text-align:center;filter:grayscale(.15)}
+.gen-tx{display:flex;flex-direction:column;gap:1px;min-width:0}
+.gen-tx b{font-size:13px;font-weight:600}
+.gen-tx small{font-size:11px;color:var(--muted)}
+html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
+
+/* ── butil Calculation Logic region (collapsible, bottom of the page) ── */
+.bu-calc{margin-top:14px}
+.calc-intro{font-size:12.5px;color:var(--muted);margin-bottom:11px}
+.calc-formula{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-bottom:13px}
+.cf{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;
+    color:var(--cf-c,#1B2A27);background:var(--cf-soft,#EEF1F0);border:1px solid var(--cf-c,#C9D2CE)}
+.cf-fund{--cf-c:#2E7D5B;--cf-soft:#E4F1EA}
+.cf-bud{--cf-c:#3A6EA5;--cf-soft:#E9F0F8}
+.cf-ap{--cf-c:#6C4AB6;--cf-soft:#EEEAF7}
+.cf-grn{--cf-c:#B8862B;--cf-soft:#F6EFDC}
+.cf-pr{--cf-c:#2E8C9E;--cf-soft:#E2F1F4}
+.cf-po{--cf-c:#5163B9;--cf-soft:#E8EBF8}
+.cf-op{font-weight:700;color:var(--muted);font-size:13.5px}
+.calc-tbl td{font-size:12.5px;vertical-align:top}
+.calc-tbl td:first-child{white-space:nowrap}
+.calc-tbl .calc-em{font-weight:600}
+.calc-notes{margin:12px 0 0;padding-inline-start:18px;display:flex;flex-direction:column;gap:4px;
+    font-size:12px;color:var(--muted)}
+
+/* budget KPI duo tile: seg1 = YTD share of annual, seg2 = remainder */
+.bk-budget.bk-duo{--seg1:#3A6EA5;--seg2:#B9CCE2}
+
+/* ══════════ Reconciliation (Actuals ↔ Budget Utilization) ══════════ */
+.bu-sec-static{cursor:default}
+.bu-sec-static .bu-sec-ch{display:none}
+.rc-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px}
+.rc-tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px;
+  border-inline-start:4px solid var(--brand);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.rc-tile--np{border-inline-start-color:var(--gold);background:linear-gradient(180deg,var(--gold-soft),var(--surface) 55%)}
+.rc-tile--orphan{border-inline-start-color:var(--bad);background:linear-gradient(180deg,#F8E9E7,var(--surface) 55%)}
+.rc-tile--ok{border-inline-start-color:var(--ok)}
+.rc-tile--budget,.rc-tile--fund{border-inline-start-color:var(--info)}
+.rc-tile-k{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.rc-tile-v{font-family:var(--serif);font-size:26px;font-weight:600;color:var(--ink);line-height:1}
+.rc-tile-sub{font-size:11.5px;color:var(--muted);line-height:1.35}
+.rc-tile-sub b{color:var(--ink)}
+.rc-cov-bar{height:7px;border-radius:6px;background:var(--brand-soft);overflow:hidden;margin:2px 0}
+.rc-cov-bar>i{display:block;height:100%;background:var(--ok);border-radius:6px}
+.rc-budget-duo{display:flex;gap:18px;flex-wrap:wrap}
+.rc-budget-duo>div{display:flex;flex-direction:column}
+.rc-budget-duo small{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.rc-budget-duo b{font-size:18px;font-family:var(--serif);font-weight:600}
+.rc-charts{display:grid;grid-template-columns:1fr 1.3fr;gap:16px}
+@media(max-width:900px){.rc-charts{grid-template-columns:1fr}}
+.rc-chart{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
+.rc-chart-t{margin:0 0 14px;font-family:var(--serif);font-weight:600;font-size:15px;color:var(--brand-dark)}
+.rc-donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.rc-donut{width:150px;height:150px;border-radius:50%;position:relative;flex:0 0 auto}
+.rc-donut-hole{position:absolute;inset:26px;background:var(--surface);border-radius:50%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px var(--line)}
+.rc-donut-hole b{font-family:var(--serif);font-size:24px;color:var(--brand-dark);line-height:1}
+.rc-donut-hole small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.rc-legend{display:flex;flex-direction:column;gap:9px;flex:1;min-width:210px}
+.rc-leg{display:flex;align-items:center;gap:9px;font-size:12.5px}
+.rc-dot{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+.rc-leg-l{flex:1;color:var(--ink)}
+.rc-leg-p{font-weight:700;color:var(--muted);min-width:34px;text-align:end}
+.rc-leg-v{color:var(--ink);min-width:90px;text-align:end}
+.rc-bars{display:flex;flex-direction:column;gap:15px}
+.rc-bar-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.rc-stat{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+.rc-stat--ok{background:var(--ok)}.rc-stat--info{background:var(--info)}.rc-stat--warn{background:var(--bad)}
+.rc-bar-lab{flex:1;font-weight:600;font-size:13px}
+.rc-bar-cov{font-size:11.5px;color:var(--muted);font-weight:700}
+.rc-bar-track{position:relative;height:20px;background:var(--bg);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.rc-bar-act{position:absolute;inset-block:0;inset-inline-start:0;background:rgba(var(--brand-rgb),.22);border-radius:6px}
+.rc-bar-but{position:absolute;inset-block:0;inset-inline-start:0;background:var(--brand);border-radius:6px}
+.rc-bar-vals{font-size:11px;color:var(--muted);margin-top:4px}
+.rc-bar-vals b{color:var(--ink)}
+.rc-controls{display:flex;gap:26px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.rc-ctl{display:flex;align-items:center;gap:10px}
+.rc-ctl-l{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.rc-seg-group{display:inline-flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:3px}
+.rc-seg-wrap{flex-wrap:wrap}
+.rc-seg{border:0;background:transparent;padding:6px 12px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:600;
+  color:var(--muted);cursor:pointer;white-space:nowrap}
+.rc-seg:hover{color:var(--ink)}
+.rc-seg.on{background:var(--brand);color:#fff}
+.rc-table td{vertical-align:top}
+.rc-dim-k{font-weight:600;color:var(--ink)}
+.rc-dim-l{font-size:11px;color:var(--muted);margin-top:2px;max-width:340px;white-space:normal}
+.rc-diff.rc-hot{color:var(--bad)}
+.rc-warn{background:rgba(201,152,43,.09)}
+.rc-dl{cursor:pointer;border-bottom:1px dashed rgba(var(--brand-rgb),.5)}
+.rc-dl:hover{color:var(--brand-dark);border-bottom-style:solid}
+/* KPI-tile drill links inherit the tile value look, keep the dashed drill affordance */
+.rc-tile-v a.rc-dl{color:inherit;font:inherit;text-decoration:none;border-bottom-width:1.5px}
+.rc-budget-duo a.rc-dl{font-size:18px;font-family:var(--serif);font-weight:600;color:var(--ink);text-decoration:none;align-self:flex-start;margin-top:2px}
+.rc-tile-v a.rc-dl:hover,.rc-budget-duo a.rc-dl:hover{color:var(--brand-dark);border-bottom-style:solid}
+
+/* Chart of Accounts — combinations Explorer region maximize (content wrapped in .bu-sec-b) */
+.bu-results.maxed .bu-sec-b{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.bu-results.maxed .bu-sec-b .tbl-wrap{flex:1;overflow:auto;min-height:0}
+.bu-results.maxed .bu-sec-b .toolbar{flex:none}
+
+/* ══════════ Override Budget (budget_user) — butil page only ══════════ */
+/* Search-region toggle: div is the click target, the checkbox itself is
+   pointer-inert (KO label/double-toggle gotcha) */
+.ovr-chk{display:flex;align-items:center;gap:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.ovr-chk input{pointer-events:none;width:16px;height:16px;accent-color:var(--brand);flex:none;margin:0}
+.ovr-chk span{font-size:13px;color:var(--muted);font-weight:600}
+.ovr-chk.on span{color:var(--brand-dark)}
+/* KPI band with the 5th (Override Budget) tile — the shared .bu-kpis grid keeps
+   4 columns for the pending page; this modifier applies on butil only.
+   Both rules of each media query repeat the two-class selector so the
+   breakpoint always wins over the base 5-column declaration. */
+.bu-kpis.bu-kpis5{grid-template-columns:1fr 1.3fr 1.3fr 1fr 1fr}
+@media (max-width:1700px){.bu-kpis.bu-kpis5{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:1100px){.bu-kpis.bu-kpis5{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:760px){.bu-kpis.bu-kpis5{grid-template-columns:1fr}}
+/* 6-tile band since the Expenditure Plan tile (2026-08-26) */
+.bu-kpis.bu-kpis6{grid-template-columns:1fr 1.1fr 1.2fr 1.2fr 1fr 1fr}
+@media (max-width:1700px){.bu-kpis.bu-kpis6{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:1100px){.bu-kpis.bu-kpis6{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:760px){.bu-kpis.bu-kpis6{grid-template-columns:1fr}}
+/* Expenditure Plan tile tint (uploaded cashflow plan) */
+.bk-plan{--bk-c:#8E4585;--bk-soft:#F6E9F2}
+.bk-ovr{--bk-c:#B8862B;--bk-soft:#F6EFDC}   /* gold — the platform GRN/gold accent family */
+.bk-sub .ov-applied{color:#B8862B;font-weight:700}
+/* Override drawer: extra-wide by default (full-screen toggle unchanged) */
+.dw-drawer.dw-ov{width:min(1500px,96vw)}
+/* how-to panel at the top of the drawer body — soft brand tint + gold accent */
+.ov-guide{position:relative;margin-bottom:12px;padding:12px 16px;border:1px solid var(--line);
+    border-inline-start:4px solid var(--gold);border-radius:var(--r-sm);
+    background:linear-gradient(120deg,var(--brand-soft),var(--surface) 72%)}
+.ov-guide-t{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:var(--brand-dark);margin-bottom:6px}
+.ov-guide-t i{width:8px;height:8px;background:linear-gradient(135deg,var(--gold),#a9842f);transform:rotate(45deg);border-radius:1px;flex:none}
+.ov-guide-ls{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:3px;
+    font-size:12.5px;color:var(--ink)}
+.ov-guide-ls li::marker{color:var(--gold)}
+.ov-guide-link{display:inline-block;margin-top:8px;font-size:13px;font-weight:700;color:var(--brand-dark);
+    text-decoration:underline dotted;text-underline-offset:3px}
+.ov-guide-link:hover{color:var(--gold);text-decoration-style:solid}
+/* Override drawer: inline-editable Override Budget / Reason / Comments columns */
+.ov-tbl td{vertical-align:middle}
+.ov-tbl .ov-inp{width:130px;min-width:110px;padding:6px 8px;font-size:13px;text-align:end;
+    font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.ov-tbl .ov-sel{min-width:150px;max-width:210px;padding:6px 8px;font-size:12.5px}
+.ov-tbl .ov-comm{width:100%;min-width:160px;padding:6px 8px;font-size:12.5px}
+.ov-vs{margin-inline:10px;color:var(--muted)}
+/* signed budget change (v2 2026-08-17): a change ADDS to the budget, so the
+   sign carries meaning everywhere it is shown — tile value, drawer input,
+   drawer totals. Colour only; the +/- sign stays the primary cue. */
+.ov-pos{color:#1F7A4D}
+.ov-neg{color:#B3261E}
+.ov-tbl .ov-inp.ov-pos{border-color:#1F7A4D}
+.ov-tbl .ov-inp.ov-neg{border-color:#B3261E}
+/* Budget Override from Excel region (collapsible, bottom of the page) */
+.bu-xltpl{margin-top:14px}
+.xltpl-steps{margin:0 0 14px;padding-inline-start:22px;display:flex;flex-direction:column;gap:6px;
+    font-size:13px;color:var(--ink)}
+.xltpl-steps li::marker{color:var(--brand-dark);font-weight:700}
+
+/* VB add-in installer download link (region + drawer guide) */
+.vb-addin{margin-block-start:10px;font-size:.85rem}
+.vb-addin a{color:var(--brand,#3F6F5F);font-weight:600;text-decoration:underline;margin-inline-end:8px}
+.vb-addin span{color:#777}
+.ov-guide-addin{display:block;margin-block-start:4px;font-size:.83rem;opacity:.9}
+
+/* Legacy (EBS) page — mapping drawer form + balance coverage lists */
+.xm-form{display:flex;flex-direction:column;gap:12px;max-width:520px}
+.eb-unmapped{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-block-start:14px}
+.eb-un-h{font-weight:700;font-size:.85rem;margin-block-end:6px;color:var(--brand,#3F6F5F)}
+
+/* ── GL Balances YoY tab (2026-08-02) ─────────────────────────────── */
+.yo-years{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px}
+.yo-chip{padding:5px 14px;border:1px solid var(--line);border-radius:20px;background:var(--card,#fff);
+  color:var(--text);font:inherit;font-size:13px;cursor:pointer;transition:all .15s}
+.yo-chip:hover{border-color:var(--brand)}
+.yo-chip.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.yo-meas{display:inline-flex;gap:6px}
+.yo-meas .yo-chip{padding:3px 12px;font-size:12px}
+#pg-yoy .data-table th.num,#pg-yoy .data-table td.num{text-align:right}
+[dir=rtl] #pg-yoy .data-table th.num,[dir=rtl] #pg-yoy .data-table td.num{text-align:left}
+#pg-yoy tfoot td{font-weight:700;border-top:2px solid var(--line)}
+
+/* ── IR column tints — DOF Submissions + Balances YoY (2026-08-04 layout
+   round; consumed via the shared IR column.colClass / groupClass hooks).
+   Loaded AFTER platform.css so tints win over the zebra stripe. ── */
+/* DOF year blocks: current-year brand GREEN tint · prior-year SLATE-BLUE
+   tint (clearly distinct hues — user feedback 2026-08-04 (2)) */
+.ir-table td.dofc-cur{background:rgba(63,111,95,.15)}
+.ir-table td.dofc-pri{background:rgba(84,110,140,.15)}
+/* quarterly Q1..Q4 alternation */
+.ir-table td.dofc-qa{background:rgba(63,111,95,.09)}
+.ir-table td.dofc-qb{background:rgba(63,111,95,.19)}
+/* grouped header band tints */
+table.data-table.ir-table thead tr.ir-band th.dofg-cur{background:rgba(63,111,95,.30);color:#1D3B31}
+table.data-table.ir-table thead tr.ir-band th.dofg-pri{background:rgba(84,110,140,.28);color:#2C3E52}
+table.data-table.ir-table thead tr.ir-band th.dofg-perf{background:rgba(198,146,20,.24);color:#5C430A}
+/* Balances YoY: alternating year tints + gold comparison block */
+.ir-table td.yoc-a{background:rgba(63,111,95,.07)}
+.ir-table td.yoc-b{background:rgba(63,111,95,.16)}
+.ir-table td.yoc-chg{background:rgba(198,146,20,.15)}
+
+/* DOF notes drawer — full record info grid */
+.dof-rec-t{font-weight:800;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--brand,#3F6F5F);margin:2px 0 8px}
+.dof-rec{display:grid;grid-template-columns:minmax(150px,42%) 1fr;gap:0;border:1px solid var(--line);
+  border-radius:8px;overflow:hidden;margin-block-end:16px;font-size:12.5px}
+.dof-rec>div{padding:6px 10px;border-block-end:1px solid var(--line)}
+.dof-rec>div:nth-last-child(-n+2){border-block-end:none}
+.dof-rec-l{background:rgba(63,111,95,.06);color:var(--muted);font-weight:600}
+.dof-rec-v{text-align:start;overflow-wrap:anywhere}
+.dof-rec-v.mono{text-align:end;font-variant-numeric:tabular-nums}
+/* mirror the table's variance / near-zero styling */
+.dof-rec-v.pos{color:#1E5E2C}
+.dof-rec-v.neg{color:#B3261E}
+.dof-rec-v.dim{color:#A9B2B8}
+.dof-rec-v .dr-arrow{font-size:9.5px;margin-inline-end:3px;vertical-align:1px}
+
+/* ── Budget vs Actual on the SHARED interactive report (v1.57.0) ──
+   ac-body anchors the oj-progress-circle busy overlay over KPI band +
+   register; per-measure group tints follow the KPI card palette
+   (PR teal / PO indigo / Actuals brand green / Funds emerald). */
+.ac-body{position:relative}
+.ac-results{margin-top:6px}
+.ir-table td.acc-mono{font-family:'SF Mono','Cascadia Mono',Consolas,monospace;font-size:10.5px;letter-spacing:-.2px}
+.ir-table td.acc-bud{background:rgba(58,110,165,.08)}
+.ir-table td.acc-pr{background:rgba(46,140,158,.08)}
+.ir-table td.acc-po{background:rgba(81,99,185,.08)}
+.ir-table td.acc-enc{background:rgba(184,134,43,.10)}
+.ir-table td.acc-act{background:rgba(63,111,95,.08)}
+.ir-table td.acc-funds{background:rgba(46,125,91,.10)}
+table.data-table.ir-table thead tr.ir-band th.acg-pr{background:rgba(46,140,158,.26);color:#123E47}
+table.data-table.ir-table thead tr.ir-band th.acg-po{background:rgba(81,99,185,.24);color:#232C56}
+table.data-table.ir-table thead tr.ir-band th.acg-act{background:rgba(63,111,95,.28);color:#1D3B31}
+table.data-table.ir-table thead tr.ir-band th.acg-funds{background:rgba(46,125,91,.26);color:#123826}
+/* drill affordance on hover (delegated — class added by acGridOver) */
+.ir-table td.ac-drillcell{cursor:pointer;color:var(--brand-dark);text-decoration:underline dotted;text-underline-offset:3px}
+
+/* drill-drawer sort-criteria note (sits right on top of the table) */
+.dw-sort{display:inline-flex;align-items:center;gap:6px;margin:2px 0 8px;padding:4px 12px;border-radius:999px;
+  background:rgba(var(--brand-rgb),.08);border:1px solid rgba(var(--brand-rgb),.18);
+  color:var(--brand-dark);font-size:11.5px;font-weight:600}
+
+/* ---- Budget Transactions: selectable master grid ------------------------ */
+.bt-row{cursor:pointer}
+.bt-row:hover{background:rgba(63,111,95,.055)}
+.bt-row--on{background:rgba(63,111,95,.11)}
+.bt-row--on td{font-weight:600}
+.bt-row--on td:first-child{box-shadow:inset 3px 0 0 var(--brand)}
+[dir="rtl"] .bt-row--on td:first-child{box-shadow:inset -3px 0 0 var(--brand)}
+.bt-table th.num,.bt-table td.num{text-align:end}
+.filter-actions{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+/* The master grid scrolls inside a fixed height so the Details and Approval
+   regions stay on screen with it -- the source screen behaves the same way.
+   Sticky header keeps the columns readable while scrolling the rows. */
+#pg-budgettrx .bt-scroll{max-height:340px;overflow:auto}
+#pg-budgettrx .bt-scroll thead th{position:sticky;top:0;z-index:2}
+
+/* ---- status pills (header status, line/baseline/journal/validation, approval
+   state) ------------------------------------------------------------------
+   ONE pill, five tones. The tone is decided in the VM (btTone) because the
+   source vocabulary is inconsistent -- SUCCESS/Success, PASS/Pass, Draft/DRAFT
+   -- so the colour must never be driven off the literal string in markup.
+   Logical properties throughout: these mirror in RTL for free. */
+#pg-budgettrx .st{display:inline-flex;align-items:center;gap:6px;
+  padding-block:2px;padding-inline:6px 11px;border-radius:999px;
+  font-size:11.5px;font-weight:600;letter-spacing:.2px;line-height:1.65;white-space:nowrap;
+  background:var(--st-bg);border:1px solid var(--st-bd);color:var(--st-fg)}
+/* the glyph sits in a filled disc so the tone reads even at a glance */
+#pg-budgettrx .st::before{content:var(--st-ic,'\2022');flex:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  inline-size:14px;block-size:14px;border-radius:50%;
+  background:var(--st-fg);color:#fff;font-size:9px;font-weight:700;line-height:1}
+#pg-budgettrx .st--ok  {--st-fg:var(--ok);  --st-bg:#E6F3EC;--st-bd:#BFDECD;--st-ic:'\2713'}
+#pg-budgettrx .st--err {--st-fg:var(--bad); --st-bg:#FCEBE9;--st-bd:#F0C6C1;--st-ic:'\2715'}
+#pg-budgettrx .st--warn{--st-fg:var(--warn);--st-bg:#FBEFDD;--st-bd:#EBD3AE;--st-ic:'!'}
+#pg-budgettrx .st--info{--st-fg:var(--info);--st-bg:#E8F0F8;--st-bd:#C6D8EA;--st-ic:'\2022'}
+#pg-budgettrx .st--mute{--st-fg:#6B7671;   --st-bg:#EFF1F0;--st-bd:#D9DEDB;--st-ic:'\2013'}
+/* negative figures in the details grid read as a reduction, not an error */
+#pg-budgettrx td .neg{color:var(--bad);font-weight:600}
+/* count columns: a quiet numeral chip, dimmed when there is nothing to see */
+#pg-budgettrx .ct{display:inline-block;min-inline-size:22px;padding:1px 7px;border-radius:999px;
+  background:rgba(var(--brand-rgb),.09);color:var(--brand-dark);font-size:11.5px;font-weight:600;text-align:center}
+#pg-budgettrx .ct.zero{background:#F1F2F2;color:#9AA3A0;font-weight:500}
+
+/* ══ EXECUTIVE PROJECT DASHBOARD — Portfolio (#pg-portfolio) + 360 (#pg-proj360) ══
+   Logical properties throughout so both pages mirror in RTL for free; only the
+   few things logical properties cannot express get an explicit html[dir=rtl]
+   rule at the end of this block. */
+
+/* the status pill vocabulary was scoped to #pg-budgettrx; these two pages need
+   it too, so the shared rules are re-declared here rather than de-scoping the
+   originals (which would change an existing page's specificity). */
+#pg-portfolio .st, #pg-proj360 .st {
+  display:inline-flex; align-items:center; gap:6px; padding:2px 9px 2px 7px;
+  border-radius:11px; font-size:11px; font-weight:600; line-height:18px; white-space:nowrap;
+  color:var(--st-fg,#555); background:var(--st-bg,#EEE); border:1px solid var(--st-bd,#DDD);
+}
+#pg-portfolio .st::before, #pg-proj360 .st::before {
+  content:''; width:6px; height:6px; border-radius:50%; background:currentColor; flex:0 0 auto;
+}
+#pg-portfolio .st--ok,   #pg-proj360 .st--ok   { --st-fg:#1E7A4C; --st-bg:#E6F3EC; --st-bd:#BFDECD; }
+#pg-portfolio .st--err,  #pg-proj360 .st--err  { --st-fg:#B3261E; --st-bg:#FCEBE9; --st-bd:#F0C6C1; }
+#pg-portfolio .st--warn, #pg-proj360 .st--warn { --st-fg:#9A6700; --st-bg:#FBEFDD; --st-bd:#EBD3AE; }
+#pg-portfolio .st--info, #pg-proj360 .st--info { --st-fg:#1F5F8B; --st-bg:#E8F0F8; --st-bd:#C6D8EA; }
+#pg-portfolio .st--mute, #pg-proj360 .st--mute { --st-fg:#6B7280; --st-bg:#F1F2F4; --st-bd:#DEE1E6; }
+
+/* KPI tints, following the .bk-* pattern already used by butil */
+#pg-portfolio .bk-proj,   #pg-proj360 .bk-proj   { --bk-c:#4A5B7A; --bk-soft:#ECEFF5; }
+#pg-portfolio .bk-paid,   #pg-proj360 .bk-paid   { --bk-c:#7A5C2E; --bk-soft:#F5EEDF; }
+#pg-portfolio .bk-health, #pg-proj360 .bk-health { --bk-c:#8C4A3F; --bk-soft:#F8ECE9; }
+#pg-portfolio .bk-health.calm, #pg-proj360 .bk-health.calm { --bk-c:#2E7D5B; --bk-soft:#E4F1EA; }
+.pf-kpis { grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
+
+/* health + momentum grid */
+.pf-grid { display:grid; grid-template-columns:minmax(240px,1fr) minmax(320px,1.6fr) minmax(280px,1.3fr); gap:14px; }
+@media (max-width:1200px){ .pf-grid { grid-template-columns:1fr 1fr; } }
+@media (max-width:820px){ .pf-grid { grid-template-columns:1fr; } }
+.pf-card-t { font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--muted,#6B7280); margin-block-end:10px; }
+.pf-card-t2 { margin-block-start:18px; }
+.pf-gauge-card { display:flex; flex-direction:column; align-items:center; position:relative; }
+.pf-gauge { width:170px; height:170px; transform:rotate(-90deg); }
+.pf-gauge circle { fill:none; stroke-width:13; stroke-linecap:round; }
+.pf-gauge .g-track  { stroke:#E9ECEF; }
+.pf-gauge .g-commit { stroke:#C7AC5E; }
+.pf-gauge .g-util   { stroke:var(--brand,#3F6F5F); }
+.pf-gauge.over .g-commit { stroke:#C4574B; }
+.pf-gauge-c { position:absolute; inset-block-start:64px; text-align:center; pointer-events:none; }
+.pf-gauge-c b { display:block; font-size:26px; font-weight:700; color:var(--brand,#3F6F5F); }
+.pf-gauge-c span { font-size:10.5px; color:var(--muted,#6B7280); }
+.pf-legend { display:flex; flex-direction:column; gap:5px; margin-block-start:10px; width:100%; }
+.pf-legend span { display:flex; align-items:center; gap:7px; font-size:12px; }
+.pf-legend b { margin-inline-start:auto; }
+.gd { width:9px; height:9px; border-radius:2px; flex:0 0 auto; background:#CBD2D9; }
+.gd.d1 { background:var(--brand,#3F6F5F); } .gd.d2 { background:#C7AC5E; } .gd.d3 { background:#9AA5B1; }
+
+/* health distribution bar */
+.pf-hbar { display:flex; height:14px; border-radius:7px; overflow:hidden; background:#EEF0F2; }
+.pf-hbar i { display:block; height:100%; }
+.h-crit,.gd.h-crit { background:#C4574B; } .h-risk,.gd.h-risk { background:#D9A441; }
+.h-ok,.gd.h-ok { background:#4E9A76; }     .h-none,.gd.h-none { background:#B6BCC4; }
+.pf-hlegend { display:flex; flex-wrap:wrap; gap:12px; margin-block-start:9px; }
+.pf-hlegend span { display:flex; align-items:center; gap:6px; font-size:12px; }
+
+/* largest-consumer bars */
+.pf-bars { display:flex; flex-direction:column; gap:6px; }
+.pf-bar { display:grid; grid-template-columns:minmax(90px,1.5fr) 2fr auto; align-items:center; gap:9px;
+  font-size:12px; cursor:pointer; padding:2px 4px; border-radius:5px; }
+.pf-bar:hover { background:var(--brand-soft,#EAF1EE); }
+.pb-n { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pb-t { background:#EEF0F2; border-radius:5px; height:9px; overflow:hidden; }
+.pb-f { display:block; height:100%; border-radius:5px; }
+.pf-ins-card .ins-list { margin:0; padding-inline-start:17px; display:flex; flex-direction:column; gap:7px; font-size:12.5px; }
+.pf-gapnote { margin-block-start:12px; padding:9px 11px; border-radius:6px;
+  background:#FDF6E9; border:1px solid #EBD3AE; font-size:11.5px; line-height:1.5; }
+.pf-gapnote b { display:block; margin-block-end:3px; color:#9A6700; }
+
+/* register: health band tints applied to the whole row via the shared IR hook */
+tr.pf-h-red    td:first-child { box-shadow:inset 3px 0 0 #C4574B; }
+tr.pf-h-amber  td:first-child { box-shadow:inset 3px 0 0 #D9A441; }
+tr.pf-h-green  td:first-child { box-shadow:inset 3px 0 0 #4E9A76; }
+tr.pf-h-grey   td:first-child { box-shadow:inset 3px 0 0 #B6BCC4; }
+html[dir=rtl] tr[class*="pf-h-"] td:first-child { box-shadow:inset -3px 0 0 currentColor; }
+
+/* ── Project 360 ── */
+.p3-back { margin-block-end:7px; }
+.p3-card { background:var(--surface,#fff); border:1px solid var(--region-bd-color,#E2E6EA);
+  border-radius:8px; padding:14px 16px; margin-block-end:14px; }
+.p3-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px 20px; }
+.p3-m { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.p3-m .k { font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted,#6B7280); }
+.p3-m .v { font-size:13px; overflow:hidden; text-overflow:ellipsis; }
+.p3-comps { display:flex; flex-direction:column; gap:4px; margin-block-start:8px; }
+.p3-comp { display:grid; grid-template-columns:1fr 54px auto; align-items:center; gap:7px; font-size:11px; }
+.p3-comp .t { background:#EEF0F2; border-radius:4px; height:6px; overflow:hidden; }
+.p3-comp .t i { display:block; height:100%; background:var(--brand,#3F6F5F); border-radius:4px; }
+.p3-comp .t i.off { background:#D6DAE0; }
+
+/* the funnel */
+.p3-funnel { width:100%; height:auto; display:block; }
+.p3-funnel .fn-band { fill:#E9EDF0; opacity:.55; }
+.p3-funnel .fn-bar { cursor:pointer; transition:opacity .15s; }
+.p3-funnel .fn-bar:hover { opacity:.82; }
+.p3-funnel .fn-bar.fn-nodrill { cursor:default; }
+.p3-funnel .f-budget { fill:#4A5B7A; } .p3-funnel .f-pr { fill:#6E86A8; }
+.p3-funnel .f-po { fill:#C7AC5E; }     .p3-funnel .f-grn { fill:#7BA88F; }
+.p3-funnel .f-ap { fill:#4E9A76; }     .p3-funnel .f-paid { fill:#2E7D5B; }
+.p3-funnel .fn-v { font-size:13px; font-weight:700; text-anchor:middle; fill:var(--text,#1F2933); }
+.p3-funnel .fn-l { font-size:11px; text-anchor:middle; fill:var(--muted,#6B7280); }
+.p3-funnel .fn-conv { font-size:10.5px; text-anchor:middle; fill:#8A94A0; }
+
+/* child tables: bounded scroll + sticky header, so a long task or document list
+   cannot push the regions below it off the screen (the budgettrx lesson). */
+.p3-scroll { max-height:340px; overflow:auto; }
+.p3-scroll thead th { position:sticky; top:0; z-index:2; }
+.p3-table td, .p3-table th { white-space:nowrap; }
+.p3-table td.neg, #pg-portfolio td.neg { color:#B3261E; }
+.p3-tabs { margin-block-end:10px; }
+.p3-tabs .ct { margin-inline-start:6px; opacity:.7; font-size:11px; }
+
+/* DATA GAP badge + note */
+.dgap { display:inline-flex; align-items:center; gap:5px; margin-inline-start:10px;
+  padding:1px 9px; border-radius:10px; font-size:10.5px; font-weight:700; letter-spacing:.03em;
+  color:#9A6700; background:#FBEFDD; border:1px solid #EBD3AE; }
+.dgap::before { content:'\26A0'; font-size:10px; }
+.bu-alert--gap { cursor:default; background:#FDF6E9; border-color:#EBD3AE; }
+.bu-alert--gap:hover { transform:none; }
+
+/* ── source-data refresh conveyor POPUP (Data Conveyor motion, 2026-08-22;
+   centered popup per user feedback same day) ──
+   Fixed overlay centred on the page while the 15-extract fleet run is in
+   flight. Parcels/belt/rollers loop continuously; the 15 segments + count +
+   job name advance on the REAL 5s poll. RTL mirrors the belt (labels stay
+   readable — they are HTML chips outside the mirrored SVG). z 58 = under
+   drawers (70) and platform modals (60) so drill surfaces still win. */
+.cvb{position:fixed;inset:0;z-index:58;display:flex;align-items:center;justify-content:center;
+  background:rgba(27,42,39,.42);backdrop-filter:blur(1.5px)}
+.cvb-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;
+  width:min(430px,92vw);padding:26px 28px 20px;background:var(--surface);
+  border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 24px 60px -18px rgba(27,42,39,.45)}
+.cvb-x{position:absolute;top:8px;inset-inline-end:10px;border:0;background:none;cursor:pointer;
+  font-size:20px;line-height:1;color:var(--muted);padding:4px 7px;border-radius:7px}
+.cvb-x:hover{background:var(--brand-soft);color:var(--brand-dark)}
+.cvb-anim{position:relative;flex:none;width:300px}
+.cvb-svg{display:block;width:300px;height:70px}
+html[dir=rtl] .cvb-svg{transform:scaleX(-1)}
+.cvb-chip{position:absolute;top:0;font-size:10.5px;font-weight:700;border-radius:999px;
+  padding:2px 10px;line-height:1.5}
+.cvb-chip-src{inset-inline-start:6px;background:var(--brand-dark);color:#F6F5F1}
+.cvb-chip-dst{inset-inline-end:0;background:var(--gold);color:#1B2A27}
+.cvb-belt-dash{stroke:#F6F5F1;stroke-opacity:.55;stroke-width:2;stroke-dasharray:7 6;
+  animation:cvb-belt 1.1s linear infinite}
+@keyframes cvb-belt{to{stroke-dashoffset:-13px}}
+.cvb-roller{transform-box:fill-box;transform-origin:center;animation:cvb-spin 1.6s linear infinite}
+@keyframes cvb-spin{to{transform:rotate(360deg)}}
+.cvb-parcel{animation:cvb-ride 4.2s linear infinite}
+.cvb-parcel.cvb-p2{animation-delay:-1.4s}
+.cvb-parcel.cvb-p3{animation-delay:-2.8s}
+@keyframes cvb-ride{
+  0%   {transform:translateX(0);opacity:0}
+  6%   {opacity:1}
+  82%  {transform:translateX(178px);opacity:1}
+  90%  {transform:translateX(186px) translateY(14px);opacity:0}
+  100% {transform:translateX(186px) translateY(14px);opacity:0}
+}
+.cvb-segs{display:flex;gap:3px;margin-top:5px}
+.cvb-segs i{flex:1;height:6px;border-radius:2px;background:#DCE5E0;transition:background .3s}
+.cvb-segs i.on{background:var(--brand)}
+.cvb-tx{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;
+  width:100%;text-align:center}
+.cvb-tx b{font-size:14.5px;color:var(--brand-dark)}
+.cvb-cnt{font-weight:700;font-size:13.5px;font-variant-numeric:tabular-nums}
+.cvb-job{font-size:12px;color:var(--muted);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion: reduce){
+  .cvb-parcel,.cvb-roller,.cvb-belt-dash{animation:none}
+}
+
+/* Refresh-data dropdown extras (shares the .gen pattern) */
+.gen-item:disabled{opacity:.45;cursor:default}
+.gen-item:disabled:hover{background:none}
+.rd-last{border-top:1px solid var(--line);margin-top:4px;padding:7px 12px 3px;
+  font-size:11px;color:var(--muted)}
+
+/* over-budget Fund Available cell (butil results): bold red on a soft tint + warning flag */
+.actuals-tbl td.neg { font-weight:700; background:#FBEDEA; }
+.nf-flag { display:inline-grid; place-items:center; vertical-align:-3px; margin-inline-end:6px;
+  width:16px; height:16px; border-radius:5px; background:var(--bad); color:#fff; }
+.nf-flag svg { width:11px; height:11px; }
+.bu-alert--gap .bu-alert-tx b { color:#9A6700; }
+
+/* hint badge: drawn in CSS rather than the U+24D8 glyph, which the loaded
+   font does not carry (it renders as a tofu box). */
+.pf-tip {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:13px; height:13px; margin-inline-start:5px; border-radius:50%;
+  font-style:normal; font-size:9px; font-weight:700; line-height:1; cursor:help;
+  color:#fff; background:var(--muted,#98A2AE); vertical-align:middle;
+}
+.pf-tip:hover { background:var(--brand,#3F6F5F); }
+
+/* ── Sector Financial Performance (2026-08-19) ──────────────────────────────
+   Layout of docs/Reports/GL/Sector Report_October.pdf. All visuals are plain
+   CSS/SVG -- this app has no chart library -- and every offset uses logical
+   properties so the whole page mirrors correctly in Arabic/RTL. */
+:root{
+  --sp-bud:#1F3864; --sp-act:#2E6DA4; --sp-pln:#B23A48;
+  --sp-gauge-bg:#E2E8EC; --sp-gauge-fg:#2E6DA4;
+  --sp-rag-high:#3FA96A; --sp-rag-mid:#E0A93B; --sp-rag-low:#E06C63;
+}
+.sp-body{position:relative}
+
+/* sample-plan banner: this page must never be mistaken for an issued pack */
+.sp-sample{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:11px 14px;
+  border:1px solid #E4B95B;border-inline-start:4px solid #C9922B;border-radius:var(--r-sm);
+  background:#FDF6E6}
+.sp-sample-ic{flex:0 0 24px;height:24px;border-radius:50%;background:#C9922B;color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:14px}
+.sp-sample-tx{flex:1;font-size:12.8px;color:#6B4E10;line-height:1.45}
+.sp-sample-tx b{display:block;letter-spacing:.06em;font-size:11.5px;text-transform:uppercase;color:#8A6410}
+
+.sp-note{margin-top:8px;font-size:11.8px;color:var(--muted);line-height:1.45}
+
+/* page 1 — the FY Budget / YTD Actual / YTD Plan matrix */
+.sp-matrix .sp-mlab{font-weight:700;color:var(--ink);width:170px}
+.sp-matrix tbody tr.sp-mrow-total{background:var(--brand-soft)}
+.sp-matrix tbody tr.sp-mrow-total td{font-weight:800}
+.sp-two{display:grid;grid-template-columns:minmax(240px,1fr) 2fr;gap:16px;margin-top:16px}
+@media(max-width:1000px){.sp-two{grid-template-columns:1fr}}
+
+.sp-r2o{border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;background:var(--brand-soft)}
+.sp-r2o-t{font-weight:800;color:var(--brand-dark);font-size:14px}
+.sp-r2o-sub{font-size:11.6px;color:var(--muted);margin:4px 0 12px;line-height:1.4}
+.sp-r2o-vals>div{display:flex;justify-content:space-between;align-items:baseline;
+  padding:8px 0;border-top:1px solid rgba(var(--brand-rgb),.18)}
+.sp-r2o-k{font-size:11.6px;color:var(--muted)}
+.sp-r2o-v{font-size:22px;font-weight:800;color:var(--brand-dark);font-variant-numeric:tabular-nums}
+
+/* cumulative bars + the MTD strip share this column chart */
+.sp-chart{border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;background:var(--surface)}
+.sp-chart-t{font-weight:700;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:10px}
+/* filled sub-region header with icon. Colours come from the THEME vars, never
+   a hard-coded hex, so it follows Admin > Region Appearance like every other
+   region header on the platform. The negative margin pulls it to the card
+   edges (the card carries 14px of padding). */
+.sp-hd{display:flex;align-items:center;gap:9px;margin:-14px -14px 13px;padding:9px 13px;
+  background:linear-gradient(120deg,var(--region-hd-bg),var(--region-hd-accent));
+  color:var(--region-hd-fg);border-radius:var(--r-sm) var(--r-sm) 0 0}
+.sp-hd-ic{width:17px;height:17px;flex:none;fill:currentColor;opacity:.92}
+.sp-hd-t{font-size:11.5px;font-weight:700;letter-spacing:.085em;text-transform:uppercase}
+.sp-hd-chip{margin-inline-start:auto;font-size:11px;font-weight:600;padding:2px 9px;
+  border-radius:999px;background:rgba(255,255,255,.18);color:var(--region-hd-fg)}
+.sp-legend{display:flex;gap:14px;margin:8px 0 10px;font-size:11.5px;color:var(--muted)}
+.sp-legend span{display:inline-flex;align-items:center;gap:5px}
+.sp-sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.sp-sw--bud{background:var(--sp-bud)}.sp-sw--act{background:var(--sp-act)}.sp-sw--pln{background:var(--sp-pln)}
+.sp-cols{display:flex;align-items:flex-end;gap:6px;height:190px;padding-top:6px}
+.sp-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;min-width:0}
+.sp-col-bars{display:flex;align-items:flex-end;gap:2px;height:100%}
+.sp-b{flex:1;border-radius:2px 2px 0 0;min-height:1px;display:block}
+.sp-b--bud{background:var(--sp-bud)}.sp-b--act{background:var(--sp-act)}.sp-b--pln{background:var(--sp-pln)}
+.sp-col-x{text-align:center;font-size:10.5px;color:var(--muted);padding-top:5px}
+
+/* page 2 — KPI band, gauges, department bars */
+.sp-kpis{margin-bottom:16px}
+.sp-gauges{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.sp-gauge{flex:1;min-width:230px;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:14px;background:var(--surface);text-align:center}
+.sp-gauge-t{font-weight:700;font-size:15px;color:var(--ink)}
+.sp-gauge-svg{width:100%;max-width:220px;height:auto;margin:4px auto 0;display:block}
+.sp-gauge-v{font-size:22px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;margin-top:-8px}
+.sp-gauge-k{font-size:11.4px;color:var(--muted)}
+.sp-gauge-chips{display:flex;gap:8px;margin-top:12px}
+.sp-gauge-chips span{flex:1;border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 4px}
+.sp-gauge-chips b{display:block;font-size:13px;font-variant-numeric:tabular-nums}
+.sp-gauge-chips i{display:block;font-style:normal;font-size:10.5px;color:var(--muted);margin-top:2px}
+
+/* the department chart is a card like the charts beside it, so its filled
+   header sits flush in the same way */
+.sp-dept{border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;background:var(--surface)}
+.sp-dept .bars{max-height:470px;overflow-y:auto;padding-inline-end:6px}
+.sp-dept .bar-track{position:relative}
+/* FOUR children (label, track, value, %) -- the inherited 3-column .bar-row
+   pushed the % onto an implicit second row. Label column is wide and WRAPS:
+   department names are long and must be readable in full, with the cost-centre
+   code under them. */
+.sp-dept .bar-row,
+.sp-cats .bar-row{grid-template-columns:minmax(240px,26%) 1fr 104px 70px;
+  align-items:center;gap:12px}
+.sp-dept .bar-label,
+.sp-cats .bar-label{white-space:normal;overflow:visible;text-overflow:clip;
+  line-height:1.3;padding-block:2px}
+.sp-dname{display:block}
+.sp-dcc{display:block;font-size:11px;font-weight:600;color:var(--muted);
+  font-variant-numeric:tabular-nums;margin-top:1px}
+.sp-dcc:empty{display:none}
+@media(max-width:900px){
+  .sp-dept .bar-row,
+  .sp-cats .bar-row{grid-template-columns:minmax(150px,40%) 1fr 84px}
+  .sp-dept .bar-cnt,.sp-cats .bar-cnt{display:none}
+}
+/* `html[dir=rtl] .bar-fill` (0,1,1) out-specifies a single class, so in Arabic
+   these bars silently reverted to the brand gradient. Three-class selectors
+   win in BOTH directions -- never colour a .bar-fill with one class here. */
+.sp-dept .bar-track .sp-f--bud,
+.sp-cats .bar-track .sp-f--bud{background:var(--sp-bud);opacity:.28}
+.sp-dept .bar-track .sp-f--act,
+.sp-cats .bar-track .sp-f--act{background:var(--sp-act);
+  position:absolute;inset-block:0;inset-inline-start:0}
+.sp-plan-tick{position:absolute;inset-block:-2px;width:2px;background:var(--sp-pln);
+  transform:translateX(-1px)}
+[dir="rtl"] .sp-plan-tick{transform:translateX(1px)}
+
+/* page 3 — sector table, RAG dots */
+.sp-rag{display:inline-block;width:11px;height:11px;border-radius:50%;
+  margin-inline-end:7px;vertical-align:-1px}
+.sp-rag--high{background:var(--sp-rag-high)}
+.sp-rag--mid{background:var(--sp-rag-mid)}
+.sp-rag--low{background:var(--sp-rag-low)}
+.sp-rag--na{background:var(--line)}
+.sp-rag-legend{display:flex;gap:16px;margin-bottom:10px;font-size:11.5px;color:var(--muted)}
+.sp-rag-legend span{display:inline-flex;align-items:center}
+.sp-sectors tfoot tr.sp-total td{font-weight:800;background:var(--brand-soft);
+  border-top:2px solid rgba(var(--brand-rgb),.35)}
+.sp-neg{color:#C0392B}
+
+/* page 4 — revenue streams */
+.sp-streams{display:flex;gap:14px;flex-wrap:wrap}
+.sp-stream{flex:1;min-width:210px;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:12px 14px;background:var(--surface)}
+.sp-stream--tot{background:var(--brand-soft);border-color:rgba(var(--brand-rgb),.3)}
+.sp-stream-t{font-family:var(--serif);font-weight:700;font-size:15px;color:var(--ink);margin-bottom:8px}
+.sp-stream-row{display:flex;gap:10px}
+.sp-stream-row>div{flex:1}
+.sp-stream-pl{opacity:.72}
+.sp-stream-k{display:block;font-size:10.6px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sp-stream-row b{font-size:18px;font-weight:800}
+.sp-stream-ach{margin-top:8px;font-size:12.5px;font-weight:700;color:var(--brand-dark)}
+.sp-cats{max-height:430px;overflow-y:auto;padding-inline-end:4px}
+.sp-cats .bar-track{position:relative}
+
+/* data quality */
+.sp-dq{display:flex;gap:14px;flex-wrap:wrap}
+.sp-dq>div{flex:1;min-width:170px;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
+.sp-dq-k{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.sp-dq b{font-size:15px;font-variant-numeric:tabular-nums}
+
+/* ── Projects Costing Adjustments (v1.78.0) ─────────────────────────── */
+/* the (*) marker on butil rows carrying an approved adjustment */
+.adj-star{color:var(--warn);font-weight:800;font-variant-numeric:tabular-nums;
+  margin-inline-end:5px;cursor:help;letter-spacing:-.5px}
+/* meaning of (*) — sits directly under the results table */
+.cadj-note{padding:9px 14px;font-size:12px;color:var(--muted);
+  border-top:1px dashed var(--line)}
+/* drawer sections */
+.ca-sec-t{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--brand-dark);margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.ca-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:760px}
+.ca-form .ca-wide{grid-column:1 / -1}
+.ca-dist-bar{display:flex;gap:8px;max-width:560px;margin-bottom:8px}
+.ca-dist-bar .inp{flex:1}
+.ca-dist-wrap{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.ca-dist-tbl td .sub-d,.ca-dist-sel .sub-d{color:var(--muted);font-size:11px}
+.ca-dist-sel{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  background:var(--brand-soft);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.ca-nocode{color:var(--warn);font-size:12px;font-weight:600}
+/* status ribbon on actioned rows */
+.ca-status{display:flex;align-items:center;gap:10px;border-radius:8px;padding:9px 14px;
+  margin-bottom:12px;font-size:12.5px;background:var(--bg);border:1px solid var(--line)}
+.ca-status.ok{background:#EAF4EE;border-color:#BFDCCB;color:var(--ok)}
+.ca-status.bad{background:#FBEDEA;border-color:#EBC6BE;color:var(--bad)}
+.ca-status span{color:var(--muted)}
+/* approve / reject header buttons */
+.btn.ca-app{border-color:#BFDCCB;color:var(--ok)}
+.btn.ca-app:hover{background:#EAF4EE}
+.btn.ca-rej{border-color:#EBC6BE;color:var(--bad)}
+.btn.ca-rej:hover{background:#FBEDEA}
+
+/* costadj register — status pill (v1.79.0): the IR stamps row._rowClass on the
+   <tr> and every td carries data-key, so the pill is pure CSS on the status
+   cell (colour + icon disc), no shared-component change */
+.ir-table tr[class*='ca-st-'] td[data-key=status] span{
+  display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:11px;
+  letter-spacing:.02em;border-radius:999px;padding:3px 10px;border:1px solid transparent}
+.ir-table tr[class*='ca-st-'] td[data-key=status] span::before{
+  font-weight:800;font-size:10px;line-height:1}
+.ir-table tr.ca-st-draft td[data-key=status] span{
+  background:#F1F0EA;border-color:#DCD8CA;color:#6E6A58}
+.ir-table tr.ca-st-draft td[data-key=status] span::before{content:'\270E'}
+.ir-table tr.ca-st-approved td[data-key=status] span{
+  background:#EAF4EE;border-color:#BFDCCB;color:var(--ok)}
+.ir-table tr.ca-st-approved td[data-key=status] span::before{content:'\2713'}
+.ir-table tr.ca-st-rejected td[data-key=status] span{
+  background:#FBEDEA;border-color:#EBC6BE;color:var(--bad)}
+.ir-table tr.ca-st-rejected td[data-key=status] span::before{content:'\2715'}
+
+/* ── Budget Utilization Comments (v1.82.0) ──────────────────────────── */
+/* the (**) marker on butil rows carrying comments for the selected period */
+.cmt-star{color:#7C4DBE;font-weight:800;font-variant-numeric:tabular-nums;
+  margin-inline-end:5px;cursor:help;letter-spacing:-.5px}
+/* the Comments column chat button (+count badge) */
+.cmt-th,.cmt-cell{text-align:center;white-space:nowrap}
+.cmt-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:27px;border:1px solid var(--line);border-radius:8px;background:#fff;
+  cursor:pointer;color:var(--muted)}
+.cmt-btn svg{width:15px;height:15px}
+.cmt-btn:hover{border-color:var(--brand)}
+.cmt-btn.has{color:#7C4DBE;border-color:#C9B6E8;background:#F6F1FD}
+.cmt-n{position:absolute;top:-7px;inset-inline-end:-8px;background:#7C4DBE;color:#fff;
+  font-size:10px;font-weight:700;border-radius:9px;padding:0 4px;min-width:15px;line-height:14px}
+/* drawer: level badge + scope */
+.cmt-lvl{background:#F6F1FD;color:#7C4DBE;border-radius:6px;padding:0 7px;font-size:11px;
+  font-weight:700;margin-inline-start:8px}
+/* thread sections */
+.cmt-sec{margin:14px 0}
+.cmt-sec-h{display:flex;gap:8px;align-items:center;font-weight:700;font-size:12.5px;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--brand-dark);
+  border-bottom:2px solid var(--brand-soft);padding-bottom:5px;margin-bottom:8px}
+.cmt-sec-n{background:var(--brand-soft);border-radius:9px;font-size:11px;padding:0 7px}
+/* comment cards */
+.cmt-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:#fff}
+.cmt-card.mine{background:#F7FBF9;border-color:#CBE0D6}
+.cmt-card.reply{margin-inline-start:28px;background:#FAFBFC}
+.cmt-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+.cmt-ava{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:none}
+.cmt-ava.sm{width:20px;height:20px;font-size:9px}
+.cmt-auth{font-weight:700}
+.cmt-when{color:var(--muted);font-size:11px}
+/* labelled accounting-period chip (2026-08-23 feedback: distinct colour + label) */
+.cmt-per{background:#FDF3E3;border:1px solid #EAD3A8;border-radius:6px;padding:1px 8px;
+  color:#8A5A00;font-size:11px;font-weight:600}
+.cmt-per b{font-weight:800}
+/* author photo (falls back to the initials disc) */
+.cmt-ava-img{width:24px;height:24px;border-radius:50%;object-fit:cover;flex:none;
+  border:1px solid var(--line)}
+.cmt-ava-img.sm{width:20px;height:20px}
+/* drawer search region — collapsed by default */
+.cmt-flt{border:1px solid var(--line);border-radius:10px;margin:10px 0;background:#FAFBFC}
+.cmt-flt-h{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;
+  font-weight:700;font-size:12.5px;color:var(--brand-dark)}
+.cmt-flt-chev{font-size:10px;color:var(--muted)}
+.cmt-flt-sum{color:var(--muted);font-weight:500;font-size:11.5px}
+.cmt-flt-b{display:flex;gap:12px;flex-wrap:wrap;padding:0 12px 10px}
+.cmt-flt-b .field{min-width:200px}
+/* results-table Comments column (Display Comments != None) */
+.cmt-txt-th{min-width:240px}
+.cmt-txt-cell{max-width:340px;cursor:help}
+.cmt-txt-clamp{white-space:pre-line;font-size:11.5px;line-height:1.35;max-height:56px;
+  overflow:hidden;color:#4A5A6E}
+.cmt-lock{font-size:11px;cursor:help}
+.cmt-edited{color:#B08830;font-size:11px}
+.cmt-ref{color:#A8B4C2;font-size:10px}
+.cmt-text{white-space:pre-wrap;margin:6px 0 2px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.cmt-acts{display:flex;gap:12px;margin-top:6px;align-items:center;flex-wrap:wrap}
+.cmt-link{background:none;border:none;padding:0;color:var(--brand);font-size:12px;
+  font-weight:600;cursor:pointer}
+.cmt-link.danger{color:var(--bad)}
+.cmt-link:hover{text-decoration:underline}
+.cmt-replies{margin-top:6px}
+.cmt-replybox{margin:8px 0 0;margin-inline-start:28px}
+/* attachments panel */
+.cmt-docs{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px}
+.cmt-doc{display:flex;align-items:center;gap:10px;padding:3px 0;font-size:12.5px;flex-wrap:wrap}
+.cmt-doc-n{font-weight:600}
+.cmt-doc-m{font-size:11px}
+/* add-a-comment box */
+.cmt-addbox{border-top:2px solid var(--brand-soft);margin-top:16px;padding-top:10px}
+.cmt-add-h{font-weight:700;font-size:13px;margin-bottom:6px}
+.cmt-add-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.cmt-add-row .inp{width:auto}
+/* closed-period banner + status pill */
+.cmt-closedbn{background:#FBEDEA;border:1px solid #EBC6BE;color:var(--bad);border-radius:8px;
+  padding:8px 12px;font-size:12.5px;margin:8px 0;font-weight:600}
+.cmt-pill{display:inline-block;border-radius:14px;padding:2px 12px;font-size:11px;
+  font-weight:700;background:#EAF4EE;color:var(--ok)}
+.cmt-pill.closed{background:#FBEDEA;color:var(--bad)}
+/* register page: sector / cost-center quick entry bar */
+.cmt-new{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;
+  padding:9px 12px;border:1px dashed var(--brand-soft);border-radius:10px}
+.cmt-new .inp{width:auto;min-width:170px}
+.cmt-new-l{font-weight:700;font-size:12.5px}
+/* admin pages */
+.cmt-cap{text-align:center}
+.cmt-cap input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);cursor:pointer}
+.cmt-peract{white-space:nowrap;text-align:end}
+
+/* ── "The Binder" report-generation popup (v1.80.0, study B) ──────────
+   Centred fixed overlay (Data Conveyor pattern) shown while a Briefing
+   Book / Excel Register / PowerPoint run is generated and polled. */
+.rg{position:fixed;inset:0;z-index:59;display:flex;align-items:center;justify-content:center;
+  background:rgba(27,42,39,.42);backdrop-filter:blur(1.5px);cursor:pointer}
+.rg .rg-card{cursor:default}
+.rg-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;
+  width:min(460px,92vw);padding:26px 28px 20px;background:var(--surface);
+  border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 24px 60px -18px rgba(27,42,39,.45)}
+.rg-x{position:absolute;top:8px;inset-inline-end:10px;border:0;background:none;cursor:pointer;
+  font-size:20px;line-height:1;color:var(--muted);padding:4px 7px;border-radius:7px}
+.rg-x:hover{background:var(--brand-soft);color:var(--brand-dark)}
+.rg-anim{position:relative;display:flex;align-items:center;justify-content:center;gap:34px;
+  width:100%;min-height:176px}
+.rg-secs{display:flex;flex-direction:column;gap:5px}
+.rg-secs span{font-size:10.5px;font-weight:600;color:var(--muted);border:1px solid var(--line);
+  border-radius:999px;padding:2px 10px;background:var(--bg);animation:rgSecOn 7.7s infinite}
+.rg-secs span:nth-child(1){animation-delay:0s}
+.rg-secs span:nth-child(2){animation-delay:1.1s}
+.rg-secs span:nth-child(3){animation-delay:2.2s}
+.rg-secs span:nth-child(4){animation-delay:3.3s}
+.rg-secs span:nth-child(5){animation-delay:4.4s}
+.rg-secs span:nth-child(6){animation-delay:5.5s}
+.rg-secs span:nth-child(7){animation-delay:6.6s}
+@keyframes rgSecOn{
+  0%,2%{background:var(--gold);border-color:#A9863A;color:#2C2410}
+  12%,100%{background:var(--bg);border-color:var(--line);color:var(--muted)}
+}
+.rg-fly{position:absolute;left:calc(50% - 118px);top:70px;width:26px;height:16px;background:var(--gold);
+  border-radius:3px;z-index:2;opacity:0;animation:rgFly 1.1s cubic-bezier(.5,0,.6,1) infinite}
+@keyframes rgFly{
+  0%{transform:translate(0,0) rotate(0);opacity:0}
+  12%{opacity:1}
+  80%{opacity:1}
+  100%{transform:translate(150px,6px) rotate(8deg);opacity:0}
+}
+html[dir=rtl] .rg-fly{left:auto;right:calc(50% - 118px);animation-name:rgFlyRtl}
+@keyframes rgFlyRtl{
+  0%{transform:translate(0,0) rotate(0);opacity:0}
+  12%{opacity:1}
+  80%{opacity:1}
+  100%{transform:translate(-150px,6px) rotate(-8deg);opacity:0}
+}
+.rg-book{position:relative;width:96px;height:126px;background:var(--brand);border-radius:4px 10px 10px 4px;
+  box-shadow:inset 6px 0 0 var(--brand-dark);animation:rgBookPulse 1.1s infinite}
+html[dir=rtl] .rg-book{border-radius:10px 4px 4px 10px;box-shadow:inset -6px 0 0 var(--brand-dark)}
+@keyframes rgBookPulse{0%,78%{transform:scale(1)}88%{transform:scale(1.025)}100%{transform:scale(1)}}
+.rg-book::before{content:'';position:absolute;inset:10px 8px auto 14px;height:2px;background:var(--gold)}
+html[dir=rtl] .rg-book::before{inset:10px 14px auto 8px}
+.rg-book .rg-bt{position:absolute;left:14px;right:8px;top:22px;color:#F6F5F1;
+  font-family:var(--serif);font-size:10.5px;font-weight:500;line-height:1.35;letter-spacing:.02em}
+html[dir=rtl] .rg-book .rg-bt{left:8px;right:14px}
+.rg-book .rg-bt b{display:block;font-size:12px;font-weight:600;margin-bottom:2px}
+.rg-book::after{content:'';position:absolute;right:-5px;top:8px;bottom:8px;width:5px;
+  background:repeating-linear-gradient(to bottom,#FFFFFF 0 3px,#D8DCD6 3px 4px);
+  border-radius:0 2px 2px 0}
+html[dir=rtl] .rg-book::after{right:auto;left:-5px;border-radius:2px 0 0 2px}
+.rg-tx{text-align:center}
+.rg-tx b{display:block;font-weight:700;font-size:14px}
+.rg-sub{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion: reduce){
+  .rg-secs span,.rg-book{animation:none}
+  .rg-fly{animation:none;opacity:0}
+}
+
+/* lite work popup (v1.81.0): Refresh actuals / Rebuild views feedback */
+.rg-lite .rg-card{width:min(400px,92vw);gap:10px}
+.rg-lite .ojpc{width:46px;height:46px}
+.rg-lite .rg-sub{display:block;max-width:32ch;margin-top:2px}
+
+/* ═══ Generate and Send + Email Logs + Report Recipients (v1.84.0) ═══ */
+/* status pills on the new surfaces — same recipe as the budgettrx pills */
+#pg-emaillog .st, #pg-recipients .st, .dw-gs .st, .dw-el .st{
+  display:inline-flex;align-items:center;gap:6px;
+  padding-block:2px;padding-inline:6px 11px;border-radius:999px;
+  font-size:11.5px;font-weight:600;letter-spacing:.2px;line-height:1.65;white-space:nowrap;
+  background:var(--st-bg);border:1px solid var(--st-bd);color:var(--st-fg)}
+#pg-emaillog .st::before, #pg-recipients .st::before, .dw-gs .st::before, .dw-el .st::before{
+  content:var(--st-ic,'\2022');flex:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  inline-size:14px;block-size:14px;border-radius:50%;
+  background:var(--st-fg);color:#fff;font-size:9px;font-weight:700;line-height:1}
+#pg-emaillog .st--ok, #pg-recipients .st--ok, .dw-gs .st--ok, .dw-el .st--ok{--st-fg:var(--ok);--st-bg:#E6F3EC;--st-bd:#BFDECD;--st-ic:'\2713'}
+#pg-emaillog .st--err, #pg-recipients .st--err, .dw-gs .st--err, .dw-el .st--err{--st-fg:var(--bad);--st-bg:#FCEBE9;--st-bd:#F0C6C1;--st-ic:'\2715'}
+#pg-emaillog .st--warn, #pg-recipients .st--warn, .dw-gs .st--warn, .dw-el .st--warn{--st-fg:var(--warn);--st-bg:#FBEFDD;--st-bd:#EBD3AE;--st-ic:'!'}
+#pg-emaillog .st--info, #pg-recipients .st--info, .dw-gs .st--info, .dw-el .st--info{--st-fg:var(--info);--st-bg:#E8F0F8;--st-bd:#C6D8EA;--st-ic:'\2022'}
+#pg-emaillog .st--mute, #pg-recipients .st--mute, .dw-gs .st--mute, .dw-el .st--mute{--st-fg:#6B7671;--st-bg:#EFF1F0;--st-bd:#D9DEDB;--st-ic:'\2013'}
+
+/* email-log filter grid + clickable rows */
+.el-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 14px;align-items:end}
+.el-filters label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#54605B;font-weight:600}
+.el-btns{display:flex;gap:8px;align-items:end}
+.el-row{cursor:pointer}
+.el-row:hover td{background:rgba(63,111,95,.06)}
+.el-subj{max-inline-size:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Generate-and-Send drawer */
+.dw-drawer.dw-gs{width:min(1200px,96vw)}
+.dw-drawer.dw-rl{width:min(860px,94vw)}
+.dw-drawer.dw-el{width:min(1000px,94vw)}
+.gs-hint{margin-block:8px;font-size:13px;color:#3B4844}
+.gs-hint.muted,.muted{color:#7d8781}
+.gs-cols{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch;margin-block:10px}
+.gs-left,.gs-right{min-inline-size:0;display:flex;flex-direction:column;gap:8px}
+.gs-mid{display:flex;align-items:center}
+.gs-col-t{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#54605B}
+.gs-chosen{flex:1;overflow:auto;max-block-size:46vh;border:1px solid #d9dde2;border-radius:10px;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px}
+.gs-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(63,111,95,.3);background:rgba(63,111,95,.06);border-radius:8px;padding:6px 10px}
+.gs-chip-t{flex:1;min-inline-size:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.gs-chip-t small{color:#7d8781;margin-inline-start:6px}
+.gs-chip-x{border:0;background:none;color:#C0392B;font-size:13px;cursor:pointer;line-height:1;padding:2px}
+.gs-formats{display:flex;gap:18px;align-items:center;border-block-start:1px solid #e6e9ec;padding-block-start:12px;margin-block-start:6px;flex-wrap:wrap}
+.chk-row{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:13px}
+.gs-banner{border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;margin-block:8px}
+.gs-banner.test{background:#FBEFDD;border:1px solid #EBD3AE;color:#8a5a10}
+.gs-banner.warn{background:#FCEBE9;border:1px solid #F0C6C1;color:#8f2f23}
+.gs-banner.ok{background:#E6F3EC;border:1px solid #BFDECD;color:#1f5e42}
+.gs-confirm{display:flex;flex-direction:column;gap:10px;margin-block-start:8px}
+.gs-node{border:1px solid #dfe3e7;border-radius:10px;padding:10px 14px;background:#fff}
+.gs-node.miss{border-color:#EBD3AE;background:#FDF8EE}
+.gs-node-h{margin-block-end:6px;font-size:13.5px}
+.gs-node-h small{margin-inline-start:8px}
+.gs-line{display:flex;gap:8px;align-items:baseline;font-size:12.5px;margin-block:3px;overflow-wrap:anywhere}
+.gs-line.miss{color:#8a5a10;font-weight:600}
+.gs-tag{flex:none;font-size:10px;font-weight:700;letter-spacing:.5px;border-radius:999px;padding:1px 8px;text-transform:uppercase}
+.gs-tag.to,.gs-tag{background:rgba(63,111,95,.12);color:#2C5044}
+.gs-tag.cc{background:#E8F0F8;color:#3A6EA5}
+.gs-tag.bcc{background:#EFF1F0;color:#6B7671}
+.gs-files{display:flex;gap:8px;flex-wrap:wrap;margin-block:6px}
+.gs-params{background:#f6f7f8;border:1px solid #e3e6ea;border-radius:8px;padding:10px;font-size:11.5px;white-space:pre-wrap;overflow-wrap:anywhere}
+@media (max-width:900px){.gs-cols{grid-template-columns:1fr}.gs-mid{justify-content:center}}
+.dw-sub{font-size:12px;opacity:.85;margin-block-start:3px}
+
+/* ── Plan Insights (v1.88.0, mockups D1+K1+K2, 2026-08-27) ────────────
+   D1 = always-on vs-Plan + Plan-Coverage columns; D2/D3 = the visual
+   columns behind the "Show Plan Insights" search toggle; K1 = the plan
+   tile split into Performance + Coverage tiles (7-tile band); K2 = the
+   amber/green insight strips above the Overview region. */
+.bu-kpis.bu-kpis7{grid-template-columns:1fr 1.05fr 1.05fr .95fr 1.15fr 1.05fr .95fr}
+@media (max-width:1700px){.bu-kpis.bu-kpis7{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:1100px){.bu-kpis.bu-kpis7{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:760px){.bu-kpis.bu-kpis7{grid-template-columns:1fr}}
+.bk-plancov{--bk-c:#3A6EA5;--bk-soft:#E7EEF6}
+.pi-hand{font-size:19px}
+.pi-th{white-space:nowrap}
+.pi-th-wide{min-width:230px}
+.pi-cell{white-space:nowrap}
+td.pi-cell{vertical-align:middle}
+.vp{display:inline-flex;align-items:center;gap:6px;font-weight:700;cursor:pointer}
+.vp em{font-style:normal;font-size:15px}
+.vp.ok{color:var(--ok)} .vp.low{color:var(--warn)} .vp.high{color:var(--bad)} .vp.none{color:var(--muted);font-weight:500;cursor:default}
+.pi-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:700;border-radius:999px;padding:2.5px 10px;white-space:nowrap}
+.pi-pill.full{background:#E3F0E9;color:var(--ok)}
+.pi-pill.under{background:#F7EDDC;color:var(--warn)}
+.pi-pill.over{background:#E7EEF6;color:var(--info)}
+.pi-pill.np{background:#EEF0EE;color:var(--muted)}
+/* D2 micro-chart cell: track = plan YTD, fill = actual, tick = YTD budget */
+.pi-d2{min-width:225px}
+.bl-row{display:flex;align-items:center;gap:8px}
+.bl-hand{font-size:14px;flex:none}
+.bl-track{position:relative;flex:1;height:9px;border-radius:99px;background:#E4E9E4;display:block}
+.bl-fill{position:absolute;inset-block:0;inset-inline-start:0;border-radius:99px;display:block}
+.bl-fill.ok{background:var(--ok)} .bl-fill.low{background:#D89A3E} .bl-fill.high{background:var(--bad)}
+.bl-tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55;display:block}
+.bl-cap{font-size:10.5px;color:var(--muted);margin-top:2px}
+.bl-cap b{color:var(--ink)}
+.bl-cov{height:5px;border-radius:99px;background:#EEE7F0;margin-top:4px;overflow:hidden}
+.bl-cov i{display:block;height:100%;background:#8E4585;border-radius:99px}
+/* D3 composite cell */
+.pi-d3{min-width:215px}
+.pi-d3 .sc-row,.sc-row{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:1px 0}
+.sc-row .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.sc-row .l{color:var(--muted);font-weight:600}
+.sc-row .v{margin-inline-start:auto;font-weight:700;color:var(--ink)}
+.sc-row .v.ok{color:var(--ok)} .sc-row .v.low{color:var(--warn)} .sc-row .v.high{color:var(--bad)}
+.sc-div{border-top:1px dashed var(--line);margin:3px 0}
+/* K2 insight strips — amber (execution) + green (coverage) .bu-alert variants */
+.bu-alert--pi{cursor:default;background:linear-gradient(120deg,#FBF3E2,#F8EDD6);border-color:#E8D5A9;border-inline-start-color:var(--warn)}
+.bu-alert--pi:hover{transform:none;box-shadow:var(--shadow)}
+.bu-alert--pi .bu-alert-tx{color:#6E5010}
+.bu-alert--pi .bu-alert-tx b{color:var(--warn)}
+.bu-alert--pi .bu-alert-ic{background:var(--warn)}
+.bu-alert--picov{cursor:default;background:linear-gradient(120deg,#E7F1EB,#DFEDE5);border-color:#C9DFD3;border-inline-start-color:var(--ok)}
+.bu-alert--picov:hover{transform:none;box-shadow:var(--shadow)}
+.bu-alert--picov .bu-alert-tx{color:#26654C}
+.bu-alert--picov .bu-alert-tx b{color:var(--ok)}
+.bu-alert--picov .bu-alert-ic{background:var(--ok)}
+.pi-ic{font-size:16px;color:#fff}
+.pi-cta{cursor:pointer}
+.bu-alert--pi .pi-cta{background:var(--warn)} .bu-alert--pi .pi-cta:hover{background:#9A6114}
+.bu-alert--picov .pi-cta{background:var(--ok)} .bu-alert--picov .pi-cta:hover{background:#26654C}
+/* verdict-filter chip in the (brand-gradient, white-text) Results header */
+.pi-chip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:#fff;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:3px 11px;cursor:pointer;white-space:nowrap;margin-inline-start:10px}
+.pi-chip:hover{background:rgba(255,255,255,.3)}
+.pi-chip b{font-weight:800}
+
+/* ── Results-region level tabs (v1.89.0, layout B): segmented switcher +
+   live per-level summary strip; Department/Sector aggregated register ── */
+.bu-lvl-bar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  padding:10px 14px;border-bottom:1px solid var(--line);background:#FBFCFB}
+.bu-lvl-seg{display:inline-flex;background:var(--brand-soft);border:1px solid #D8E2DD;
+  border-radius:999px;padding:3px;gap:2px}
+.bu-lvl-tab{appearance:none;border:0;border-radius:999px;background:transparent;color:#51635C;
+  font-family:inherit;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;
+  gap:7px;padding:7px 15px;cursor:pointer;white-space:nowrap}
+.bu-lvl-tab svg{width:14px;height:14px;stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round}
+.bu-lvl-tab:hover{color:var(--brand-dark)}
+.bu-lvl-tab.on{background:var(--brand-dark);color:#fff;
+  box-shadow:0 2px 6px rgba(var(--brand-rgb),.35)}
+.bu-lvl-tab:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.bu-lvl-sum{display:flex;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
+/* v1.91.0: professional icon KPI chips — tinted disc + stacked label/value;
+   palette mirrors the Overview band (budget steel-blue, plan plum, actual
+   purple, encumbrance amber, fund green) */
+.bu-lvl-kv{display:flex;align-items:center;gap:9px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:5px 12px 5px 6px;
+  min-width:104px}
+html[dir=rtl] .bu-lvl-kv{padding:5px 6px 5px 12px}
+.bu-lvl-kv .kv-ico{width:27px;height:27px;border-radius:8px;flex:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--kv-soft,#EEF2F0);color:var(--kv-c,var(--brand))}
+.bu-lvl-kv .kv-ico svg{width:15px;height:15px;stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.bu-lvl-kv .kv-tx{display:flex;flex-direction:column;line-height:1.15}
+.bu-lvl-kv .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;white-space:nowrap}
+.bu-lvl-kv .v{font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap}
+.bu-lvl-kv.kv-count{--kv-c:var(--brand);--kv-soft:var(--brand-soft)}
+.bu-lvl-kv.kv-budget{--kv-c:var(--info);--kv-soft:#E8EFF7}
+.bu-lvl-kv.kv-plan{--kv-c:#8E4585;--kv-soft:#F4E9F2}
+.bu-lvl-kv.kv-actual{--kv-c:#7C4DBE;--kv-soft:#F0EAF9}
+.bu-lvl-kv.kv-enc{--kv-c:var(--warn);--kv-soft:#F8EFDF}
+.bu-lvl-kv.kv-fund{--kv-c:var(--ok);--kv-soft:#E4F1EA}
+.bu-lvl-kv.kv-fund.kv-neg{--kv-c:var(--bad);--kv-soft:#F8E9E5;border-color:#E7C4BD}
+.bu-lvl-kv.kv-fund.kv-neg .v{color:var(--bad)}
+/* plan-only groups: uploaded plan with no budget line at this level */
+.bu-agg-tbl tr.tr-planonly td{background:#FDFAF0}
+.bu-agg-tbl tr.tr-planonly td:first-child{border-inline-start:3px solid #C9A227}
+/* keyless group = lines missing the MANDATORY cost-centre classification —
+   red violation tint; every cell opens the missing-lines list */
+.bu-agg-tbl tr.tr-noclass td{background:#FDF3F2}
+.bu-agg-tbl tr.tr-noclass td:first-child{border-inline-start:3px solid #C0392B}
+.chip-po{display:inline-flex;align-items:center;background:#FBF4E2;color:var(--warn);
+  border:1px dashed #DCC27A;border-radius:6px;padding:1px 7px;font-size:10.5px;
+  font-weight:700;white-space:nowrap;margin-inline-start:6px}
+/* agg comments cell: 💬 button + the level's recorded comment text (period-scoped) */
+.bu-agg-tbl .cmt-th-agg{min-inline-size:220px}
+.bu-agg-tbl .cmt-cell-agg{white-space:normal}
+.agg-cmt{display:flex;align-items:flex-start;gap:8px}
+.agg-cmt .cmt-txt-clamp{flex:1;min-inline-size:180px;text-align:start}
+
+/* ── Fund Movement columns (v1.94.0): green/red net amount, breakdown popover,
+   drill sort switch. .fm-pos/.fm-neg also tint the drill's Amount column via
+   the pn column flag. */
+.fm-pos{color:#1E7B45;font-weight:600}
+.fm-neg{color:#C0392B;font-weight:600}
+.fm-tip{position:fixed;z-index:95;background:var(--surface,#fff);border:1px solid #D5DFDA;border-radius:10px;
+  box-shadow:0 12px 32px rgba(31,63,53,.18);padding:10px 12px;min-inline-size:250px;pointer-events:none}
+.fm-tip-h{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#3F6F5F;margin-block-end:6px}
+.fm-tip-r{display:flex;align-items:center;gap:8px;font-size:12.5px;padding-block:2px}
+.fm-tip-r b{margin-inline-start:auto}
+.fm-tip-r .s{inline-size:14px;text-align:center}
+.fm-tip-r.pos{color:#1E7B45}
+.fm-tip-r.neg{color:#C0392B}
+.fm-tip-d{border-block-start:1px dashed #D5DFDA;margin-block:5px}
+.fm-tip-r.net{color:var(--text,#243A33);font-weight:600}
+.fm-tip-r.net b.pos{color:#1E7B45}
+.fm-tip-r.net b.neg{color:#C0392B}
+.fm-sortbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ── Fund Movement drill status pills (v1.95.0): the budgettrx .st vocabulary
+   re-declared for the drawer (the originals are scoped to #pg-budgettrx —
+   de-scoping them would change an existing page's specificity). Glyph in a
+   filled disc: ✓ ok / ✕ err / ! warn / • info / – mute. */
+.dw-drawer .st{display:inline-flex;align-items:center;gap:6px;
+  padding-block:2px;padding-inline:6px 11px;border-radius:999px;
+  font-size:11.5px;font-weight:600;letter-spacing:.2px;line-height:1.65;white-space:nowrap;
+  background:var(--st-bg);border:1px solid var(--st-bd);color:var(--st-fg)}
+.dw-drawer .st::before{content:var(--st-ic,'\2022');flex:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  inline-size:14px;block-size:14px;border-radius:50%;
+  background:var(--st-fg);color:#fff;font-size:9px;font-weight:700;line-height:1}
+.dw-drawer .st--ok  {--st-fg:#1E7A4C;--st-bg:#E6F3EC;--st-bd:#BFDECD;--st-ic:'\2713'}
+.dw-drawer .st--err {--st-fg:#B3261E;--st-bg:#FCEBE9;--st-bd:#F0C6C1;--st-ic:'\2715'}
+.dw-drawer .st--warn{--st-fg:#9A6700;--st-bg:#FBEFDD;--st-bd:#EBD3AE;--st-ic:'!'}
+.dw-drawer .st--info{--st-fg:#1F5F8B;--st-bg:#E8F0F8;--st-bd:#C6D8EA;--st-ic:'\2022'}
+.dw-drawer .st--mute{--st-fg:#6B7671;--st-bg:#EFF1F0;--st-bd:#D9DEDB;--st-ic:'\2013'}
+
+/* ── Manage columns drawer + vs Budget column (v1.96.0) ── */
+.dw-cols{width:min(560px,94vw)}
+.bu-colsbtn svg{width:15px;height:15px;display:block}
+.cols-views{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;align-items:end;margin-bottom:12px}
+.cols-views .field{min-width:0}
+.cols-vbtns{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.cols-def{grid-column:1/-1;font-size:11.5px;color:var(--muted)}
+.cols-selbar{display:flex;gap:8px;margin:4px 0 8px}
+.cols-list{border:1px solid #DDE3DE;border-radius:10px;overflow:hidden;background:#fff}
+.cols-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid #EEF1EE}
+.cols-row:last-child{border-bottom:0}
+.cols-row.off .cols-lbl{color:var(--muted);text-decoration:line-through}
+.cols-chk{width:17px;height:17px;border:2px solid #B8C4BC;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;background:#fff}
+.cols-chk.on{background:var(--brand);border-color:var(--brand)}
+.cols-chk.on i{width:9px;height:5px;border-inline-start:2px solid #fff;border-block-end:2px solid #fff;transform:rotate(-45deg) translateY(-1px)}
+.cols-lbl{cursor:pointer;font-size:12.5px}
+.cols-gate{font-size:10.5px;color:var(--warn);background:#F7EDDC;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.cols-mv{border:1px solid #C8D2CB;background:#fff;border-radius:7px;width:26px;height:24px;cursor:pointer;font-size:12px;line-height:1;color:#3a4a40}
+.cols-mv:hover{background:#EEF3EF}

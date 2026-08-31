@@ -1,0 +1,139 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('vw.mydel.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('vw.mydel.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: openNew, text: '+ ' + $root.t('vw.mydel.add')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 5"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg" data-bind="text: $root.t('vw.mydel.loadError')"></div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635;</button></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() -->
+
+  <!-- ═══ my outgoing delegations (the vacation rule) ═══ -->
+  <div class="section-heading-row">
+    <div class="section-heading" data-bind="text: $root.t('vw.mydel.outgoing')"></div>
+  </div>
+  <!-- ko if: outgoing().length === 0 -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#127958;</div>
+    <div class="empty-state__msg" data-bind="text: $root.t('vw.mydel.emptyOut')"></div>
+    <div class="empty-state__sub" data-bind="text: $root.t('vw.mydel.emptyOutSub')"></div>
+  </div>
+  <!-- /ko -->
+  <!-- ko if: outgoing().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $root.t('vw.mydel.delegate')"></th>
+        <th data-bind="text: $root.t('vw.mydel.scope')"></th>
+        <th data-bind="text: $root.t('vw.mydel.from')"></th>
+        <th data-bind="text: $root.t('vw.mydel.until')"></th>
+        <th data-bind="text: $root.t('vw.mydel.reason')"></th>
+        <th data-bind="text: $root.t('vw.mydel.status')"></th>
+        <th></th>
+      </tr></thead>
+      <tbody data-bind="foreach: outgoing">
+        <tr>
+          <td style="font-weight:600" data-bind="text: $data.delegateName"></td>
+          <td><span class="badge badge--info" style="font-size:10px" data-bind="text: $vm.scopeLabel($data)"></span></td>
+          <td class="mono" data-bind="text: $data.startDate"></td>
+          <td class="mono" data-bind="text: $data.endDate"></td>
+          <td style="font-size:12px;color:var(--text-2)" data-bind="text: $data.reason || '—'"></td>
+          <td><span data-bind="text: $data.status, css: $vm.statusBadge($data.status)"></span></td>
+          <td style="text-align:end">
+            <!-- ko if: $data.status === 'ACTIVE' -->
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: $vm.cancel.bind($vm, $data), enable: !$vm.busy(),
+                               text: $root.t('vw.mydel.cancel')"></button>
+            <!-- /ko -->
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ delegated TO me ═══ -->
+  <!-- ko if: incoming().length > 0 -->
+  <div class="section-heading-row" style="margin-top:18px">
+    <div class="section-heading" data-bind="text: $root.t('vw.mydel.incoming')"></div>
+  </div>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $root.t('vw.mydel.delegator')"></th>
+        <th data-bind="text: $root.t('vw.mydel.scope')"></th>
+        <th data-bind="text: $root.t('vw.mydel.from')"></th>
+        <th data-bind="text: $root.t('vw.mydel.until')"></th>
+        <th data-bind="text: $root.t('vw.mydel.status')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: incoming">
+        <tr>
+          <td style="font-weight:600" data-bind="text: $data.delegatorName"></td>
+          <td><span class="badge badge--info" style="font-size:10px" data-bind="text: $vm.scopeLabel($data)"></span></td>
+          <td class="mono" data-bind="text: $data.startDate"></td>
+          <td class="mono" data-bind="text: $data.endDate"></td>
+          <td><span data-bind="text: $data.status, css: $vm.statusBadge($data.status)"></span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+
+  <!-- ═══ create drawer ═══ -->
+  <edit-drawer params="open: showEdit, vm: $vm,
+                       title: $root.t('vw.mydel.newTitle'),
+                       saveLabel: $root.t('vw.mydel.save'), cancelLabel: $root.t('vw.mydel.cancel'),
+                       onSave: saveEdit, width: '560px'">
+    <p class="wf-muted" data-bind="text: $root.t('vw.mydel.newHint')"></p>
+    <!-- ko if: editError() -->
+    <div class="alert-banner alert-banner--danger">&#9888; <span data-bind="text: editError()"></span></div>
+    <!-- /ko -->
+    <div class="form-grid">
+      <div class="form-group" style="grid-column:1 / -1">
+        <label class="form-label"><span data-bind="text: $root.t('vw.mydel.delegate')"></span> <span class="required">*</span></label>
+        <select class="form-control" data-bind="value: dDelegate,
+                options: dUsers, optionsText: 'displayName', optionsValue: 'userId',
+                optionsCaption: $root.t('vw.mydel.pick')"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.mydel.scope')"></label>
+        <select class="form-control" data-bind="value: dScope">
+          <option value="ALL_ROLES" data-bind="text: $root.t('vw.mydel.scopeAll')"></option>
+          <option value="MODULE" data-bind="text: $root.t('vw.mydel.scopeModule')"></option>
+        </select>
+      </div>
+      <!-- ko if: dScope() === 'MODULE' -->
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.mydel.module')"></span> <span class="required">*</span></label>
+        <select class="form-control" data-bind="value: dModule,
+                options: dModules, optionsText: 'nameEn', optionsValue: 'moduleCode',
+                optionsCaption: $root.t('vw.mydel.pick')"></select>
+      </div>
+      <!-- /ko -->
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.mydel.fromOptional')"></label>
+        <input class="form-control" type="date" data-bind="value: dStart">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.mydel.until')"></span> <span class="required">*</span></label>
+        <input class="form-control" type="date" data-bind="value: dEnd">
+      </div>
+      <div class="form-group" style="grid-column:1 / -1">
+        <label class="form-label" data-bind="text: $root.t('vw.mydel.reason')"></label>
+        <input class="form-control" type="text" data-bind="textInput: dReason">
+      </div>
+    </div>
+  </edit-drawer>
+</div>

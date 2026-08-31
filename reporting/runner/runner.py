@@ -36,6 +36,54 @@ HOSTNAME = os.environ.get("RPT_WORKER_NAME") or socket.gethostname() or "rpt"
 WORKER_ID = f"{HOSTNAME}/py{os.getpid()}"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
+
+def _apply_sheet_cols(sections, params):
+    """Per-run sheet column filter/order (XLSX path only).
+
+    A run parameter ``sheet_cols_<sectionkey>`` = comma-separated column names
+    keeps ONLY those columns, in that order, on the matching sheet -- the GL
+    Budget Utilization "Manage columns" saved view rides this (GL/db/11 sends
+    sheet_cols_bu_lines). Matching is case-insensitive and transparent to the
+    ``__pn`` sign-tint suffix; the row_kind styling column always survives;
+    unknown names are ignored; a spec matching nothing leaves the sheet as-is.
+    """
+    if not params:
+        return sections
+    out = []
+    for s in sections:
+        spec = params.get("sheet_cols_" + str(s.get("key") or "").lower())
+        if not spec:
+            out.append(s)
+            continue
+        cols = s["columns"]
+
+        def base(c):
+            c = str(c).strip().lower()
+            return c[:-4] if c.endswith("__pn") else c
+
+        idx = {}
+        for i, c in enumerate(cols):
+            idx.setdefault(base(c), i)
+        keep = [i for i, c in enumerate(cols) if base(c) == "row_kind"]
+        for w in str(spec).split(","):
+            i = idx.get(w.strip().lower())
+            if i is not None and i not in keep:
+                keep.append(i)
+        if not [i for i in keep if base(cols[i]) != "row_kind"]:
+            out.append(s)
+            continue
+        s2 = dict(s)
+        s2["columns"] = [cols[i] for i in keep]
+        s2["rows"] = [[r[i] for i in keep] for r in s["rows"]]
+        out.append(s2)
+    return out
+
+PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+# display labels for the run-parameter crumbs in the sheet/PDF meta band —
+# raw param keys otherwise (2026-08-23, GL Budget Utilization comments round)
+CRUMB_LABELS = {"cmtmode": "Comment Mode"}
+
 # worker registry (DCT_RPT_WORKER) is only maintained by long-running --forever
 # workers; one-shot drains stay invisible to the BI Workers page
 _registered = False
@@ -78,6 +126,44 @@ def beat(conn, status, current_run=None, done=0, failed=0, stopped=False):
         conn.commit()
     except Exception as e:  # noqa: BLE001 - registry must never kill the worker
         print(f"[worker] heartbeat failed: {e}", file=sys.stderr)
+
+
+def conn_alive(conn):
+    """True when the DB connection still answers a ping."""
+    try:
+        conn.ping()
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def reconnect(conn):
+    """Replace a dead DB connection (DPY-4011 etc.) with a fresh one.
+
+    The 2026-08-07 outage: ADB dropped all three workers' connections and the
+    forever-loop kept retrying on the SAME dead connection every 20s for three
+    days (systemd saw a healthy process; runs sat QUEUED). A worker is useless
+    without the DB, so retry with backoff; after ~10 min give up and exit —
+    systemd (Restart=always) then brings up a completely fresh process."""
+    try:
+        conn.close()
+    except Exception:  # noqa: BLE001
+        pass
+    delay, waited = 5, 0
+    while True:
+        try:
+            c = config.connect()
+            print(f"[worker {WORKER_ID}] DB connection re-established", flush=True)
+            return c
+        except Exception as e:  # noqa: BLE001
+            waited += delay
+            print(f"[worker] reconnect failed ({waited}s): {e}", file=sys.stderr)
+            if waited >= 600:
+                print("[worker] reconnect budget exhausted - exiting for systemd restart",
+                      file=sys.stderr)
+                sys.exit(1)
+            time.sleep(delay)
+            delay = min(delay * 2, 60)
 
 
 def read_command(conn):
@@ -137,6 +223,14 @@ def _definition_extras(conn, code):
                 "from prod.dct_rpt_definition where report_code = :c", c=code)
     row = cur.fetchone()
     return row if row else (code, None, None, None)
+
+
+def _run_dist_id(conn, run_id):
+    """dist_id of a distribution run (GL Generate-and-Send), else None."""
+    cur = conn.cursor()
+    cur.execute("select dist_id from prod.dct_rpt_run where run_id = :r", r=run_id)
+    row = cur.fetchone()
+    return int(row[0]) if row and row[0] is not None else None
 
 
 def record_output(conn, run_id, fmt, name, mime, data):
@@ -202,7 +296,8 @@ def process(conn, conf, job):
             s["totals"] = _totals(s["columns"], s["rows"]) if s["layout"] == "table" else None
         columns, rows = [], []
         row_count = sum(len(s["rows"]) for s in sections)
-        crumbs = " | ".join(f"{k} {v}" for k, v in params.items() if v not in (None, ""))
+        crumbs = " | ".join(f"{CRUMB_LABELS.get(k, k)} {v}"
+                            for k, v in params.items() if v not in (None, ""))
         meta = f"Generated {_now().strftime('%Y-%m-%d %I:%M %p')} | {row_count} lines" + \
                (f" | {crumbs}" if crumbs else "")
         landscape = (spec.get("orientation") or "").lower() == "landscape"
@@ -249,7 +344,8 @@ def process(conn, conf, job):
         attachments.append((fn, "application/pdf", pdf))
     if "XLSX" in formats:
         if sections is not None:
-            xlsx = render_xlsx.build_xlsx_multi(sections, title=name_en or code, meta=meta)
+            xlsx = render_xlsx.build_xlsx_multi(_apply_sheet_cols(sections, params),
+                                               title=name_en or code, meta=meta)
         else:
             xlsx = render_xlsx.build_xlsx(columns, rows, title=name_en or code, meta=meta,
                                           sheet_name=code)
@@ -261,10 +357,28 @@ def process(conn, conf, job):
         fn = f"{code}_{stamp}.csv"
         record_output(conn, run_id, "CSV", fn, "text/csv", csv_bytes)
         attachments.append((fn, "text/csv", csv_bytes))
+    if "PPTX" in formats:
+        # executive PowerPoint deck — MULTI reports only (built from the sections)
+        import render_pptx
+        pptx_bytes = render_pptx.build_deck(sections, ctx)
+        fn = f"{code}_{stamp}.pptx"
+        record_output(conn, run_id, "PPTX", fn, PPTX_MIME, pptx_bytes)
+        attachments.append((fn, PPTX_MIME, pptx_bytes))
 
     sent = failed = 0
+    dist_id = _run_dist_id(conn, run_id)
     if (config.cfg(conf, "EMAIL_ENABLED", "N") or "N").upper() == "Y" and attachments:
-        sent, failed = deliver.send_report(conn, conf, run_id, ctx, subj_tpl, body_tpl, attachments)
+        if dist_id:
+            # distribution run (GL Generate-and-Send): one To/Cc/Bcc message
+            sent, failed = deliver.send_dist_report(
+                conn, conf, run_id, ctx, subj_tpl, body_tpl, attachments, dist_id)
+        else:
+            sent, failed = deliver.send_report(
+                conn, conf, run_id, ctx, subj_tpl, body_tpl, attachments)
+    elif dist_id and attachments:
+        # emails globally off -- log the defined recipients as SKIPPED so the
+        # email log stays honest about what was generated but not sent
+        deliver.record_dist_skipped(conn, run_id, dist_id, "EMAIL_ENABLED=N")
 
     mark(conn, run_id, "SUCCESS", row_count=row_count)
     print(f"[run {run_id}] {code} OK: {row_count} rows, formats={','.join(formats)}, "
@@ -302,6 +416,10 @@ def process_one(conn, conf):
     if not job:
         return False
     beat(conn, "RUNNING", current_run=job["run_id"])
+    # Make report SQL identifiable in V$SQLAREA and the Admin performance monitor.
+    # No business data is persisted: this is session metadata only.
+    conn.module = ("DCT_RPT:" + str(job["report_code"]))[:48]
+    conn.action = ("RUN:" + str(job["run_id"]))[:32]
     try:
         process(conn, conf, job)
         beat(conn, "IDLE", done=1)
@@ -314,6 +432,9 @@ def process_one(conn, conf):
             pass
         beat(conn, "IDLE", failed=1)
         notify.send(f"i-Finance report {job['report_code']} (run {job['run_id']}) FAILED: {msg}")
+    finally:
+        conn.action = None
+        conn.module = None
     return True
 
 
@@ -379,6 +500,11 @@ def main(argv=None):
                     conf = config.load_config(conn)   # pick up UI config changes
                 except Exception as e:  # noqa: BLE001
                     print(f"[worker] loop error: {e}", file=sys.stderr)
+                    if not conn_alive(conn):
+                        print("[worker] DB connection lost - reconnecting", file=sys.stderr)
+                        conn = reconnect(conn)
+                        conf = config.load_config(conn)
+                        beat(conn, "IDLE")
                     time.sleep(idle)
         finally:
             beat(conn, "STOPPED", stopped=True)

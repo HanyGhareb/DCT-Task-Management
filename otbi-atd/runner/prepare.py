@@ -37,6 +37,12 @@ DATE_RE = re.compile(
 # A matched date that carries fractional seconds -> needs TIMESTAMP (Oracle DATE
 # holds only whole seconds). Plain date / date+HH:MI:SS stays DATE.
 FRAC_RE = re.compile(r"\d:\d{2}:\d{2}\.\d")
+# Fusion/OTBI emits '0-00-00' (zero-date) for a date attribute that has NO value
+# (e.g. Accounting Date on rejected PR lines). Treat it as an EMPTY cell everywhere:
+# it must not flip a DATE column to text in the profiler (the 24h incremental's
+# small sample pushed 9 sentinels past the 2% dirty tolerance -> recurring
+# "needs VARCHAR2(20)" drift Telegram, 2026-08-16) and must load as a quiet NULL.
+ZERO_DATE_RE = re.compile(r"^0{1,4}-0{1,2}-0{1,2}( 0{1,2}:0{1,2}:0{1,2}(\.0+)?)?$")
 INT_RE = re.compile(r"^-?\d+$")
 NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
 ALPHA_RE = re.compile(r"[A-Za-z]")
@@ -220,6 +226,7 @@ def bucket(maxlen):
 
 def infer(values, maxlen):
     ne = [clean_cell(v) for v in values if v.strip() != ""]
+    ne = [v for v in ne if not ZERO_DATE_RE.match(v.strip())]  # zero-date sentinel = empty
     if not ne:
         return "VARCHAR2(40)"          # all-null: safe default
     if all(DATE_RE.match(v) for v in ne):
@@ -256,6 +263,8 @@ def profile(csv_text):
         nrows += 1
         for i in range(nc):
             v = clean_cell(r[i]) if i < len(r) else ""   # unguard OBIEE numerics first
+            if v and ZERO_DATE_RE.match(v.strip()):
+                v = ""                                    # Fusion zero-date sentinel = empty
             if len(v) > maxlen[i]:
                 maxlen[i] = len(v)
             if v.strip() == "":

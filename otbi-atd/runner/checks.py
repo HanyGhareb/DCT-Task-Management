@@ -12,6 +12,7 @@ Config:
 """
 import os
 import re
+import sys
 
 _DEFAULT_CAPS = "25000,50000,65000,75000,100000,250000,500000"
 
@@ -21,6 +22,9 @@ _DEFAULT_CAPS = "25000,50000,65000,75000,100000,250000,500000"
 # ORA_OCIS_CG_SESSION, _WL_AUTHCOOKIE…). Those are replayable while valid, so scrub
 # them out of any message before it is written to ATD_LOAD_RUN_LOG / shown in the UI.
 _SCRUB = [
+    # Telegram Bot API URLs contain the bot token in the path.  httpx includes the
+    # complete URL in raised exceptions, so redact it before journald sees it.
+    (re.compile(r'(api\.telegram\.org/bot)[^/\s]+', re.IGNORECASE), r'\1[redacted]'),
     # a whole "cookie:"/"set-cookie:"/"authorization:" header line value -> [redacted]
     (re.compile(r'((?:^|\n)[ \t-]*(?:cookie|set-cookie|authorization)[ \t]*:[ \t]*)[^\n\r]*',
                 re.IGNORECASE), r'\1[redacted]'),
@@ -40,6 +44,29 @@ def scrub(text):
     for rx, rep in _SCRUB:
         s = rx.sub(rep, s)
     return s
+
+
+class _RedactingStream:
+    """Drop-in stdout/stderr proxy that scrubs secrets before journald sees them."""
+    def __init__(self, stream):
+        self._stream = stream
+
+    def write(self, text):
+        return self._stream.write(scrub(text))
+
+    def flush(self):
+        return self._stream.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+def install_log_scrubber():
+    """Protect console logs as well as database error messages."""
+    if not isinstance(sys.stdout, _RedactingStream):
+        sys.stdout = _RedactingStream(sys.stdout)
+    if not isinstance(sys.stderr, _RedactingStream):
+        sys.stderr = _RedactingStream(sys.stderr)
 
 
 def truncation_note(n):

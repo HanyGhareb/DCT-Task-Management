@@ -20,6 +20,11 @@ define(['services/api'], function (api) {
     /* meta / dropdowns */
     getMeta: function () { return api.get('/meta'); },
 
+    /* AP/AR executive aging (viewer: BI_USER or SYS_ADMIN) */
+    getExecutiveAging: function (params) { return api.get('/executive-aging' + qs(params)); },
+    getExecutiveAgingLines: function (params) { return api.get('/executive-aging/lines' + qs(params)); },
+    runExecutiveBriefing: function (params) { return api.post('/executive-aging/briefing', params || {}); },
+
     /* report definitions */
     getReports:   function (params) { return api.get('/reports/' + qs(params)); },
     getReport:    function (code)   { return api.get('/reports/' + encodeURIComponent(code)); },

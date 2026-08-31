@@ -36,6 +36,9 @@ DECLARE
   l_vid  NUMBER        := TO_NUMBER([COLON]valueid DEFAULT NULL ON CONVERSION ERROR);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_CLASSIFICATIONS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_CLASSIFICATIONS required'); RETURN;
+  END IF;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (
     SELECT m.map_id, m.class_type_code, m.segment_value, m.class_value_id,

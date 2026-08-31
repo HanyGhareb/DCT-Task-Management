@@ -70,6 +70,7 @@ export function LoginScreen() {
               {t('login.username')}
             </T>
             <TextInput
+              accessibilityLabel={t('login.username')}
               autoCapitalize="characters"
               autoCorrect={false}
               textContentType="username"
@@ -82,6 +83,7 @@ export function LoginScreen() {
               {t('login.password')}
             </T>
             <TextInput
+              accessibilityLabel={t('login.password')}
               secureTextEntry
               autoCapitalize="none"
               textContentType="password"

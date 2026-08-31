@@ -1,0 +1,67 @@
+/* =============================================================================
+   Fusion BPM — Workflow Management (App 214) — app layer.
+   Brand tokens + module-specific component styles ONLY.
+   ALL structural styles live in /shared/css/platform.css — never copy them here.
+   ============================================================================= */
+
+:root {
+  --brand:      #7D3243;
+  --brand-rgb:  125, 50, 67;
+  --brand-dark: #5A2430;
+  --brand-soft: #F5E7EA;
+  /* legacy aliases used by platform.css consumers */
+  --primary:       var(--brand);
+  --primary-dark:  var(--brand-dark);
+  --primary-soft:  var(--brand-soft);
+}
+
+/* ── Dashboard stat tiles ────────────────────────────────────────────────── */
+.bpm-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px; margin-block-end: 22px; }
+.bpm-stat { background: #fff; border: 1px solid var(--border-color, #E4E7EC);
+  border-radius: 12px; padding: 16px 18px; cursor: pointer; position: relative;
+  overflow: hidden; transition: box-shadow .15s ease, transform .15s ease; }
+.bpm-stat:hover { box-shadow: 0 8px 24px -12px rgba(0,0,0,.25); transform: translateY(-1px); }
+.bpm-stat::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0;
+  width: 4px; background: var(--brand); }
+.bpm-stat .bs-num { font-size: 30px; font-weight: 700; color: var(--brand-dark); line-height: 1.15; }
+.bpm-stat .bs-lbl { font-size: 13px; color: #667085; margin-block-start: 2px; }
+.bpm-stat .bs-ico { position: absolute; inset-block-start: 12px; inset-inline-end: 14px;
+  font-size: 22px; opacity: .5; }
+.bpm-stat--gold::before  { background: #B0721E; }
+.bpm-stat--teal::before  { background: #0E8A8A; }
+.bpm-stat--blue::before  { background: #3A4FB0; }
+
+/* quick links grid */
+.bpm-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.bpm-quick .qk { display: flex; align-items: center; gap: 12px; background: #fff;
+  border: 1px solid var(--border-color, #E4E7EC); border-radius: 12px; padding: 14px 16px;
+  cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.bpm-quick .qk:hover { border-color: var(--brand); box-shadow: 0 6px 18px -10px rgba(var(--brand-rgb), .45); }
+.bpm-quick .qk .qi { width: 38px; height: 38px; border-radius: 10px; background: var(--brand-soft);
+  display: flex; align-items: center; justify-content: center; font-size: 18px; flex: none; }
+.bpm-quick .qk .qt b { display: block; font-size: 14px; color: #1D2939; }
+.bpm-quick .qk .qt span { font-size: 12px; color: #667085; }
+
+/* ── Appearance page — skin picker cards ─────────────────────────────────── */
+.ap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.ap-card { border: 2px solid var(--border, #E4E7EC); border-radius: var(--radius-lg, 12px);
+  overflow: hidden; cursor: pointer; background: var(--surface, #fff);
+  transition: border-color .15s ease, box-shadow .15s ease; }
+.ap-card:hover { border-color: var(--border-strong, #CBD2DA); }
+.ap-card--on { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(var(--brand-rgb), .18); }
+.ap-pv { height: 130px; padding: 0; }
+.ap-pv-top { height: 18px; }
+.ap-pv-body { display: flex; height: 112px; }
+.ap-pv-side { width: 52px; border-inline-end: 1px solid; padding: 8px 8px 0; flex: none; }
+.ap-pv-side i { display: block; height: 6px; border-radius: 3px; background: rgba(128,128,128,.28);
+  margin-block-end: 6px; }
+.ap-pv-main { flex: 1; padding: 10px; }
+.ap-pv-card { border: 1px solid; border-radius: 6px; height: 100%; padding: 8px; }
+.ap-pv-card b { display: block; width: 42%; height: 7px; border-radius: 3px; margin-block-end: 7px; }
+.ap-pv-card span { display: block; width: 88%; height: 5px; border-radius: 2px;
+  background: rgba(128,128,128,.25); margin-block-end: 5px; }
+.ap-meta { padding: 12px 14px 14px; border-block-start: 1px solid var(--border, #E4E7EC); }
+.ap-name { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px;
+  color: var(--text, #1D2939); margin-block-end: 3px; }
+.ap-meta p { font-size: 12.5px; color: var(--text-2, #667085); margin: 0; }

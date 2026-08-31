@@ -32,7 +32,7 @@ export function AtdRunnerSettingsScreen() {
 
   const set = (key: string, v: string) => setEdits((e) => ({ ...e, [key]: v }));
 
-  const save = useQueuedMutation<{ items: Array<{ key: string; value: string }> }>({
+  const save = useQueuedMutation<{ items: { key: string; value: string }[] }>({
     module: 'atd',
     requireOnline: true,
     method: () => 'PUT',

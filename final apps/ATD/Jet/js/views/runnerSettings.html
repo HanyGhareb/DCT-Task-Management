@@ -8,6 +8,105 @@
 
   <div class="muted" style="margin-bottom:14px" data-bind="text: t('atd.rs.intro')"></div>
 
+  <!-- My OTBI Account (per-user credential profile) -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.rs.myacct.title')"></h2>
+      <div class="region-actions">
+        <!-- ko if: credExists -->
+        <button class="btn btn-secondary btn-sm" data-bind="click: removeCred, disable: credSaving, text: t('atd.rs.myacct.remove')"></button>
+        <!-- /ko -->
+        <button class="btn btn-primary btn-sm" data-bind="click: saveCred, disable: credSaving, text: t('atd.rs.myacct.save')"></button>
+      </div>
+    </div>
+    <div class="muted" style="margin:6px 0 12px" data-bind="text: t('atd.rs.myacct.hint')"></div>
+
+    <!-- ko if: credLoading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+    <!-- ko ifnot: credLoading -->
+    <div class="form-grid">
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('atd.rs.myacct.login')"></div>
+        <input class="form-control mono" type="text" autocomplete="off"
+               data-bind="value: credLogin, attr: { placeholder: t('atd.rs.myacct.loginPh') }">
+      </div>
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('atd.rs.myacct.password')"></div>
+        <input class="form-control" type="password" autocomplete="new-password"
+               data-bind="value: credPwd, attr: { placeholder: credPwdSet() ? t('atd.rs.myacct.pwdUnchanged') : t('atd.rs.myacct.pwdNew') }">
+        <div class="muted" style="font-size:12px;margin-top:4px">
+          <span class="badge" data-bind="text: credPwdSet() ? t('atd.rs.secretSet') : t('atd.rs.notSet'),
+                                          css: { 'badge--active': credPwdSet(), 'badge--idle': !credPwdSet() }"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('atd.rs.myacct.catalog')"></div>
+        <input class="form-control mono" type="text" autocomplete="off"
+               data-bind="value: credCatalog, attr: { placeholder: t('atd.rs.myacct.catalogPh') }">
+        <div class="muted" style="font-size:12px;margin-top:4px" data-bind="text: t('atd.rs.myacct.catalogHint')"></div>
+      </div>
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('atd.rs.myacct.tgChat')"></div>
+        <input class="form-control mono" type="text" inputmode="numeric" autocomplete="off"
+               data-bind="value: credChat, attr: { placeholder: t('atd.rs.myacct.tgChatPh') }">
+        <div class="muted" style="font-size:12px;margin-top:4px" data-bind="text: t('atd.rs.myacct.tgChatHint')"></div>
+        <div style="font-size:12px;margin-top:6px;padding:8px 10px;border:1px solid var(--border-color,#e3e6ea);border-radius:6px;background:var(--brand-soft,#f6f8f9)">
+          <div style="font-weight:600;margin-bottom:4px" data-bind="text: t('atd.rs.myacct.tgHow')"></div>
+          <ol style="margin:0;padding-inline-start:18px">
+            <li data-bind="text: t('atd.rs.myacct.tgStep1')"></li>
+            <li data-bind="text: t('atd.rs.myacct.tgStep2')"></li>
+            <li data-bind="text: t('atd.rs.myacct.tgStep3')"></li>
+            <li data-bind="text: t('atd.rs.myacct.tgStep4')"></li>
+          </ol>
+          <div class="muted" style="margin-top:4px" data-bind="text: t('atd.rs.myacct.tgStepOps')"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('atd.rs.myacct.active')"></div>
+        <div style="display:flex;align-items:center;gap:8px;min-height:36px">
+          <input type="checkbox" data-bind="checked: credActive">
+          <span class="muted" data-bind="text: credActive() ? t('atd.rs.myacct.activeOn') : t('atd.rs.myacct.activeOff')"></span>
+        </div>
+      </div>
+    </div>
+    <!-- ko if: credUpdatedAt -->
+    <div class="muted" style="font-size:12px;margin-top:8px">
+      <span data-bind="text: t('atd.rs.updated')"></span>: <span data-bind="text: credUpdatedAt"></span>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: credRoster().length -->
+    <div class="section-heading-row" style="margin-top:16px">
+      <h3 class="section-heading" data-bind="text: t('atd.rs.myacct.roster')"></h3>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.rs.myacct.rosterUser')"></th>
+          <th data-bind="text: t('atd.rs.myacct.login')"></th>
+          <th data-bind="text: t('atd.rs.myacct.active')"></th>
+          <th data-bind="text: t('atd.rs.myacct.password')"></th>
+          <th data-bind="text: t('atd.rs.myacct.tgChat')"></th>
+          <th data-bind="text: t('atd.rs.updated')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: credRoster">
+          <tr>
+            <td class="mono" data-bind="text: $data.username"></td>
+            <td class="mono" data-bind="text: $data.fusionLogin"></td>
+            <td><span class="badge" data-bind="text: $data.isActive === 'Y' ? $vm.t('atd.rs.myacct.activeOn') : $vm.t('atd.rs.myacct.activeOff'),
+                                                css: { 'badge--active': $data.isActive === 'Y', 'badge--idle': $data.isActive !== 'Y' }"></span></td>
+            <td><span class="badge" data-bind="text: $data.passwordSet === 'Y' ? $vm.t('atd.rs.secretSet') : $vm.t('atd.rs.notSet'),
+                                                css: { 'badge--active': $data.passwordSet === 'Y', 'badge--idle': $data.passwordSet !== 'Y' }"></span></td>
+            <td><span class="badge" data-bind="text: $data.tgChatSet === 'Y' ? $vm.t('atd.rs.secretSet') : $vm.t('atd.rs.notSet'),
+                                                css: { 'badge--active': $data.tgChatSet === 'Y', 'badge--idle': $data.tgChatSet !== 'Y' }"></span></td>
+            <td class="muted" data-bind="text: $data.updatedAt || '—'"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
   <!-- ko if: loading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
 
   <!-- ko ifnot: loading -->
@@ -28,6 +127,9 @@
               <!-- ko if: $data.isSecret === 'Y' -->
               <span class="badge" data-bind="text: $data.secretSet === 'Y' ? $vm.t('atd.rs.secretSet') : $vm.t('atd.rs.notSet'),
                                               css: { 'badge--active': $data.secretSet === 'Y', 'badge--idle': $data.secretSet !== 'Y' }"></span>
+              <input class="form-control form-control--sm mono" type="password" autocomplete="new-password"
+                     style="margin-block-start:4px"
+                     data-bind="value: $data.val, attr: { placeholder: $vm.t('atd.rs.secretNew') }">
               <!-- /ko -->
               <!-- ko if: $data.isSecret !== 'Y' && $data.valueType === 'ENUM' -->
               <select class="form-control form-control--sm" data-bind="value: $data.val, options: $data.enumList"></select>

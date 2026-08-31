@@ -6,8 +6,9 @@
  * app reload to fully re-lay-out — we persist the choice and apply it on boot.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { I18nManager } from 'react-native';
+import { DevSettings, I18nManager } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import * as Updates from 'expo-updates';
 import { catalogs, Lang, StringKey } from './strings';
 
 const LANG_KEY = 'ifinance_lang';
@@ -15,13 +16,13 @@ const LANG_KEY = 'ifinance_lang';
 interface I18nContextValue {
   lang: Lang;
   isRTL: boolean;
-  t: (key: StringKey, args?: Array<string | number>) => string;
+  t: (key: StringKey, args?: (string | number)[]) => string;
   setLang: (lang: Lang) => Promise<void>;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-function interpolate(template: string, args?: Array<string | number>): string {
+function interpolate(template: string, args?: (string | number)[]): string {
   if (!args || args.length === 0) return template;
   return template.replace(/\{(\d+)\}/g, (_m, i) => {
     const v = args[Number(i)];
@@ -45,13 +46,13 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     if (I18nManager.isRTL !== shouldRTL) {
       I18nManager.allowRTL(shouldRTL);
       I18nManager.forceRTL(shouldRTL);
-      // Note: a full re-layout requires an app reload (Updates.reloadAsync in
-      // production). The screens still render LTR/RTL-correct via flex.
+      if (__DEV__) DevSettings.reload();
+      else await Updates.reloadAsync();
     }
   }, []);
 
   const t = useCallback(
-    (key: StringKey, args?: Array<string | number>) =>
+    (key: StringKey, args?: (string | number)[]) =>
       interpolate(catalogs[lang][key] ?? catalogs.en[key] ?? key, args),
     [lang],
   );

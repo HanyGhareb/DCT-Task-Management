@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ report_name }}</title>
+{#- ── section lookup ──────────────────────────────────────────────────── -#}
+{%- set S = {} -%}
+{%- for s in sections %}{% set _ = S.update({s.key: s}) %}{% endfor -%}
+{%- set O    = (S.overview.data[0] if S.overview and S.overview.data else {}) -%}
+{%- set GRP  = S.groups.data if S.groups else [] -%}
+{%- set GINV = S.group_invoices.data if S.group_invoices else [] -%}
+{%- set SAV  = S.shared_accounts.data if S.shared_accounts else [] -%}
+{%- set SINV = S.shared_invoices.data if S.shared_invoices else [] -%}
+{%- set INV_CAP = 400 -%}
+{%- macro money(v) -%}
+  {%- if v is none %}&mdash;
+  {%- elif v|abs >= 1000000000 %}{{ (v/1000000000)|round(2)|fmt }}&nbsp;B
+  {%- elif v|abs >= 1000000 %}{{ (v/1000000)|round(1)|fmt }}&nbsp;M
+  {%- elif v|abs >= 1000 %}{{ (v/1000)|round(0)|int|fmt }}&nbsp;K
+  {%- else %}{{ v|round(0)|int|fmt }}{%- endif -%}
+{%- endmacro -%}
+{%- macro dt(v) -%}{%- if v %}{{ v.strftime('%Y-%m-%d') if v.strftime is defined else v }}{% else %}&mdash;{% endif -%}{%- endmacro -%}
+<style>
+  :root { --brand: #14682F; --brand-d: #0E4A21; --red: #B3352B; --red-soft: #FBEBE9;
+          --gold: #B58900; --ink: #1F2933; --mut: #7B8794; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink);
+         margin: 0; font-size: 10px; }
+  @page { size: A4 landscape; }
+  .hd { border-bottom: 4px solid var(--brand); padding: 0 0 10px; margin-bottom: 12px; }
+  .hd .org { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
+  .hd h1 { font-size: 21px; font-weight: 700; color: var(--brand); margin: 3px 0 2px; }
+  .hd .sub { font-size: 10.5px; color: #52606d; }
+  .kpis { display: flex; gap: 10px; margin: 12px 0 16px; }
+  .kpi { flex: 1; border: 1px solid #DCE3DC; border-left: 4px solid var(--brand);
+         border-radius: 7px; padding: 8px 12px; }
+  .kpi.warn { border-left-color: var(--red); }
+  .kpi .v { font-size: 17px; font-weight: 700; color: var(--brand-d); }
+  .kpi.warn .v { color: var(--red); }
+  .kpi .l { font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); margin-top: 2px; }
+  h2 { font-size: 13.5px; color: var(--brand-d); border-bottom: 2px solid var(--brand);
+       padding-bottom: 4px; margin: 20px 0 4px; page-break-after: avoid; }
+  h2.warn { color: var(--red); border-bottom-color: var(--red); }
+  .note { font-size: 9px; color: var(--mut); margin: 2px 0 8px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 6px; }
+  thead th { background: var(--brand); color: #fff; font-weight: 600; text-align: left;
+             padding: 5px 7px; font-size: 8.7px; border: 1px solid var(--brand); }
+  .warntbl thead th { background: var(--red); border-color: var(--red); }
+  tbody td { padding: 4px 7px; border: 1px solid #e4e7eb; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #F5F8F5; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.mono { font-family: Consolas, monospace; font-size: 8.7px; white-space: nowrap; }
+  tr.band td { background: #E7F0E9 !important; font-weight: 700; color: var(--brand-d);
+               border-top: 2px solid var(--brand); font-size: 9.3px; }
+  .warntbl tr.band td { background: var(--red-soft) !important; color: var(--red);
+                        border-top: 2px solid var(--red); }
+  .conf { font-weight: 700; }
+  .disc { margin-top: 14px; padding: 8px 12px; border: 1px solid #E7D9A8; background: #FCF7E3;
+          border-radius: 7px; font-size: 9px; color: #6b5d1f; }
+  .foot { margin-top: 10px; font-size: 8.5px; color: var(--mut); text-align: center; }
+</style>
+</head>
+<body>
+
+  <div class="hd">
+    <div class="org">Oracle Fusion i-Finance &middot; Reporting Platform</div>
+    <h1>AP Duplicate Vendors &mdash; AI Check Briefing</h1>
+    <div class="sub">Duplicate-beneficiary analysis with vendor bank-account evidence &middot;
+      AI run {{ O.ran_at or '' }}{% if O.ran_by %} by {{ O.ran_by }}{% endif %}
+      &middot; {{ O.provider or '' }} {{ O.model or '' }} &middot; supplier {{ O.suppnum or params.suppnum }}</div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">{{ O.analyzed|fmt }}</div><div class="l">Vendor names analysed</div></div>
+    <div class="kpi"><div class="v">{{ O.group_count|fmt }}</div><div class="l">Likely duplicate groups</div></div>
+    <div class="kpi"><div class="v">{{ O.member_names|fmt }}</div><div class="l">Names inside groups</div></div>
+    <div class="kpi warn"><div class="v">{{ O.shared_count|fmt }}</div><div class="l">Shared bank accounts (different vendors)</div></div>
+    <div class="kpi"><div class="v">{{ GINV|length|fmt }}{% if GINV|length >= 10000 %}+{% endif %}</div><div class="l">Invoices behind the groups</div></div>
+  </div>
+
+  <h2>1 &middot; Likely duplicate vendor groups (AI)</h2>
+  <div class="note">Groups of vendor names that likely denote the same real-world beneficiary
+    (spelling, transliteration, name-order and title variants); a shared vendor bank account is
+    treated as decisive same-identity evidence. Groups below 40% confidence are excluded.</div>
+  {% if GRP %}
+  <table>
+    <thead><tr><th style="width:26%">Member name</th><th>Supplier site</th><th style="width:16%">Bank accounts</th>
+      <th style="width:5%">Invoices</th><th style="width:8%">Amount (AED)</th><th>First</th><th>Last</th></tr></thead>
+    <tbody>
+      {% for r in GRP %}
+      {% if loop.changed(r.group_no) %}
+      <tr class="band"><td colspan="7">#{{ r.group_no }} &middot; {{ r.canonical }}
+        &middot; <span class="conf">{{ ((r.confidence or 0)*100)|round(0)|int }}%</span>
+        {% if r.reason %} &middot; {{ r.reason }}{% endif %}</td></tr>
+      {% endif %}
+      <tr><td>{{ r.member_name }}</td><td class="mono">{{ r.supplier_site or '' }}</td>
+        <td class="mono">{{ r.bank_accounts or '&mdash;' }}</td>
+        <td class="num">{{ r.invoices|fmt }}</td><td class="num">{{ r.total_aed|fmt }}</td>
+        <td class="num">{{ dt(r.first_invoice) }}</td><td class="num">{{ dt(r.last_invoice) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="note">No likely duplicate groups in the latest AI run.</div>{% endif %}
+
+  <h2 class="warn">2 &middot; Shared bank accounts &mdash; same account, different vendors</h2>
+  <div class="note">Deterministic check across ALL suppliers platform-wide: every vendor bank account
+    (from the AP invoice installments) that received payments under two or more different vendor
+    names. A corporate or prepaid-card funding account can be legitimate &mdash; verify with the
+    supplier record before acting.</div>
+  {% if SAV %}
+  <table class="warntbl">
+    <thead><tr><th style="width:26%">Vendor</th><th>Supplier no</th><th>Supplier site</th>
+      <th style="width:5%">Invoices</th><th style="width:8%">Amount (AED)</th><th>First</th><th>Last</th></tr></thead>
+    <tbody>
+      {% for r in SAV %}
+      {% if loop.changed(r.bank_account) %}
+      <tr class="band"><td colspan="7">Account {{ r.bank_account }} &middot; {{ r.vendor_count|fmt }} vendors
+        &middot; {{ r.account_invoices|fmt }} invoices &middot; {{ money(r.account_total_aed) }} AED</td></tr>
+      {% endif %}
+      <tr><td>{{ r.vendor_name }}</td><td class="mono">{{ r.supplier_number or '' }}</td>
+        <td class="mono">{{ r.supplier_site or '' }}</td>
+        <td class="num">{{ r.invoices|fmt }}</td><td class="num">{{ r.amount_aed|fmt }}</td>
+        <td class="num">{{ dt(r.first_invoice) }}</td><td class="num">{{ dt(r.last_invoice) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="note">No bank account is shared between different vendors.</div>{% endif %}
+
+  <h2>3 &middot; Invoice register &mdash; duplicate groups{% if GINV|length > INV_CAP %} (first {{ INV_CAP }} of {{ GINV|length|fmt }} &mdash; full detail in the Excel register){% endif %}</h2>
+  {% if GINV %}
+  <table>
+    <thead><tr><th style="width:4%">Group</th><th style="width:20%">Vendor</th><th>Invoice #</th><th>Date</th>
+      <th>Type</th><th>Status</th><th>Paid</th><th>Site</th><th>Business unit</th><th style="width:8%">Amount (AED)</th></tr></thead>
+    <tbody>
+      {% for r in GINV[:INV_CAP] %}
+      <tr><td class="num">{{ r.group_no }}</td><td>{{ r.vendor_name }}</td>
+        <td class="mono">{{ r.invoice_number }}</td><td class="num">{{ dt(r.invoice_date) }}</td>
+        <td>{{ r.invoice_type or '' }}</td><td>{{ r.invoice_status or '' }}</td>
+        <td>{{ r.payment_status or '' }}</td><td class="mono">{{ r.supplier_site or '' }}</td>
+        <td>{{ r.business_unit or '' }}</td><td class="num">{{ r.amount_aed|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="note">No invoices.</div>{% endif %}
+
+  <h2 class="warn">4 &middot; Invoice register &mdash; shared bank accounts{% if SINV|length > INV_CAP %} (first {{ INV_CAP }} of {{ SINV|length|fmt }} &mdash; full detail in the Excel register){% endif %}</h2>
+  {% if SINV %}
+  <table class="warntbl">
+    <thead><tr><th style="width:14%">Bank account</th><th style="width:20%">Vendor</th><th>Supplier no</th>
+      <th>Invoice #</th><th>Date</th><th>Paid</th><th>Status</th><th>Business unit</th><th style="width:8%">Amount (AED)</th></tr></thead>
+    <tbody>
+      {% for r in SINV[:INV_CAP] %}
+      <tr><td class="mono">{{ r.bank_account }}</td><td>{{ r.vendor_name }}</td>
+        <td class="mono">{{ r.supplier_number or '' }}</td>
+        <td class="mono">{{ r.invoice_number }}</td><td class="num">{{ dt(r.invoice_date) }}</td>
+        <td>{{ r.payment_status or '' }}</td><td>{{ r.invoice_status or '' }}</td>
+        <td>{{ r.business_unit or '' }}</td><td class="num">{{ r.amount_aed|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="note">No invoices.</div>{% endif %}
+
+  <div class="disc"><b>Disclaimer.</b> The duplicate groups are AI suggestions based on name similarity
+    and shared bank accounts; a shared account can also be a legitimate corporate or prepaid-card
+    funding account. Always verify against the supplier master, official documents and payment files
+    before merging vendor records or changing payees.</div>
+
+  <div class="foot">Prepared by Financial Planning and Budgeting &mdash; Finance Department &middot;
+    Generated {{ generated_at }} (Asia/Dubai) &middot; {{ report_code }}</div>
+</body>
+</html>

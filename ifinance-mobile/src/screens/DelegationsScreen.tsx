@@ -92,7 +92,6 @@ export function DelegationsScreen() {
           data={data ?? []}
           keyExtractor={(it) => String(it.delegationId)}
           renderItem={renderItem}
-          estimatedItemSize={140}
           contentContainerStyle={{ padding: spacing.lg }}
           ListEmptyComponent={<EmptyState icon="people-circle" title={t('deleg.empty')} subtitle={t('deleg.emptySub')} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={palette.brand} />}

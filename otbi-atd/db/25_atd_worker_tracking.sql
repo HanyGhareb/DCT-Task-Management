@@ -24,7 +24,17 @@ BEGIN
       last_seen    TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
       status       VARCHAR2(20),            -- IDLE | BUSY | DOWN
       current_job  VARCHAR2(256),
-      started_at   TIMESTAMP DEFAULT SYSTIMESTAMP
+      started_at   TIMESTAMP DEFAULT SYSTIMESTAMP,
+      mfa_status   VARCHAR2(20),
+      mfa_number   VARCHAR2(10),
+      mfa_env      VARCHAR2(100),
+      mfa_detected TIMESTAMP,
+      mfa_delivered TIMESTAMP,
+      mfa_message_id NUMBER,
+      mfa_error    VARCHAR2(1000),
+      mfa_updated  TIMESTAMP,
+      refresh_req  TIMESTAMP,
+      session_check_req TIMESTAMP
     )
   ]';
 EXCEPTION WHEN OTHERS THEN IF SQLCODE != -955 THEN RAISE; END IF;

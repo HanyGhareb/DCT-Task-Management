@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.4.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.8.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - **Update `docs/functions_list.md`** if this deploy added/removed/renamed any view, viewModel method, service, or ORDS endpoint (functional inventory — see root `CLAUDE.md` → "Functions List").
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
@@ -24,6 +24,7 @@
 | `03_ar_ai_pkg.sql` | ✅ | `DCT_AR_AI_PKG` — AI classification/extraction via DBMS_CLOUD, provider dispatch, `json_escape_clob`, repair_json |
 | `04_ar_views.sql`, `05_ar_ords.sql` | ✅ | Views + `ar.rest` module at `/ar/` |
 | `06_ar_patch_gemini.sql` | ⛔ **SUPERSEDED — do not re-run** | Replaced by the provider registry (07); its setting rows were deleted |
+| `11_ar_rebill_ords.sql` | ✅ 2026-07-25 | **ADDITIVE** AR Invoice Rebill bridge onto the ATD Fusion write-back queue — `POST rebill/requests` (bulk enqueue ≤500, per-row result) · `GET rebill/requests` · `GET rebill/requests/:id` (+9-stage timeline) · `GET rebill/lovs`. All AR_ADMIN/SYS_ADMIN. Depends on `otbi-atd/db/19`, `52`, `53`. |
 | `07_ar_ai_providers.sql` | ✅ 2026-06-13 | `DCT_AR_AI_PROVIDERS` registry (api_format, base_url, write-only api_key, `AR_API_FORMAT` lookup); `AI_PROVIDER` setting = selected provider_code |
 
 Platform SQLcl rules apply (see `final apps/Admin/docs/deployment-notes.md` §2).
@@ -52,6 +53,205 @@ AR-specific DB/AI notes:
 4. Reference numbers: test events EVT-TEST-0001 (Power Slap 16 — expected 303,888 gross / 4 findings / 47,500 loss), EVT-2026-0001, EVT-2026-0002.
 
 ## 5. Deployment history
+
+### 2026-07-27 — bulk upload reads REAL Excel dates; tolerant date normaliser (AR 4.10.2, webtier 20260727163519)
+
+A user batch (13 invoices) enqueued with dates like `'2/13/26'` and every request FAILED at the
+worker's date validation. Root cause: `sheetRows` parsed the workbook with `raw:false`, so SheetJS
+rendered each date cell through the number format stored in the FILE — the US default `m/d/yy` —
+even though Excel *displayed* `dd/mm/yyyy`. The `cellDates:true` Date objects never survived to
+`toIso`. Fixes (system-side, per user requirement "capable to deal with different date formats"):
+
+- **`sheetRows` now reads `raw:true`** — real date cells arrive as Date objects and convert
+  losslessly whatever their display format. THE core fix: cell format/locale no longer matters.
+- **`toIso` tolerant normaliser** for typed TEXT: ISO (any separator), day-first `d/m/yyyy`
+  (`/ - .`, single digits), impossible-month flip (`2/13/2026` → Feb 13), `13-Feb-2026`, and
+  2-digit years resolved ONLY when one slot is >12 — an ambiguous `2/11/26` is never guessed.
+- **Upload-time validation**: a date that fails to normalise marks the ROW as an error in the
+  preview (`ar.rebill.bulk.badDate` EN+AR) and never enqueues — no more 3-attempt worker failures.
+- **Runner `_check_date` hardened in lock-step** (`ar_invoice_rebill.py`, fleet-synced): now
+  normalises to ISO, accepts single-digit day-first + the >12 flip, REFUSES 2-digit years with an
+  explicit message (a wrong-but-valid date silently posts to the wrong accounting period). Unit
+  harness extended (`tests/test_actions.py` — normalisation table + ambiguity rejections), all pass.
+- The 13 failed payloads were repaired in place (provenance known = `m/d/yy`, proven by `2/26/26`
+  rows; JSON_TRANSFORM values cross-checked against the sheet) and requeued with **attempts=0**.
+  Note: `JSON_TRANSFORM SET` values must be plain vars in PL/SQL — a local function call in the
+  SET expression is ORA-03066.
+- Allowlist: `ATD_AR_REBILL_ALLOW` on the fleet extended with the 13 new invoices (now 123).
+  INV00583863 (done MANUALLY by the user on 26-07) was deliberately NOT added — its manual
+  duplicate carries no "Rebill of" stamp, so a robot retry would create a SECOND completed
+  duplicate. The guard refusing it was correct behaviour; the failed row stays as a record.
+
+### 2026-07-26 (5) — timeline modal → shared right-edge DRAWER (AR 4.10.1, all apps bumped, webtier 20260726050153)
+
+The register's stage-timeline popup (modal that closed on any outside click — user complaint)
+is now the platform's standard `<edit-drawer>` right-edge slide-in (920px, Esc/scrim/Close).
+Shared `editDrawer.js` gained an optional **`hideSave: true`** param for READ-ONLY drawers
+(drills, timelines) — drops the Save button so Close stands alone; documented in the component
+header. Shared change ⇒ APP_VERSION bumped in ALL apps. Drawer-body binding gotcha honoured:
+inside the body $data is the HOST VM, so bindings go through `t()`/`detail()` directly and
+`$parent` from the foreach — never `$root`. Browser smoke 23/23 (drawer slides in, timeline
+renders, Close-only footer, closes clean).
+
+### 2026-07-26 (4) — GO-LIVE CAMPAIGN COMPLETE: 110/110 invoices rebilled
+
+The user uploaded the full remaining workbook through the arRebill page (101 invoices). All hit
+the `ATD_AR_REBILL_ALLOW` guard (0/9, nothing touched Fusion) — resolved by EXTENDING the
+allowlist to all 110 campaign invoices (guard kept, not removed), restarting the workers (also
+loaded the memo-all-rows handler into the worker processes), and requeuing. The fleet drained all
+101 in parallel overnight (~3.5h, ~2 min/invoice fleet throughput). Mid-drain: worker Fusion
+sessions evicted each other (3 workers + the user's own browser on one account) — MFA numbers
+relayed live, and session-failure rows (`MFA not approved`, always 0/9) auto-requeued with reset
+attempts. **Important: the original requeue left attempts at 3/4 — always reset `attempts=0` when
+requeuing, or one hiccup fails the row permanently.** Final: **110/110 DONE, zero data defects.**
+Full results: `AR Invoices Rebill - Results - FINAL 2026-07-26.csv` (all 111 invoices incl. the
+manual INV00583863; every row carries CM + new-invoice document numbers). Document numbers span
+45110096140–45110096367 (per-invoice pairs in the CSV / the page register).
+
+### 2026-07-26 (3) — Requests register = SHARED interactive report (APP_VERSION 4.10.0, webtier 20260726005920)
+
+The arRebill **Requests register** is now the SHARED `<interactive-report>` component (user
+request): one-shot capped fetch (`limit` cap raised 200 → **10000** in db/11's `GET
+rebill/requests`, redeployed), report code `AR_REBILL_REQUESTS`, `layoutsApi: null` (server
+layouts are BI-gated — localStorage layouts still work). Filtering, multi-sort, column
+show/hide/reorder/rename, control breaks, highlights, aggregates, CSV/XLSX export and
+**maximize-to-full-screen** (⤢, Esc restores) all come from the component. 15 declared columns
+incl. Request #, progress (`stagesDone/9 stage`), both document numbers, started/ended, duration
+(text + numeric secs for aggregates), attempts, worker, last error. **Row click still opens the
+stage timeline** — a delegated click on the wrapper resolves the row from the clicked cell's KO
+context (`ko.contextFor(td).$parent.row`, the GL pending pattern) — no side-maps needed when the
+id is a declared column. The old paged table + server-side status/search filter bar are gone (the
+IR filters client-side). Go-live note: `ATD_AR_REBILL_ALLOW` on the fleet now carries all 110
+campaign invoices (guard kept rather than removed). Browser smoke **20/20** (IR rows, search →
+doc numbers, row-click timeline on a DONE row — a fresh 0/9 request's timeline is legitimately
+empty — maximize/Esc, EN + AR/RTL).
+
+### 2026-07-26 (2) — memo applies to ALL matching lines + header columns restored (APP_VERSION 4.9.1)
+
+**Defect (user-found): 45110096161 (INV00584992) line 2 completed with no VAT classification and
+no Project/Task.** Its duplicate carried TWO 'Entertainer Permit' lines (7,000.00 + 200.00) while
+the CSV named one — the robot matched the first, taxed it, and left the second untouched under the
+old "unlisted lines are not ours to touch" rule (logged: `left untouched: 'Entertainer Permit'`).
+The user corrected the line by hand. **New rule: a payload memo line applies to EVERY invoice line
+carrying that memo** — stage 6 taxes and stage 7 sets Project/Task on ALL matching rows
+(`_dup_rows_for_line` + per-row `_dff_one_row`; runner synced fleet-wide, tests updated).
+**Audit of the other five batch invoices** (pre-commit grid screenshots): line counts match the
+CSV and every line carries its tax classification — 45110096161 was the only invoice with an
+extra line. 45110096166's Fusion line order was reversed vs the sheet and memo matching resolved
+it correctly.
+
+Also (user request): the flat template regained the header-detail columns the two-sheet template
+had — `CM_TXN_NO · CM_TXN_DATE · CM_ACCT_DATE · CREDIT_REASON · COMMENTS · CM_FINISH ·
+DUP_SOURCE · DUP_TXN_DATE · DUP_ACCT_DATE`, appended after the result columns as **optional
+per-invoice overrides** read from the invoice's first non-empty cell; blank cells fall back to the
+on-page batch defaults. Browser smoke re-run 17/17 (template header assertion updated; session now
+seeded via `add_init_script` — the goto/evaluate race redirected to Admin mid-call).
+
+### 2026-07-26 — Rebill batch campaign + flat bulk template (APP_VERSION 4.9.0, webtier 20260726001613)
+
+**Six-invoice parallel batch across all three worker VMs — all 9/9.** Two invoices per VM,
+sequential per VM, detached (`run_rebill_batch.sh`, one ctl/screenshot dir per invoice). The user's
+running CSV workbook is the source of truth; payloads generated from it (`gen_payloads.py`).
+
+| Invoice | Credit memo doc | New invoice doc | VM |
+|---|---|---|---|
+| INV00583821 | 45110096155 | 45110096160 | vm180 |
+| INV00583637 | 45110096157 | 45110096163 | vm180 |
+| INV00584156 | 45110096156 | 45110096165 | vm181 |
+| INV00584327 | 45110096159 | 45110096162 | vm181 |
+| INV00584992 | 45110096158 | 45110096161 | vm182 |
+| INV00584064 | 45110096164 | 45110096166 | vm182 |
+
+- **Matching key is now the MEMO LINE (user rule):** `lineNumber` optional everywhere — runner
+  `validate_payload` (defaults to payload position, duplicate memo rejected as ambiguous), the ORDS
+  bridge (db/11 re-deployed), the JET form and bulk parser. The fleet resolves the Fusion grid row
+  by memo line only.
+- **ADF law 23 found + fixed mid-batch** (`_ensure_line_grid`): saving the FIRST line's drawer
+  commits the transaction and the page morphs to Edit Transaction (Distribution tab, sometimes
+  behind an info dialog) — a grid wait must dismiss the dialog and click the Invoice Lines tab, not
+  just wait. The three pre-fix starts failed loudly at stage 7 line 1 (guards worked — no wrong-line
+  writes) and resumed clean; every post-fix start ran 9/9 unattended. Law 22's fixes proven live on
+  both fresh (INV00584327) and resumed paths.
+- **Bulk template revised to the user's flat format:** ONE sheet grouped by invoice number —
+  `Invoice Number · Memo Line · Project Number · Task · VAT Rate Code · CM Number · New Invoice
+  Number`. The last two are RESULT columns: an invoice whose results are filled is **skipped**, so
+  the running workbook re-uploads whole. Header fields come from on-page batch defaults
+  (date/reason/finish); comments auto-generate; source DCT Manual. Old two-sheet format removed.
+- **vmxnet3 LRO/GRO mitigation applied + persisted on vm180-182** before the batch — zero panics
+  during it (vm181 had panicked twice in the preceding 3 hours).
+- AR dev-proxy now takes a port argument (`python dev-proxy.py 8127`), like Admin's.
+- Browser smoke `tests/rebill_browser_smoke.py` **17/17** (flat template headers, ready/skipped/
+  error badges, register + timeline, EN + AR/RTL, restore-EN). READ-ONLY: it never clicks Submit.
+- MFA note: worker session-refresh logins are per-VM pushes — read the number from the CURRENT
+  attempt's journal/`otbi_mfa_number.txt` (they expire and re-fire with a NEW number).
+
+### 2026-07-25 — AR Invoice Rebill (Fusion write-back action #3), APP_VERSION 4.8.0
+
+Automates the manual VAT-correction flow in Fusion Receivables: credit an invoice off in full,
+duplicate it, correct the Tax Classification on the nominated memo lines, set the Project/Task DFF
+on each line, then complete the duplicate — capturing both generated **Document Numbers**.
+
+**Deployed**
+- `otbi-atd/db/52_atd_action_saga.sql` — `ATD_ACTION_STEP` + `ATD_ACTION_SAGA_PKG` +
+  `V_ATD_AR_REBILL_REQUEST`. All VALID; package self-test 17/17.
+- `otbi-atd/db/53_atd_action_ar_rebill.sql` — `AR_INVOICE_REBILL` action type + the
+  `AR_CREDIT_REASON` / `AR_TAX_CLASSIFICATION` / `AR_REBILL_CM_FINISH` / `AR_REBILL_STAGE`
+  vocabularies (EN + AR).
+- `final apps/AR/db/11_ar_rebill_ords.sql` — 4 routes. **Re-run after any 05 re-run
+  (post-05 list is now 10, 11).**
+- `Jet/` — `arRebill` view + viewModel + `rebillService`, two-sheet Excel template,
+  77 i18n keys EN+AR, `.rstat` pills in `css/app.css`, nav group `rebill` (AR_ADMIN).
+
+**Why a saga.** Unlike AP_INVOICE / PPM_TASK_ADDL_INFO (single idempotent writes), this
+CREATES two objects and COMPLETES them, and a completed credit memo cannot be un-completed in
+Fusion — only reversed. Every stage is checkpointed in `ATD_ACTION_STEP` so a retry RESUMES;
+`resume_from()` stops at the first gap so a later stage can never be mistaken for done.
+
+**Gotchas found (all cost real debugging — see the runner module docstring)**
+1. `POST` handler returned an **uncatchable 555**: `dct_rest.validate_session(:body)` does not
+   compile — `validate_session` takes NO argument and `:body` must be dereferenced exactly once
+   as a **BLOB**. Same idiom as `POST customers/` in db/10.
+2. `user_ords_templates` has no `module_name`; join `user_ords_modules` on `t.module_id`.
+3. SQLcl's `@` cannot open a path containing a space — copy scripts out of
+   `final apps/...` before running, or the run silently targets `/root/DCT-Task-Management/final.sql`.
+4. Platform CSS has **no** `.section-subheading` / `.badge-success` / `.badge-danger` —
+   use `.section-heading` and `.badge--approved` / `.badge--rejected`.
+
+**LIVE — two end-to-end runs (2026-07-25).**
+
+| Invoice | Credit memo doc | New invoice doc | Notes |
+|---|---|---|---|
+| INV00584150 | 45110096149 | 45110096150 | supervised stage-by-stage; ~12 defects found and fixed in flight |
+| INV00585046 | 45110096151 | **45110096152** | **unattended `--auto`, 9/9 clean, 7:34 end-to-end** |
+
+INV00585046 reconciles: original 900.00 with **Tax 0.00** (the coding error) → credit memo −900.00
+(entire balance) → new invoice 925.00 with **Tax 25.00** = 5% of the single `VAT OUTPUT - STD`
+line, other two `VAT OUTPUT - EXEMPT`, Project/Task on all three lines, Status Complete.
+
+**Two defects from that run — both of the same shape: the stage reported DONE while the write did
+not land.** Neither fix is exercised live yet.
+
+1. **Wrong-line DFF (ADF law 22 — the serious one).** Stage 7 resolved line 3 to the right grid row,
+   its row-specific Details icon missed, and the code fell back to a generic `[title="Details"]`
+   that matches every row — so ADF opened **line 1** and line 3's Project/Task were written over
+   line 1's. Net on 45110096152: line 1 carried task *Urgent requests* instead of *Public Speaker
+   Permit*, line 3 carried **no** Project/Task, and the stage logged `set on lines 1,2,3`. The user
+   found it and corrected line 3 by hand. Fixed: the row-targeted click has **no fallback**, the
+   open drawer must prove its **Memo Line** before anything is written into it, and Project/Task are
+   **read back** before the line is saved (they were filled `verify=False` and never checked).
+2. Accounting Date completed as 18/02/2026 rather than the requested 28/02/2026 (law 21) — stage 7's
+   line saves make Fusion re-derive it from the line's Revenue Scheduling start. Guard
+   `_reassert_header_dates` added; **deprioritised by the user**, both dates are in the same GL
+   period.
+
+**Before go-live:** remove `ATD_AR_REBILL_ALLOW` from `/root/otbi-atd/env.sh` on vm180-182, or
+every invoice except those two stays blocked.
+
+**Unattended runs must be detached** — `systemd-run --unit=ar-rebill --setenv=HOME=/root`. An ssh
+drop SIGHUPs the run, and stages 5-8 share one in-memory form. `--setenv=HOME` is required because
+`env.sh` sets `TNS_ADMIN="$HOME/wallet"`; without it every DB call fails `DPY-4026`.
+
+### Earlier
 
 - **2026-07-08 — SoapUI Generator in the UI (APP_VERSION 4.7.0):** AR Customers page gains a
   **SoapUI Generator** modal — upload the filled Excel template (SheetJS client-side parse,

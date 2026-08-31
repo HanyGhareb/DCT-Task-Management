@@ -35,8 +35,16 @@ define([], function () {
       mc: 'GL',           nameKey: 'mod.gl',    descKey: 'mod.gl.desc' },
     { key: 'bi',    code: 'BI', app: '211', color: '#1F6F8B', url: '/BI/Jet/index.html',
       mc: 'REPORTING',    nameKey: 'mod.bi',    descKey: 'mod.bi.desc' },
-    { key: 'ap',    code: 'AP', app: '212', color: '#8E3B5C', url: '/AP/Jet/index.html',
-      mc: 'AP',           nameKey: 'mod.ap',    descKey: 'mod.ap.desc' }
+    { key: 'ap',    code: 'AP', app: '212', color: '#14682F', url: '/AP/Jet/index.html',
+      mc: 'AP',           nameKey: 'mod.ap',    descKey: 'mod.ap.desc' },
+    { key: 'kpi',   code: 'KP', app: '213', color: '#8C6D1F', url: '/KPI/Jet/index.html',
+      mc: 'KPI_MGMT',     nameKey: 'mod.kpi',   descKey: 'mod.kpi.desc' },
+    { key: 'kpiv2', code: 'K2', app: '213', color: '#3F6F5F', url: '/KPI-V2/Jet/index.html',
+      mc: 'KPI_MGMT',     nameKey: 'mod.kpiv2', descKey: 'mod.kpiv2.desc' },
+    { key: 'bpm',   code: 'BP', app: '214', color: '#7D3243', url: '/BPM/Jet/index.html',
+      mc: 'BPM',          nameKey: 'mod.bpm',   descKey: 'mod.bpm.desc' },
+    { key: 'pay',   code: 'PY', app: '215', color: '#14682F', url: '/PAY/Jet/index.html',
+      mc: 'PAY',          nameKey: 'mod.pay',   descKey: 'mod.pay.desc' }
   ];
 
   function byKey(key) {

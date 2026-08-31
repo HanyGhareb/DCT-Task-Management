@@ -70,7 +70,24 @@ CREATE OR REPLACE PACKAGE prod.dct_ap_pkg AS
         p_esupplier  VARCHAR2 DEFAULT NULL,  -- multi, EFFECTIVE supplier (beneficiary-aware; top-suppliers drill)
         p_aging      VARCHAR2 DEFAULT NULL,  -- single aging bucket CURRENT|D1_30|D31_60|D61_90|D91_180|D180P
         p_suppnum    VARCHAR2 DEFAULT NULL,  -- multi, supplier_number (Beneficiaries dashboard locks it to 26553)
-        p_inclcxl    VARCHAR2 DEFAULT 'Y'    -- 'N' = exclude cancelled invoices
+        p_bu         VARCHAR2 DEFAULT NULL,  -- multi, header business_unit (Fusion BU name)
+        p_inclcxl    VARCHAR2 DEFAULT 'Y',   -- 'N' = exclude cancelled invoices
+        -- installments round (ATD_AP_INVOICE_INSTALLMENTS, key invoice_id +
+        -- installment_number): vendor bank account + installment due-date range
+        p_bank       VARCHAR2 DEFAULT NULL,  -- multi, installments bank_account_number
+        p_duefrom    VARCHAR2 DEFAULT NULL,  -- YYYY-MM-DD, on installment due_date
+        p_dueto      VARCHAR2 DEFAULT NULL,
+        -- Direct AP page (2026-08-21): 'Y' = only invoices with NO PO reference
+        -- and NO project coding anywhere -- header po_number empty, the
+        -- distribution-derived po_count/project_count both 0 (header view cols)
+        -- AND no invoice LINE carrying a po_number/project_number (131 invoices
+        -- are project-coded at the line grain with clean distributions) AND no
+        -- PR reference (pr_count = 0 -- verified 0 rows affected 2026-08-21,
+        -- kept as a guard: a PR cannot exist without a PO on a direct invoice)
+        p_nopo       VARCHAR2 DEFAULT NULL,
+        -- Chapter (2026-08-21): per-invoice CLASSIFICATION facet like p_sector
+        -- -- single chapter / '(Multiple chapters)' / 'Unclassified' buckets
+        p_chapter    VARCHAR2 DEFAULT NULL
     ) RETURN apex_t_number;
 
 END dct_ap_pkg;
@@ -122,7 +139,13 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
         p_esupplier  VARCHAR2 DEFAULT NULL,
         p_aging      VARCHAR2 DEFAULT NULL,
         p_suppnum    VARCHAR2 DEFAULT NULL,
-        p_inclcxl    VARCHAR2 DEFAULT 'Y'
+        p_bu         VARCHAR2 DEFAULT NULL,
+        p_inclcxl    VARCHAR2 DEFAULT 'Y',
+        p_bank       VARCHAR2 DEFAULT NULL,
+        p_duefrom    VARCHAR2 DEFAULT NULL,
+        p_dueto      VARCHAR2 DEFAULT NULL,
+        p_nopo       VARCHAR2 DEFAULT NULL,
+        p_chapter    VARCHAR2 DEFAULT NULL
     ) RETURN apex_t_number IS
         -- performance note: the dist/line facets each run ONE scan of their
         -- view into an id-set which is intersected in memory; correlated
@@ -135,6 +158,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
         l_glto    DATE := TO_DATE(p_gldateto   DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
         l_rcvfrom DATE := TO_DATE(p_rcvfrom    DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
         l_rcvto   DATE := TO_DATE(p_rcvto      DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+        l_duefrom DATE := TO_DATE(p_duefrom    DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+        l_dueto   DATE := TO_DATE(p_dueto      DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
     BEGIN
         SELECT h.invoice_id BULK COLLECT INTO l_ids
           FROM prod.ap_invoices_header_v h
@@ -145,7 +170,14 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
            AND (l_rcvfrom IS NULL OR COALESCE(h.invoice_received_date, h.created_date, h.invoice_date) >= l_rcvfrom)
            AND (l_rcvto   IS NULL OR COALESCE(h.invoice_received_date, h.created_date, h.invoice_date) <  l_rcvto + 1)
            AND (NVL(p_inclcxl,'Y') = 'Y' OR h.invoice_status <> 'Cancelled')
+           -- Direct AP: no PO reference (header or any distribution), no
+           -- project coding on any distribution, and no PR reference either
+           -- (counts are NVL'd in the view; a PR cannot exist without a PO)
+           AND (NVL(p_nopo,'N') <> 'Y' OR (h.header_po_number IS NULL
+                    AND h.po_count = 0 AND h.project_count = 0
+                    AND h.pr_count = 0))
            AND (p_suppnum IS NULL OR dct_ap_pkg.in_list(p_suppnum, TO_CHAR(h.supplier_number)) = 1)
+           AND (p_bu IS NULL OR dct_ap_pkg.in_list(p_bu, h.business_unit) = 1)
            AND (p_esupplier IS NULL OR dct_ap_pkg.in_list(p_esupplier,
                     CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                          THEN h.beneficiary_name ELSE h.supplier_name END) = 1)
@@ -175,6 +207,16 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
                       h.invoice_description || ' ' || h.po_numbers)
                 LIKE '%' || UPPER(p_search) || '%');
 
+        IF NVL(p_nopo,'N') = 'Y' THEN
+            -- Direct AP leg 2: drop invoices whose LINES carry a PO or project
+            -- reference (the header counts derive from distributions only, so
+            -- the header predicate above cannot see line-grain coding). One
+            -- scan of the raw pass-through -- no joins, id-set pattern.
+            SELECT DISTINCT l.invoice_id BULK COLLECT INTO l_tmp
+              FROM prod.ap_invoice_lines l
+             WHERE l.po_number IS NOT NULL OR l.project_number IS NOT NULL;
+            l_ids := l_ids MULTISET EXCEPT DISTINCT l_tmp;
+        END IF;
         IF p_sector IS NOT NULL THEN
             -- classification match: each invoice belongs to exactly one bucket
             SELECT invoice_id BULK COLLECT INTO l_tmp FROM (
@@ -189,6 +231,23 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
                         AND d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                  GROUP BY h.invoice_id)
              WHERE dct_ap_pkg.in_list(p_sector, sect) = 1;
+            l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
+        END IF;
+        IF p_chapter IS NOT NULL THEN
+            -- classification match like p_sector: each invoice belongs to
+            -- exactly one chapter bucket (single / Multiple / Unclassified)
+            SELECT invoice_id BULK COLLECT INTO l_tmp FROM (
+                SELECT h.invoice_id,
+                       CASE WHEN COUNT(DISTINCT CASE WHEN d.invoice_id IS NOT NULL
+                                                     THEN NVL(d.chapter_name, 'Unclassified') END) > 1
+                            THEN '(Multiple chapters)'
+                            ELSE NVL(MAX(NVL(d.chapter_name, 'Unclassified')), 'Unclassified') END chap
+                  FROM prod.ap_invoices_header_v h
+                  LEFT JOIN prod.ap_invoice_distributions_v d
+                         ON d.invoice_id = h.invoice_id
+                        AND d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
+                 GROUP BY h.invoice_id)
+             WHERE dct_ap_pkg.in_list(p_chapter, chap) = 1;
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_cc IS NOT NULL THEN
@@ -258,6 +317,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
             SELECT DISTINCT ln.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_lines_v ln
              WHERE dct_ap_pkg.in_list(p_dept, ln.expenditure_organization) = 1;
+            l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
+        END IF;
+        -- installment-grain facets: one scan of the installments pass-through
+        IF p_bank IS NOT NULL OR l_duefrom IS NOT NULL OR l_dueto IS NOT NULL THEN
+            SELECT DISTINCT n.invoice_id BULK COLLECT INTO l_tmp
+              FROM prod.ap_invoice_installments n
+             WHERE (p_bank IS NULL OR dct_ap_pkg.in_list(p_bank, n.bank_account_number) = 1)
+               AND (l_duefrom IS NULL OR n.due_date >= l_duefrom)
+               AND (l_dueto   IS NULL OR n.due_date <  l_dueto + 1);
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
 

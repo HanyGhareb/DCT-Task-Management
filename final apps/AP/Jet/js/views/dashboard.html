@@ -7,6 +7,18 @@
       <div class="page-subtitle" data-bind="text: $vm.t('dash.subtitle')"></div>
     </div>
     <div class="page-actions">
+      <!-- ko if: $vm.benefMode -->
+      <button class="btn btn-secondary ai-btn" data-bind="click: runAiDup,
+              attr: { title: $vm.t('ai.btn.hint') }">
+        &#10024; <span data-bind="text: $vm.t('ai.btn')"></span>
+      </button>
+      <!-- /ko -->
+      <!-- ko if: $vm.nopoMode -->
+      <button class="btn btn-secondary" data-bind="click: runBook, disable: bookBusy(),
+              attr: { title: $vm.t('dap.book.hint') }">
+        &#128218; <span data-bind="text: bookBusy() ? $vm.t('dap.bookRunning') : $vm.t('dap.book')"></span>
+      </button>
+      <!-- /ko -->
       <button class="btn btn-secondary" data-bind="click: resetFilters, text: $root.t('dash.reset')"></button>
       <button class="btn btn-secondary" data-bind="click: refresh, text: $root.t('dash.refresh')"></button>
       <button class="btn btn-primary" data-bind="click: printReport">
@@ -30,6 +42,10 @@
       <button class="ap-seg-btn" role="radio" data-bind="click: function(){ $vm.setLevel('dist'); },
               css: { on: level() === 'dist' }, attr: { 'aria-checked': level() === 'dist' }">
         <span class="dot"></span><span data-bind="text: $root.t('dash.levelDist')"></span>
+      </button>
+      <button class="ap-seg-btn" role="radio" data-bind="click: function(){ $vm.setLevel('inst'); },
+              css: { on: level() === 'inst' }, attr: { 'aria-checked': level() === 'inst' }">
+        <span class="dot"></span><span data-bind="text: $root.t('dash.levelInst')"></span>
       </button>
     </div>
     <span style="flex:1 1 auto"></span>
@@ -69,6 +85,15 @@
         </div>
       </div>
 
+      <!-- installment due-date range (ATD_AP_INVOICE_INSTALLMENTS round) -->
+      <div class="fct-text">
+        <label class="form-label" data-bind="text: $root.t('f.duedates')"></label>
+        <div class="fct-dates">
+          <input class="form-control" type="date" data-bind="value: duefrom, attr: { title: $root.t('f.duefrom') }">
+          <input class="form-control" type="date" data-bind="value: dueto, attr: { title: $root.t('f.dueto') }">
+        </div>
+      </div>
+
       <!-- include-cancelled toggle (div + pointer-events:none input — never wrap in <label>) -->
       <div class="fct-text">
         <div class="fct-item" data-bind="click: toggleInclCxl, css: { on: inclCancelled() }">
@@ -77,6 +102,8 @@
         </div>
       </div>
 
+      <!-- PO / PR / Task references are empty by definition on the Direct AP page -->
+      <!-- ko ifnot: $vm.nopoMode -->
       <div class="fct-text">
         <label class="form-label" data-bind="text: $root.t('f.refs')"></label>
         <div style="display:grid;gap:6px">
@@ -85,6 +112,7 @@
           <input class="form-control" data-bind="value: task, valueUpdate: 'change', attr: { placeholder: $root.t('f.task') }">
         </div>
       </div>
+      <!-- /ko -->
 
       <!-- ko if: loadingFilters() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
       <!-- ko foreach: groups -->
@@ -200,7 +228,8 @@
       </div>
 
       <!-- Region 2 — AP Register -->
-      <div class="card ap-region" data-bind="css: { 'ap-region--max': tableMax() }">
+      <div class="card ap-region" data-bind="css: { 'ap-region--max': tableMax() },
+           event: { mouseover: ccRegOver, mousemove: ccRegMove, mouseout: ccRegOut }">
         <div class="section-heading-row">
           <div class="section-heading ap-rh">
             <span data-bind="text: $vm.t('rg.register')"></span>
@@ -278,7 +307,7 @@
             <tr class="ap-row-click" data-bind="click: function () { $vm.openDrill($data); }">
               <!-- ko foreach: $vm.visibleCols -->
               <td data-bind="css: { 'ap-amount': !!$data.amt, 'ap-clip': !!$data.clip },
-                             attr: { title: $vm.cellTitle($parent, $data) }">
+                             attr: { title: $vm.cellTitle($parent, $data), 'data-key': $data.key }">
                 <!-- ko with: $vm.cellLink($parent, $data) -->
                 <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
                    data-bind="attr: { href: href, title: $vm.t('dr.fusionOpen') }, text: text,
@@ -393,7 +422,6 @@
               </div>
               <div><span class="kv-l" data-bind="text: $vm.t('tbl.voucher')"></span><span data-bind="text: $data.voucherNum || ''"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.source')"></span><span data-bind="text: $data.source || ''"></span></div>
-              <div><span class="kv-l" data-bind="text: $vm.t('dr.batch')"></span><span data-bind="text: $data.batchName || ''"></span></div>
             </div>
 
             <div class="inv-sec" data-bind="text: $vm.t('dr.secPayment')"></div>
@@ -473,6 +501,8 @@
               <span data-bind="text: $root.t('dr.lines') + ' (' + drill().lines.length + ')'"></span></button>
             <button class="ap-tab" data-bind="click: function(){ $vm.setDrillTab('dists'); }, css: { on: drillTab() === 'dists' }">
               <span data-bind="text: $root.t('dr.dists') + ' (' + drill().distributions.length + ')'"></span></button>
+            <button class="ap-tab" data-bind="click: function(){ $vm.setDrillTab('inst'); }, css: { on: drillTab() === 'inst' }">
+              <span data-bind="text: $root.t('dr.installments') + ' (' + (drill().installments || []).length + ')'"></span></button>
           </div>
           <!-- ko if: drillTab() === 'lines' -->
         <div class="data-table-wrap"><table class="data-table">
@@ -561,6 +591,40 @@
                 <!-- ko ifnot: $data.prHeaderId --><span data-bind="text: $data.prNumber || ''"></span><!-- /ko -->
               </td>
               <td data-bind="text: $data.accountingDate || ''"></td>
+            </tr>
+          <!-- /ko --></tbody>
+        </table></div>
+        <!-- /ko -->
+
+        <!-- ko if: drillTab() === 'inst' -->
+        <div class="data-table-wrap"><table class="data-table">
+          <thead><tr>
+            <th data-bind="text: $root.t('tbl.installment')"></th>
+            <th data-bind="text: $root.t('tbl.dueDate')"></th>
+            <th data-bind="text: $root.t('tbl.priority')"></th>
+            <th data-bind="text: $root.t('tbl.method')"></th>
+            <th data-bind="text: $root.t('tbl.bankAccount')"></th>
+            <th data-bind="text: $root.t('tbl.payGroup')"></th>
+            <th data-bind="text: $root.t('tbl.instPaid')"></th>
+            <th data-bind="text: $root.t('tbl.onHold')"></th>
+            <th class="ap-amount" data-bind="text: $root.t('tbl.amount')"></th>
+            <th class="ap-amount" data-bind="text: $root.t('tbl.unpaidAed')"></th>
+            <th data-bind="text: $root.t('tbl.currency')"></th>
+          </tr></thead>
+          <tbody><!-- ko foreach: drill().installments -->
+            <tr>
+              <td data-bind="text: $data.installmentNumber"></td>
+              <td data-bind="text: $data.dueDate || ''"></td>
+              <td data-bind="text: $data.priority || ''"></td>
+              <td data-bind="text: $data.paymentMethod || ''"></td>
+              <td class="ap-mono" data-bind="text: $data.bankAccount || ''"></td>
+              <td data-bind="text: $data.payGroup || ''"></td>
+              <td><span data-bind="text: $data.installmentPaid || '',
+                    attr: { class: ($data.installmentPaid === 'Paid') ? 'badge badge-success' : 'badge badge-warning' }"></span></td>
+              <td data-bind="text: $data.onHold || ''"></td>
+              <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.grossAmountAed)"></td>
+              <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.unpaidAmountAed)"></td>
+              <td data-bind="text: $data.currency || ''"></td>
             </tr>
           <!-- /ko --></tbody>
         </table></div>

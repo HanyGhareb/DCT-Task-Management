@@ -20,11 +20,14 @@
  *   modules  array|null  optional source_module filter (null = every process)
  */
 define(['knockout', 'shared/i18n', 'shared/wfService', 'shared/skeleton',
+        'shared/components/wfDiagram',
         'text!shared/components/wfDesigner.html'],
-function (ko, i18n, wf, skeletonReg, templateHtml) {
+function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
   'use strict';
 
-  var RESOLVERS = ['ROLE', 'ROLE_SCOPED_ORG', 'FACT_USER', 'STATIC_USER',
+  var RESOLVERS = ['ROLE', 'ROLE_SCOPED_ORG', 'ASSIGNED_ROLE', 'ASSIGNED_ROLE_CASCADE',
+                   'FACT_USER', 'STATIC_USER',
+                   'LINE_MANAGER', 'FACT_LINE_MANAGER', 'ORG_HEAD',
                    'PREVIOUS_ACTOR', 'INITIATOR'];
   var FALLBACKS  = ['ANY_ROLE_HOLDER', 'BUSINESS_ADMIN', 'ORG_HEAD', 'FAIL', 'NONE'];
   var COMMENTS   = ['ON_NEGATIVE', 'ALWAYS', 'NEVER'];
@@ -64,6 +67,30 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
       return [''].concat(((d && d.conditions) || []).map(function (c) { return c.conditionKey; }));
     });
 
+    /* ── list vs. graphical (flowchart) view of the chain ───────────────── */
+    self.viewMode = ko.observable('list');   // 'list' | 'diagram'
+    self.diagramNodes = ko.pureComputed(function () {
+      var d = self.design(); if (!d) return [];
+      var conds = {};
+      (d.conditions || []).forEach(function (c) { conds[c.conditionKey] = c.expr; });
+      return (d.steps || []).slice()
+        .sort(function (a, b) { return (a.stepSeq || 0) - (b.stepSeq || 0); })
+        .map(function (s) {
+          var who = (s.participants || []).map(function (p) { return self.partSummary(p); }).join(', ');
+          return {
+            key: s.stepKey,
+            title: s.nameEn || s.stepKey,
+            titleAr: s.nameAr || s.nameEn || s.stepKey,
+            condition: s.conditionKey ? (conds[s.conditionKey] || s.conditionKey) : null,
+            outcomeSet: s.outcomeSetCode || null,
+            who: who || null,
+            isFinalGate: s.isFinalGate === 'Y',
+            parallelGroup: s.parallelGroup || null,
+            state: null, meta: null
+          };
+        });
+    });
+
     /* ── formatting helpers ─────────────────────────────────────────────── */
     self.money = function (v) { return v == null ? '' : v; };
     self.outcomeSetLabel = function (code) {
@@ -77,14 +104,25 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
     };
     self.partSummary = function (p) {
       if (p.resolverType === 'ROLE' || p.resolverType === 'ROLE_SCOPED_ORG') return p.roleCode || p.resolverType;
-      if (p.resolverType === 'FACT_USER') return p.factPath || 'fact';
+      if (p.resolverType === 'ASSIGNED_ROLE') return (p.roleCode || '?') + '@' + (p.objectTypeCode || '?');
+      if (p.resolverType === 'ASSIGNED_ROLE_CASCADE') return (p.roleCode || '?') + '@cascade';
+      if (p.resolverType === 'FACT_USER' || p.resolverType === 'FACT_LINE_MANAGER') return p.factPath || 'fact';
       if (p.resolverType === 'STATIC_USER') return '#' + (p.staticUserId || '?');
       return p.resolverType;
     };
 
     /* ── loading ────────────────────────────────────────────────────────── */
+    self.objTypes = ko.observableArray([]);   // ASSIGNED_ROLE object-type registry
+    self.typeTwoPart = function (code) {
+      var t = self.objTypes().filter(function (x) { return x.code === code; })[0];
+      return !!(t && t.twoPart === 'Y');
+    };
     self.load = function () {
       self.loading(true); self.err(null);
+      // the assignment registry is optional context (a non-WF_ADMIN designer
+      // reader may 403 on it) -- never let it block the page
+      wf.assignMeta().then(function (m) { self.objTypes((m && m.items) || []); })
+                     .catch(function () { self.objTypes([]); });
       return Promise.all([wf.processes(), wf.outcomeSets()]).then(function (r) {
         var items = r[0] || [];
         if (scope && scope.length) {
@@ -114,8 +152,25 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
 
     self.selectProcess = function (p) {
       self.selected(p); self.err(null);
+      self.testMode(p.testMode === 'Y');
       // load the PUBLISHED version read-only; "Edit chain" reveals/creates the draft
       return self.loadDesign(p.versionId);
+    };
+
+    /* ── testing mode (db/v2/114) ──────────────────────────────────────────
+       While ON, every notification of this process goes to the WF_TEST_EMAIL
+       account instead of the real approvers. Routing is untouched. */
+    self.testMode = ko.observable(false);
+    self.toggleTestMode = function () {
+      var p = self.selected(); if (!p) return;
+      var on = !self.testMode();
+      self.busy(true); self.err(null);
+      wf.setTestMode(p.processCode, on).then(function () {
+        p.testMode = on ? 'Y' : 'N';
+        self.testMode(on);
+        self.busy(false);
+        self._flash(i18n.t(on ? 'wf.dz.testOn' : 'wf.dz.testOff'));
+      }).catch(function (e) { self.busy(false); self.err(self._msg(e)); });
     };
 
     self.isSelected = function (p) {
@@ -183,6 +238,13 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
     self.fmComment   = ko.observable('ON_NEGATIVE');
     self.fmFinalGate = ko.observable(false);
     self.fmQuorum    = ko.observable('ALL');
+    // timers: reminders BEFORE due ('48,24,4'), escalation + auto-action AFTER
+    // due -- all executed by the 15-min engine sweep, all plain step data
+    self.fmReminders   = ko.observable('');
+    self.fmEscRole     = ko.observable('');
+    self.fmEscHours    = ko.observable('');
+    self.fmAutoOutcome = ko.observable('');
+    self.fmAutoHours   = ko.observable('');
     self.fmParts     = ko.observableArray([]);
     self._origParts  = [];
 
@@ -191,6 +253,8 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
       self.fmStepKey(''); self.fmNameEn(''); self.fmNameAr(''); self.fmKind('HUMAN');
       self.fmOutcome(self.outcomeSetCodes()[0] || ''); self.fmCondition('');
       self.fmSla(''); self.fmComment('ON_NEGATIVE'); self.fmFinalGate(false); self.fmQuorum('ALL');
+      self.fmReminders(''); self.fmEscRole(''); self.fmEscHours('');
+      self.fmAutoOutcome(''); self.fmAutoHours('');
       self.fmParts([]); self._origParts = [];
       self.stepOpen(true);
     };
@@ -202,6 +266,11 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
       self.fmCondition(step.conditionKey || ''); self.fmSla(step.slaHours == null ? '' : step.slaHours);
       self.fmComment(step.commentRequired || 'ON_NEGATIVE');
       self.fmFinalGate(step.isFinalGate === 'Y'); self.fmQuorum(step.quorumType || 'ALL');
+      self.fmReminders(step.reminderOffsets || '');
+      self.fmEscRole(step.escalateRoleCode || '');
+      self.fmEscHours(step.escalateAfterHours == null ? '' : step.escalateAfterHours);
+      self.fmAutoOutcome(step.autoActionOutcome || '');
+      self.fmAutoHours(step.autoActionAfterHours == null ? '' : step.autoActionAfterHours);
       var parts = (step.participants || []).map(function (p) {
         return {
           ruleId: p.ruleId,
@@ -209,6 +278,9 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
           roleCode: ko.observable(p.roleCode || ''),
           factPath: ko.observable(p.factPath || ''),
           staticUserId: ko.observable(p.staticUserId || ''),
+          levelsUp: ko.observable(p.levelsUp == null ? 0 : p.levelsUp),
+          objectTypeCode: ko.observable(p.objectTypeCode || ''),
+          key2FactPath: ko.observable(p.key2FactPath || ''),
           fallbackRule: ko.observable(p.fallbackRule || 'ANY_ROLE_HOLDER'),
           excludeInitiator: ko.observable(p.excludeInitiator === 'Y')
         };
@@ -221,7 +293,8 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
     self.addPart = function () {
       self.fmParts.push({
         ruleId: null, resolverType: ko.observable('ROLE'), roleCode: ko.observable(''),
-        factPath: ko.observable(''), staticUserId: ko.observable(''),
+        factPath: ko.observable(''), staticUserId: ko.observable(''), levelsUp: ko.observable(0),
+        objectTypeCode: ko.observable(''), key2FactPath: ko.observable(''),
         fallbackRule: ko.observable('ANY_ROLE_HOLDER'), excludeInitiator: ko.observable(true)
       });
     };
@@ -238,7 +311,12 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
         conditionKey: self.fmCondition() || null,
         slaHours: self.fmSla() === '' ? null : Number(self.fmSla()),
         commentRequired: self.fmComment(), isFinalGate: self.fmFinalGate() ? 'Y' : 'N',
-        quorumType: self.fmQuorum()
+        quorumType: self.fmQuorum(),
+        reminderOffsets: self.fmReminders() || null,
+        escalateRoleCode: (self.fmEscRole() || '').trim().toUpperCase() || null,
+        escalateAfterHours: self.fmEscHours() === '' ? null : Number(self.fmEscHours()),
+        autoActionOutcome: (self.fmAutoOutcome() || '').trim().toUpperCase() || null,
+        autoActionAfterHours: self.fmAutoHours() === '' ? null : Number(self.fmAutoHours())
       };
       var vid = d.versionId;
       wf.saveStep(vid, stepBody).then(function () {
@@ -252,6 +330,9 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
             resolverType: p.resolverType(), roleCode: p.roleCode() || null,
             factPath: p.factPath() || null,
             staticUserId: p.staticUserId() === '' ? null : Number(p.staticUserId()),
+            levelsUp: (p.levelsUp() === '' || p.levelsUp() == null) ? 0 : Number(p.levelsUp()),
+            objectTypeCode: p.objectTypeCode() || null,
+            key2FactPath: p.key2FactPath() || null,
             fallbackRule: p.fallbackRule(), excludeInitiator: p.excludeInitiator() ? 'Y' : 'N'
           });
         }).concat(toDelete.map(function (id) { return wf.deleteParticipant(vid, id); }));

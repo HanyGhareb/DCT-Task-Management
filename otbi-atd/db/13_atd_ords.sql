@@ -12,7 +12,7 @@
 --           ALWAYS run 20_atd_action_ords.sql RIGHT AFTER this script (same as
 --           the TM 06/14 rule), or the dashboard /actions/stats call 404s and the
 --           browser reports it as a CORS "Network error".
---           Likewise the additive append scripts 26/31/32/33/38/39/41 and
+--           Likewise the additive append scripts 26/31/32/33/38/39/41/49 and
 --           42_atd_runs_set_ords.sql are wiped on rebuild -- re-run them after
 --           this one. 42 REDEFINES the GET /runs + /runs/export handlers below
 --           to add the Job Set column + ?setcode= filter, so re-running 13
@@ -40,6 +40,7 @@ CREATE OR REPLACE SYNONYM atd_runner_config FOR prod.atd_runner_config;
 CREATE OR REPLACE SYNONYM atd_analysis_request FOR prod.atd_analysis_request;
 CREATE OR REPLACE SYNONYM atd_sa_catalog     FOR prod.atd_sa_catalog;
 CREATE OR REPLACE SYNONYM atd_worker_heartbeat FOR prod.atd_worker_heartbeat;
+CREATE OR REPLACE SYNONYM atd_load_run_phase FOR prod.atd_load_run_phase;
 CREATE OR REPLACE SYNONYM dct_atd_ai_pkg     FOR prod.dct_atd_ai_pkg;
 CREATE OR REPLACE SYNONYM atd_job_category     FOR prod.atd_job_category;
 CREATE OR REPLACE SYNONYM atd_job_category_map FOR prod.atd_job_category_map;
@@ -233,7 +234,11 @@ BEGIN
   FOR r IN (
     SELECT j.job_name, j.env_name, j.target_name, j.source_ref, j.stage_table,
            j.final_table, j.load_mode, j.priority, j.run_order, j.enabled,
-           j.run_status, j.claimed_by, j.claimed_at, j.schema_reviewed,
+           j.run_status, j.claimed_by, j.claimed_at, j.requested_by,
+           -- permanent job owner = the credential profile matching the analysis
+           -- catalog path /users/<login>/ (db/62); runs under this account ALWAYS
+           atd_cred_pkg.job_owner_login(j.source_ref) AS owner_login,
+           j.schema_reviewed,
            CASE WHEN j.column_map_json IS NOT NULL THEN 'Y' ELSE 'N' END AS prepared,
            lr.run_id AS last_run_id2, lr.status AS last_status,
            TO_CHAR( dct_to_local(lr.finished),'YYYY-MM-DD HH:MI AM') AS last_finished,
@@ -273,6 +278,12 @@ BEGIN
     APEX_JSON.write('runStatus', r.run_status);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
     APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('requestedBy', NVL(r.requested_by,''));   -- who queued this cycle (manual enqueue; blank = scheduler)
+    -- owner: catalog-path owner (permanent) > manual requester > '' (service account)
+    APEX_JSON.write('owner', NVL(r.owner_login, NVL(r.requested_by,'')));
+    APEX_JSON.write('ownerType', CASE WHEN r.owner_login IS NOT NULL THEN 'catalog'
+                                      WHEN r.requested_by IS NOT NULL THEN 'manual'
+                                      ELSE '' END);
     APEX_JSON.write('lastRunId', r.last_run_id2);
     APEX_JSON.write('lastRunStatus', NVL(r.last_status,''));
     APEX_JSON.write('lastFinished', NVL(r.last_finished,''));
@@ -686,6 +697,7 @@ END;
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_found NUMBER := 0;
+  l_owner VARCHAR2(200);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
@@ -717,6 +729,12 @@ BEGIN
     APEX_JSON.write('runStatus', r.run_status);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
     APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('requestedBy', NVL(r.requested_by,''));   -- who queued this cycle (manual enqueue; blank = scheduler)
+    l_owner := atd_cred_pkg.job_owner_login(r.source_ref);    -- permanent catalog-path owner (db/62)
+    APEX_JSON.write('owner', NVL(l_owner, NVL(r.requested_by,'')));
+    APEX_JSON.write('ownerType', CASE WHEN l_owner IS NOT NULL THEN 'catalog'
+                                      WHEN r.requested_by IS NOT NULL THEN 'manual'
+                                      ELSE '' END);
     APEX_JSON.open_array('categories');
     FOR c IN (SELECT m.category_code, cat.name_en, cat.name_ar, cat.color
                 FROM atd_job_category_map m JOIN atd_job_category cat ON cat.category_code = m.category_code
@@ -835,7 +853,7 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
-  l_n := atd_queue_pkg.enqueue([COLON]name);
+  l_n := atd_queue_pkg.enqueue([COLON]name, l_user);   -- per-user OTBI identity (db/62)
   IF l_n = 0 THEN dct_rest.err(404,'Job not found or disabled'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.write('queued', l_n); APEX_JSON.close_object;
@@ -851,7 +869,7 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
-  l_n := atd_queue_pkg.enqueue([COLON]name);   -- reset = mark READY, clear claim
+  l_n := atd_queue_pkg.enqueue([COLON]name, l_user);   -- reset = mark READY, clear claim; runs as the caller (db/62)
   IF l_n = 0 THEN dct_rest.err(404,'Job not found or disabled'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
@@ -872,6 +890,7 @@ BEGIN
   UPDATE atd_otbi_jobs
      SET priority = 1, run_order = 0,
          run_status = 'READY', claimed_by = NULL, claimed_at = NULL,
+         requested_by = l_user,   -- per-user OTBI identity (db/62)
          updated_at = SYSTIMESTAMP
    WHERE job_name = [COLON]name AND enabled = 'Y';
   l_n := SQL%ROWCOUNT; COMMIT;
@@ -1074,6 +1093,8 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  -- deliberately NO requested_by: a bulk enqueue stays on the SERVICE account
+  -- (one human click must not trigger dozens of personal-MFA logins fleet-wide)
   l_n := atd_queue_pkg.enqueue(NULL);
   dct_rest.json_header; APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.write('queued', l_n); APEX_JSON.close_object;
@@ -1438,13 +1459,32 @@ BEGIN
   dct_rest.json_header; APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (
+    WITH last_auth AS (
+      SELECT l.host_id, p.duration_ms, p.phase_status,
+             ROW_NUMBER() OVER (PARTITION BY l.host_id ORDER BY l.started DESC, p.run_id DESC) rn
+        FROM atd_load_run_phase p JOIN atd_load_run_log l ON l.run_id=p.run_id
+       WHERE p.phase_code='AUTHENTICATION'
+    ), last_ok AS (
+      SELECT host_id, MAX(finished) last_success
+        FROM atd_load_run_log WHERE status='SUCCESS' GROUP BY host_id
+    )
     SELECT h.worker_id, h.status, h.current_job,
            TO_CHAR( dct_to_local(h.last_seen),'YYYY-MM-DD HH:MI:SS AM') AS last_seen_s,
            ROUND((CAST(SYSTIMESTAMP AS DATE) - CAST(h.last_seen AS DATE)) * 86400) AS age_sec,
            (SELECT COUNT(*) FROM atd_load_run_log l
              WHERE l.host_id = h.worker_id
-               AND l.started > SYSTIMESTAMP - INTERVAL '1' DAY) AS runs24h
-    FROM atd_worker_heartbeat h ORDER BY h.worker_id
+               AND l.started > SYSTIMESTAMP - INTERVAL '1' DAY) AS runs24h,
+           h.mfa_status,
+           CASE WHEN h.mfa_status IN ('DETECTED','DELIVERED','FAILED') THEN h.mfa_number END AS mfa_number,
+           h.mfa_env,
+           TO_CHAR(dct_to_local(h.mfa_updated),'YYYY-MM-DD HH:MI:SS AM') AS mfa_updated_s,
+           h.mfa_message_id, h.mfa_error,
+           ROUND(a.duration_ms/1000,1) last_login_seconds, a.phase_status last_login_status,
+           TO_CHAR(dct_to_local(o.last_success),'YYYY-MM-DD HH:MI:SS AM') last_success_s
+    FROM atd_worker_heartbeat h
+    LEFT JOIN last_auth a ON a.host_id=h.worker_id AND a.rn=1
+    LEFT JOIN last_ok o ON o.host_id=h.worker_id
+    ORDER BY h.worker_id
   ) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('workerId',   r.worker_id);
@@ -1454,6 +1494,16 @@ BEGIN
     APEX_JSON.write('ageSec',     r.age_sec);
     APEX_JSON.write('online',     CASE WHEN r.age_sec <= 120 THEN 'Y' ELSE 'N' END);
     APEX_JSON.write('runs24h',    r.runs24h);
+    APEX_JSON.write('mfaStatus',  NVL(r.mfa_status,''));
+    APEX_JSON.write('mfaNumber',  NVL(r.mfa_number,''));
+    APEX_JSON.write('mfaEnv',     NVL(r.mfa_env,''));
+    APEX_JSON.write('mfaUpdated', NVL(r.mfa_updated_s,''));
+    APEX_JSON.write('mfaMessageId', r.mfa_message_id);
+    APEX_JSON.write('mfaError',   NVL(r.mfa_error,''));
+    IF r.last_login_seconds IS NULL THEN APEX_JSON.write('lastLoginSeconds','');
+    ELSE APEX_JSON.write('lastLoginSeconds',r.last_login_seconds); END IF;
+    APEX_JSON.write('lastLoginStatus',NVL(r.last_login_status,''));
+    APEX_JSON.write('lastSuccess',NVL(r.last_success_s,''));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;

@@ -1,0 +1,61 @@
+<div class="page-wrap">
+
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: $root.t('reg.title')"></h1>
+      <p class="page-sub" data-bind="text: $root.t('reg.sub')"></p>
+    </div>
+    <div class="page-actions">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px">
+        <div data-bind="click: function(){ showAll(!showAll()); return true; }" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" style="pointer-events:none" data-bind="checked: showAll">
+          <span data-bind="text: $root.t('reg.showInactive')"></span>
+        </div>
+      </label>
+      <button class="btn btn-primary btn-sm" data-bind="click: $vm.newKpi,
+              text: '+ ' + $root.t('reg.newKpi')"></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- ko if: loading() --><list-skeleton params="rows: 5"></list-skeleton><!-- /ko -->
+    <!-- ko ifnot: loading() -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $root.t('reg.code')"></th>
+          <th data-bind="text: $root.t('reg.name')"></th>
+          <th data-bind="text: $root.t('reg.frequency')"></th>
+          <th data-bind="text: $root.t('reg.method')"></th>
+          <th style="text-align:center" data-bind="text: $root.t('reg.weight')"></th>
+          <th style="text-align:center" data-bind="text: $root.t('reg.bands')"></th>
+          <th style="text-align:center" data-bind="text: $root.t('reg.criteria')"></th>
+          <th data-bind="text: $root.t('reg.target')"></th>
+          <th data-bind="text: $root.t('reg.status')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: kpis">
+          <tr style="cursor:pointer" data-bind="click: function(){ $vm.openKpi($data); }">
+            <td><span class="kp-src-badge manual" data-bind="text: $data.code"></span></td>
+            <td>
+              <b data-bind="text: $vm.lang() === 'ar' && $data.nameAr ? $data.nameAr : $data.nameEn"></b>
+            </td>
+            <td data-bind="text: $vm.freqLabel($data.frequency)"></td>
+            <td data-bind="text: $vm.methodLabel($data.calcMethod)"></td>
+            <td style="text-align:center" data-bind="text: $data.weight + '%'"></td>
+            <td style="text-align:center" data-bind="text: $data.bandCount"></td>
+            <td style="text-align:center">
+              <span data-bind="text: $data.criteriaCount"></span>
+              <!-- ko if: $data.criteriaCount > 0 && $data.criteriaWeightSum !== 100 -->
+              <span class="badge badge--rejected" data-bind="text: 'Σ ' + $data.criteriaWeightSum + '%'"></span>
+              <!-- /ko -->
+            </td>
+            <td data-bind="text: $data.currentYearTargetLabel || ''"></td>
+            <td><span class="badge" data-bind="text: $data.isActive === 'Y' ? $root.t('common.active') : $root.t('common.inactive'),
+                 css: $data.isActive === 'Y' ? 'badge--approved' : 'badge--idle'"></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+</div>

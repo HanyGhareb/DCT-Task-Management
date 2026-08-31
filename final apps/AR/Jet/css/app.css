@@ -131,3 +131,16 @@
 @media (max-width: 640px) {
   .set-row { grid-template-columns: 1fr; }
 }
+
+/* ── Rebill request status pills ──────────────────────────────────────────
+   Used by the AR Invoice Rebill register and its stage timeline. Mirrors the
+   ATD actions-queue pills so a request reads the same in both apps. */
+.rstat { font-size:11px; font-weight:700; padding:2px 9px; border-radius:10px;
+         display:inline-block; white-space:nowrap; }
+.rstat--READY     { background:#EAF2FB; color:#2C6CB0; }
+.rstat--CLAIMED   { background:#FDF1DD; color:#B5651A; }
+.rstat--RUNNING   { background:#EAF2FB; color:#2C6CB0; }
+.rstat--DONE      { background:#E8F6EC; color:#2A7D3A; }
+.rstat--SKIPPED   { background:#EFEFF2; color:#5A5A66; }
+.rstat--FAILED    { background:#FBE6E4; color:#C13A30; }
+.rstat--CANCELLED { background:#EFEFF2; color:#5A5A66; }

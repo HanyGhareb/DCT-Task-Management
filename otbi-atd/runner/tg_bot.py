@@ -33,9 +33,13 @@ import os
 import sys
 import time
 import pathlib
+import socket
 
 import httpx
 import config
+import checks
+
+checks.install_log_scrubber()
 
 
 # ---------------------------------------------------------------------------
@@ -48,10 +52,43 @@ _POLL_TIMEOUT = 30          # seconds for Telegram long-poll
 _MAX_FUZZY = 5              # max rows returned by name search
 _RETRY_SLEEP = 5            # seconds before retrying after poll error
 
+_DB_DISCONNECT_CODES = (
+    "DPY-1001",             # connection was closed
+    "DPY-4011",             # database/network closed the connection
+    "DPI-1010",             # connection handle is no longer valid
+    "ORA-03113",            # end-of-file on communication channel
+    "ORA-03114",            # not connected to Oracle
+    "ORA-03135",            # connection lost contact
+    "ORA-12537",            # network session ended
+    "ORA-12547",            # network transport lost contact
+)
+
 _STATE_FILE = (
     pathlib.Path(os.environ.get("ATD_STATE_DIR", "/root/otbi-atd"))
     / "tgbot_offset.txt"
 )
+
+
+def _sd_notify(message):
+    """Best-effort systemd readiness/watchdog notification.
+
+    The bot normally completes one Telegram long-poll every 30 seconds.  If that
+    loop wedges while the process remains alive, systemd restarts it after the
+    configured WatchdogSec instead of leaving commands unprocessed indefinitely.
+    """
+    address = os.environ.get("NOTIFY_SOCKET")
+    if not address:
+        return False
+    if address.startswith("@"):  # abstract Unix socket notation used by systemd
+        address = "\0" + address[1:]
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as sock:
+            sock.connect(address)
+            sock.sendall(message.encode("utf-8"))
+        return True
+    except OSError as exc:
+        print(f"[bot] systemd notify failed: {exc}")
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +105,9 @@ def _tg(method, **kwargs):
     )
     r.raise_for_status()
     return r.json()
+
+
+_ID_REPLY_AT = {}   # chat_id -> monotonic time of the last chat-id onboarding reply
 
 
 def _send(chat_id, text):
@@ -204,9 +244,11 @@ def do_refresh(conn, arg):
                 "<code>refresh all</code>)")
     cur = conn.cursor()
     if w == "all":
-        cur.execute("update prod.atd_worker_heartbeat set refresh_req = systimestamp")
+        cur.execute("update prod.atd_worker_heartbeat set refresh_req=systimestamp, "
+                    "mfa_status='REQUESTED',mfa_number=null,mfa_updated=systimestamp")
     else:
-        cur.execute("update prod.atd_worker_heartbeat set refresh_req = systimestamp "
+        cur.execute("update prod.atd_worker_heartbeat set refresh_req=systimestamp, "
+                    "mfa_status='REQUESTED',mfa_number=null,mfa_updated=systimestamp "
                     "where worker_id = :w", w=w)
     n = cur.rowcount
     conn.commit()
@@ -217,6 +259,27 @@ def do_refresh(conn, arg):
     tgt = "all workers" if w == "all" else f"<code>{html.escape(w)}</code>"
     return (f"🔄 Re-login requested for {tgt} ({n}). The worker will start a fresh login "
             f"shortly — <b>approve the Microsoft Authenticator number</b> when it arrives.")
+
+
+def do_check_session(conn, arg):
+    """Request validation/reuse of the current worker session."""
+    w = _norm_worker(arg)
+    if not w:
+        return "Usage: <code>check session vm180</code> (or vm181 / vm182 / all)"
+    cur = conn.cursor()
+    if w == "all":
+        cur.execute("update prod.atd_worker_heartbeat set session_check_req=systimestamp, "
+                    "mfa_status='CHECKING',mfa_number=null,mfa_updated=systimestamp")
+    else:
+        cur.execute("update prod.atd_worker_heartbeat set session_check_req=systimestamp, "
+                    "mfa_status='CHECKING',mfa_number=null,mfa_updated=systimestamp "
+                    "where worker_id=:w", w=w)
+    n = cur.rowcount
+    conn.commit()
+    if n == 0:
+        return f"❌ No worker matching <code>{html.escape(w)}</code>."
+    tgt = "all workers" if w == "all" else f"<code>{html.escape(w)}</code>"
+    return f"🔎 Session check requested for {tgt} ({n}). MFA is used only if invalid."
 
 
 # ---------------------------------------------------------------------------
@@ -231,8 +294,8 @@ _HELP = (
     "/vendor <code>acme</code>   — fuzzy name search (top 5)\n"
     "\n"
     "<b>🖥️ Analytics Loader (ops)</b>\n"
-    "<code>refresh vm180</code>  — re-login a worker (vm180/181/182, or "
-    "<code>all</code>); then approve the Authenticator number\n"
+    "<code>check session vm180</code> — reuse when healthy; MFA only if invalid\n"
+    "<code>refresh vm180</code> — force re-login (vm180/181/182/all)\n"
     "\n"
     "<b>🔜 Coming soon</b>\n"
     "/payments  ·  /pettycash  ·  /freelancer\n"
@@ -261,8 +324,26 @@ def _handle(update, conn, allow):
         return
 
     if chat_id not in allow:
+        # Per-user OTBI credential onboarding (db/62): a PRIVATE chat gets a
+        # one-line reply telling the sender their chat id, so an admin can
+        # self-serve the "Telegram chat id" field on Runner Settings without
+        # any third-party id bot. Query commands stay allow-list-only, and
+        # groups/channels are still ignored silently. Rate-limited per chat so
+        # a message flood can't turn the bot into a reply loop.
+        if msg.get("chat", {}).get("type") == "private":
+            now = time.monotonic()
+            last = _ID_REPLY_AT.get(chat_id, 0.0)
+            if now - last >= 300:
+                _ID_REPLY_AT[chat_id] = now
+                _send(chat_id,
+                      f"Your i-Finance runner chat id is: <b>{chat_id}</b>\n"
+                      f"Paste this number into ATD (Analytics Loader) → Runner "
+                      f"Settings → My OTBI Account → <i>Telegram chat id</i>, "
+                      f"then Save Account.")
+                print(f"[bot] sent chat-id reply to unregistered private chat {chat_id}")
+                return
         print(f"[bot] ignored update from chat_id={chat_id} (not in allow-list)")
-        return  # silent ignore — do not reveal the bot exists to strangers
+        return  # queries from strangers are never answered
 
     # Strip the @botname suffix Telegram appends in groups; accept with or without /
     cmd_part, _, arg = text.partition(" ")
@@ -296,7 +377,55 @@ def _handle(update, conn, allow):
         _send(chat_id, do_refresh(conn, arg))
         return
 
+    if cmd == "/check" and arg.lower().startswith("session "):
+        _send(chat_id, do_check_session(conn, arg[8:].strip()))
+        return
+
     _send(chat_id, _HELP)
+
+
+def _is_db_disconnect(exc):
+    """Return True only for errors that mean the Oracle connection is unusable."""
+    message = str(exc).upper()
+    return any(code in message for code in _DB_DISCONNECT_CODES)
+
+
+def _close_quietly(conn):
+    try:
+        conn.close()
+    except Exception:
+        pass
+
+
+def _handle_with_db_retry(update, conn, allow):
+    """Handle one update, reconnecting and retrying once after a DB disconnect.
+
+    Returns ``(connection, handled)``.  ``handled=False`` tells the poll loop not
+    to advance its durable Telegram offset, so the same command is delivered again
+    after a temporary database outage instead of being silently discarded.
+    """
+    try:
+        _handle(update, conn, allow)
+        return conn, True
+    except Exception as exc:
+        if not _is_db_disconnect(exc):
+            raise
+
+        uid = update.get("update_id", 0)
+        print(f"[bot] DB connection lost handling update {uid}: {exc} — reconnecting")
+        _close_quietly(conn)
+        try:
+            replacement = config.connect()
+            config.apply_runner_config(replacement)
+            _handle(update, replacement, allow)
+            print(f"[bot] update {uid} succeeded after DB reconnect")
+            return replacement, True
+        except Exception as retry_exc:
+            print(f"[bot] update {uid} deferred after DB reconnect/retry failed: {retry_exc}")
+            replacement = locals().get("replacement")
+            if replacement is not None and _is_db_disconnect(retry_exc):
+                _close_quietly(replacement)
+            return replacement or conn, False
 
 
 # ---------------------------------------------------------------------------
@@ -341,21 +470,29 @@ def run():
 
     offset = _load_offset()
     print(f"[bot] polling from offset={offset} (long-poll timeout={_POLL_TIMEOUT}s)")
+    _sd_notify("READY=1\nSTATUS=Polling Telegram for commands")
 
     while True:
         try:
             data = _tg("getUpdates", offset=offset, timeout=_POLL_TIMEOUT)
+            _sd_notify("WATCHDOG=1\nSTATUS=Telegram poll healthy")
             for u in data.get("result", []):
                 uid = u.get("update_id", 0)
                 try:
-                    _handle(u, conn, allow)
+                    conn, handled = _handle_with_db_retry(u, conn, allow)
                 except Exception as exc:
                     print(f"[bot] error handling update {uid}: {exc}")
+                    handled = True  # skip malformed/non-DB poison updates as before
+                if not handled:
+                    # Keep this update pending. Telegram will return it again because
+                    # its offset has not been advanced or persisted.
+                    time.sleep(_RETRY_SLEEP)
+                    break
                 if uid + 1 > offset:
                     offset = uid + 1
                     _save_offset(offset)
         except httpx.TimeoutException:
-            pass  # normal for long-poll with no messages
+            _sd_notify("WATCHDOG=1\nSTATUS=Telegram poll healthy (idle)")
         except Exception as exc:
             print(f"[bot] poll error: {exc} — retrying in {_RETRY_SLEEP}s")
             time.sleep(_RETRY_SLEEP)

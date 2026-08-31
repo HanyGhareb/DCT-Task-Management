@@ -66,6 +66,7 @@ BEGIN
         status          VARCHAR2(10)   DEFAULT 'PENDING' NOT NULL,
         attempts        NUMBER         DEFAULT 0 NOT NULL,
         error_msg       VARCHAR2(2000),
+        receipt_id     VARCHAR2(100),
         created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
         sent_at         TIMESTAMP,
         CONSTRAINT chk_dct_pushob_status CHECK (status IN ('PENDING','SENT','FAILED'))
@@ -73,6 +74,60 @@ BEGIN
     EXECUTE IMMEDIATE 'CREATE INDEX prod.ix_dct_pushob_status ON prod.dct_push_outbox(status, created_at)';
   END IF;
 END;
+/
+
+-- Added after initial deployment: store Expo ticket id for later receipt checks.
+DECLARE
+  n NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO n FROM dba_tab_columns
+   WHERE owner='PROD' AND table_name='DCT_PUSH_OUTBOX' AND column_name='RECEIPT_ID';
+  IF n=0 THEN
+    EXECUTE IMMEDIATE 'ALTER TABLE prod.dct_push_outbox ADD receipt_id VARCHAR2(100)';
+  END IF;
+END;
+/
+
+-- Push failures must never block the notification, but they must be visible.
+DECLARE
+  n NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO n FROM dba_tables
+   WHERE owner='PROD' AND table_name='DCT_PUSH_ERROR_LOG';
+  IF n=0 THEN
+    EXECUTE IMMEDIATE q'[
+      CREATE TABLE prod.dct_push_error_log (
+        error_id        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        notification_id NUMBER,
+        user_id         NUMBER,
+        push_token      VARCHAR2(400),
+        error_stage     VARCHAR2(30) NOT NULL,
+        error_message   VARCHAR2(2000) NOT NULL,
+        created_at      TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
+      )]';
+    EXECUTE IMMEDIATE
+      'CREATE INDEX prod.ix_dct_pusherr_created ON prod.dct_push_error_log(created_at)';
+  END IF;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE prod.dct_push_log_error (
+  p_notification_id IN NUMBER,
+  p_user_id         IN NUMBER,
+  p_push_token      IN VARCHAR2,
+  p_error_stage     IN VARCHAR2,
+  p_error_message   IN VARCHAR2
+) AUTHID DEFINER AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+  INSERT INTO prod.dct_push_error_log
+    (notification_id,user_id,push_token,error_stage,error_message)
+  VALUES
+    (p_notification_id,p_user_id,SUBSTR(p_push_token,1,400),
+     SUBSTR(p_error_stage,1,30),SUBSTR(p_error_message,1,2000));
+  COMMIT;
+EXCEPTION WHEN OTHERS THEN NULL;
+END dct_push_log_error;
 /
 
 -- =============================================================================
@@ -93,11 +148,18 @@ BEGIN
     SELECT push_token FROM prod.dct_device_tokens
      WHERE user_id = :NEW.recipient_user_id AND is_active = 'Y'
   ) LOOP
-    INSERT INTO prod.dct_push_outbox (notification_id, user_id, push_token, title, body, data_json)
-    VALUES (:NEW.notification_id, :NEW.recipient_user_id, d.push_token,
-            :NEW.title_en, :NEW.body_en, l_data);
+    BEGIN
+      INSERT INTO prod.dct_push_outbox (notification_id, user_id, push_token, title, body, data_json)
+      VALUES (:NEW.notification_id, :NEW.recipient_user_id, d.push_token,
+              :NEW.title_en, :NEW.body_en, l_data);
+    EXCEPTION WHEN OTHERS THEN
+      prod.dct_push_log_error(:NEW.notification_id,:NEW.recipient_user_id,
+                              d.push_token,'ENQUEUE',SQLERRM);
+    END;
   END LOOP;
-EXCEPTION WHEN OTHERS THEN NULL;  -- a push failure must never block the notification insert
+EXCEPTION WHEN OTHERS THEN
+  prod.dct_push_log_error(:NEW.notification_id,:NEW.recipient_user_id,
+                          NULL,'TRIGGER',SQLERRM);
 END;
 /
 
@@ -138,10 +200,18 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
   END unregister;
 
   PROCEDURE send_pending(p_limit IN NUMBER DEFAULT 100) IS
+    TYPE t_id_list IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+    TYPE t_token_list IS TABLE OF VARCHAR2(400) INDEX BY PLS_INTEGER;
     l_body  CLOB;
     l_res   CLOB;
     l_first BOOLEAN := TRUE;
     l_err   VARCHAR2(2000);
+    l_ids   t_id_list;
+    l_tokens t_token_list;
+    l_count PLS_INTEGER;
+    l_status VARCHAR2(20);
+    l_code VARCHAR2(100);
+    l_message VARCHAR2(2000);
   BEGIN
     -- Build a single Expo push batch from PENDING rows (one JSON array).
     l_body := '[';
@@ -152,6 +222,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
       ORDER  BY created_at
       FETCH FIRST p_limit ROWS ONLY
     ) LOOP
+      l_ids(l_ids.COUNT + 1) := r.outbox_id;
+      l_tokens(l_tokens.COUNT + 1) := r.push_token;
       IF NOT l_first THEN l_body := l_body || ','; END IF;
       l_first := FALSE;
       l_body := l_body
@@ -178,15 +250,47 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
                  p_url         => 'https://exp.host/--/api/v2/push/send',
                  p_http_method => 'POST',
                  p_body        => l_body);
+      IF APEX_WEB_SERVICE.g_status_code != 200 THEN
+        RAISE_APPLICATION_ERROR(-20028,'Expo HTTP status '||APEX_WEB_SERVICE.g_status_code);
+      END IF;
+      APEX_JSON.parse(l_res);
+      l_count := APEX_JSON.get_count('data');
+      IF l_count != l_ids.COUNT THEN
+        RAISE_APPLICATION_ERROR(-20029,'Expo ticket count does not match submitted batch');
+      END IF;
+      FOR i IN 1 .. l_ids.COUNT LOOP
+        l_status := APEX_JSON.get_varchar2('data['||i||'].status');
+        IF l_status='ok' THEN
+          UPDATE prod.dct_push_outbox
+             SET status='SENT',sent_at=SYSTIMESTAMP,error_msg=NULL,
+                 receipt_id=APEX_JSON.get_varchar2('data['||i||'].id')
+           WHERE outbox_id=l_ids(i);
+        ELSE
+          l_code:=APEX_JSON.get_varchar2('data['||i||'].details.error');
+          l_message:=SUBSTR(APEX_JSON.get_varchar2('data['||i||'].message'),1,2000);
+          UPDATE prod.dct_push_outbox
+             SET status='FAILED',sent_at=NULL,receipt_id=NULL,
+                 error_msg=SUBSTR(NVL(l_code,'ExpoError')||': '||l_message,1,2000)
+           WHERE outbox_id=l_ids(i);
+          IF l_code='DeviceNotRegistered' THEN
+            UPDATE prod.dct_device_tokens SET is_active='N'
+             WHERE push_token=l_tokens(i);
+          END IF;
+        END IF;
+      END LOOP;
       COMMIT;
     EXCEPTION WHEN OTHERS THEN
       l_err := SUBSTR(SQLERRM,1,2000);  -- capture before ROLLBACK; SQLERRM is not valid inside SQL DML
       ROLLBACK;
-      UPDATE prod.dct_push_outbox
-         SET attempts = attempts + 1,
-             status = CASE WHEN attempts + 1 >= 5 THEN 'FAILED' ELSE 'PENDING' END,
-             error_msg = l_err
-       WHERE status = 'PENDING';
+      IF l_ids.COUNT > 0 THEN
+        FORALL i IN 1 .. l_ids.COUNT
+          UPDATE prod.dct_push_outbox
+             SET attempts = attempts + 1,
+                 status = CASE WHEN attempts + 1 >= 5 THEN 'FAILED' ELSE 'PENDING' END,
+                 error_msg = l_err
+           WHERE outbox_id = l_ids(i)
+             AND status = 'PENDING';
+      END IF;
       COMMIT;
     END;
   END send_pending;

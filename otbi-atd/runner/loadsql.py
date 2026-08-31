@@ -26,6 +26,15 @@ def _logvals(job_name, n, checksum, extra=None):
     msg = "NULL" if not note else "'" + note.replace("'", "''") + "'"
     return f"{n},'{checksum}',{msg}"
 
+
+def log_no_data(job_name, message):
+    """Record a successful zero-row no-op without touching the target table."""
+    j = job_name.replace("'", "''")
+    m = message.replace("'", "''")
+    sqlrun.run_sql(
+        "INSERT INTO prod.atd_load_run_log(job_name,track,status,finished,row_count,message) "
+        f"VALUES ('{j}','BROWSER','SUCCESS',systimestamp,0,'{m}');\nCOMMIT;")
+
 _DT = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
 _D = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 

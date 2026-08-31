@@ -33,7 +33,9 @@ otbi-atd/
     02_atd_network_acl.sql      ACL so APEX_WEB_SERVICE can reach the pod
     03_atd_otbi_pkg.sql         ATD_OTBI_PKG: runReport → parse → load → log
     04_atd_scheduler.sql        DBMS_SCHEDULER jobs built from ATD_OTBI_JOBS
-    install.sql                 runs 01→04 in order
+    install.sql                 first-time install only; refuses an existing system
+    upgrade.sql                 safe entry point for production upgrades
+    MIGRATION_TEMPLATE.sql      template for additive, rerunnable changes
   runner/                   ← Track B (external) — reads the same control tables
     (scaffolded next)
   README.md
@@ -45,6 +47,11 @@ All scripts are **CRLF + UTF-8 no BOM**, `SET DEFINE OFF`, schema-qualified. Run
 sql -name prod_mcp
 @c:/claude/DCT-task-management/DCT-Task-Management/otbi-atd/db/install.sql
 ```
+
+`install.sql` is only for an empty environment. It stops before running any DDL when
+OTBI Loader control tables already exist. For production changes, use `upgrade.sql`
+and numbered additive migrations; do not rerun `01_atd_control_tables.sql`, because
+that baseline script recreates the control tables.
 > Deployment is intentionally **not** run yet — it creates objects on the live DB and needs the
 > Fusion service account + ACL host confirmed first.
 

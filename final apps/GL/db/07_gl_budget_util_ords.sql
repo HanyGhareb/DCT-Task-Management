@@ -23,8 +23,13 @@
 --       sets SYS_CONTEXT('GL_CTX','BUTIL_END') via dct_gl_class_pkg.set_butil_end
 --       so the view's fact CTEs stop at the period end (budget stays annual);
 --       always cleared after the queries (and on error) -- pooled sessions.
+--       DATA QUALITY (2026-07-27): response always carries missingCc +
+--       missingCcBudget = count / annual-budget sum of the filtered rows that
+--       have an annual budget (<> 0) but NO cost centre (task attribute missing
+--       in Fusion AND no charge-account fallback). nocc=Y filters the register
+--       to exactly those rows -- the red alert band's drill drawer uses it.
 --   GET /gl/butil/lines?year=&project=&task=&etype=&metric=  -> a single figure
---       (metric ap|grn|pr|po) of a butil row drilled to its supporting lines
+--       (metric ap|grn|pr|po|budget|budgetannual) drilled to its supporting lines
 --       {metric, total, columns[], rows[]}; totals reconcile to the row figure.
 --       Every drawer identifies rows by document number + line number (AP
 --       invoice #/line, GRN #/line, PR #/line, PO #/line) and suppresses
@@ -68,30 +73,54 @@ BEGIN
     def_handler('butil/filters', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  SELECT MAX(budget_year) INTO l_year FROM prod.dct_budget_utilization_v;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
+  END IF;
+  SELECT MAX(TO_NUMBER(filter_value DEFAULT NULL ON CONVERSION ERROR)) INTO l_year
+    FROM prod.dct_butil_filter_cache WHERE filter_type='YEAR';
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('defaultYear', l_year);
   APEX_JSON.open_array('years');
-  FOR r IN (SELECT DISTINCT budget_year y FROM prod.dct_budget_utilization_v ORDER BY budget_year DESC) LOOP
+  FOR r IN (SELECT TO_NUMBER(filter_value) y FROM prod.dct_butil_filter_cache WHERE filter_type='YEAR' ORDER BY filter_value DESC) LOOP
     APEX_JSON.write(r.y);
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('projectTypes');
-  FOR r IN (SELECT DISTINCT project_type pt FROM prod.dct_budget_utilization_v ORDER BY project_type) LOOP
+  FOR r IN (SELECT filter_value pt FROM prod.dct_butil_filter_cache WHERE filter_type='PROJECT_TYPE' ORDER BY filter_value) LOOP
     APEX_JSON.write(r.pt);
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('sectors');
-  FOR r IN (SELECT DISTINCT sector s FROM prod.dct_budget_utilization_v WHERE sector IS NOT NULL ORDER BY sector) LOOP
+  FOR r IN (SELECT filter_value s FROM prod.dct_butil_filter_cache WHERE filter_type='SECTOR' ORDER BY filter_value) LOOP
     APEX_JSON.write(r.s);
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('chapters');
-  FOR r IN (SELECT DISTINCT chapter ch FROM prod.dct_budget_utilization_v WHERE chapter IS NOT NULL ORDER BY chapter) LOOP
+  FOR r IN (SELECT filter_value ch FROM prod.dct_butil_filter_cache WHERE filter_type='CHAPTER' ORDER BY filter_value) LOOP
     APEX_JSON.write(r.ch);
+  END LOOP;
+  APEX_JSON.close_array;
+  -- Business Units of the budget lines (project attribution via the projects
+  -- master); grows automatically when the extracts carry more BUs
+  APEX_JSON.open_array('businessUnits');
+  FOR r IN (SELECT filter_value b FROM prod.dct_butil_filter_cache WHERE filter_type='BUSINESS_UNIT' ORDER BY filter_value) LOOP
+    APEX_JSON.write(r.b);
+  END LOOP;
+  APEX_JSON.close_array;
+  -- Appropriation + DCT Program classification dimensions (exact-match LOVs)
+  APEX_JSON.open_array('appropriations');
+  FOR r IN (SELECT filter_value a FROM prod.dct_butil_filter_cache WHERE filter_type='APPROPRIATION' ORDER BY filter_value) LOOP
+    APEX_JSON.write(r.a);
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.open_array('programs');
+  FOR r IN (SELECT filter_value pg FROM prod.dct_butil_filter_cache WHERE filter_type='PROGRAM' ORDER BY filter_value) LOOP
+    APEX_JSON.write(r.pg);
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.close_object;
@@ -108,34 +137,39 @@ END;
     def_handler('butil/lov', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year NUMBER := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
+  END IF;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('year', l_year);
   APEX_JSON.open_array('costCenters');
-  FOR r IN (SELECT cost_centre cc, MAX(department) dept FROM prod.dct_budget_utilization_v
+  FOR r IN (SELECT cost_centre cc, MAX(department) dept FROM prod.dct_butil_key_cache
             WHERE cost_centre IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
             GROUP BY cost_centre ORDER BY cost_centre) LOOP
     APEX_JSON.open_object; APEX_JSON.write('cc', r.cc); APEX_JSON.write('dept', NVL(r.dept,'')); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('projects');
-  FOR r IN (SELECT project_number p, MAX(project_name) n FROM prod.dct_budget_utilization_v
-            WHERE project_number IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
+  FOR r IN (SELECT project_number p, MAX(project_name) n FROM prod.dct_butil_key_cache
+            WHERE project_number IS NOT NULL AND project_number NOT LIKE '#%' AND (l_year IS NULL OR budget_year = l_year)
             GROUP BY project_number ORDER BY project_number) LOOP
     APEX_JSON.open_object; APEX_JSON.write('p', r.p); APEX_JSON.write('n', NVL(r.n,'')); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('tasks');
-  FOR r IN (SELECT DISTINCT task_number t FROM prod.dct_budget_utilization_v
-            WHERE task_number IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
+  FOR r IN (SELECT DISTINCT task_number t FROM prod.dct_butil_key_cache
+            WHERE task_number IS NOT NULL AND task_number NOT LIKE '#%' AND (l_year IS NULL OR budget_year = l_year)
             ORDER BY task_number) LOOP
     APEX_JSON.write(r.t);
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('etypes');
-  FOR r IN (SELECT DISTINCT expenditure_type et FROM prod.dct_budget_utilization_v
+  FOR r IN (SELECT DISTINCT expenditure_type et FROM prod.dct_butil_key_cache
             WHERE expenditure_type IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
             ORDER BY expenditure_type) LOOP
     APEX_JSON.write(r.et);
@@ -158,23 +192,41 @@ END;
     def_handler('butil', 'GET', q'!
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year   NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
-  l_ptype  VARCHAR2(100) := [COLON]projecttype;
+  l_ptype  VARCHAR2(1000) := [COLON]projecttype;
   l_sector VARCHAR2(200) := [COLON]sector;
   l_chapter VARCHAR2(2000) := [COLON]chapter;
+  l_bu      VARCHAR2(2000) := [COLON]bu;
+  l_approp  VARCHAR2(2000) := [COLON]appropriation;
+  l_program VARCHAR2(2000) := [COLON]program;
   l_cc     VARCHAR2(2000) := [COLON]costcenter;
   l_proj   VARCHAR2(2000) := [COLON]project;
   l_task   VARCHAR2(200) := [COLON]task;
   l_etype  VARCHAR2(255) := [COLON]etype;
   l_search VARCHAR2(200) := [COLON]search;
   l_period VARCHAR2(10)  := [COLON]period;
+  -- nocc=Y -> ONLY the data-quality rows: budget lines (annual budget <> 0)
+  -- with NO cost centre. Feeds the red alert band's drill drawer.
+  l_nocc   VARCHAR2(4)   := [COLON]nocc;
+  -- ovr=Y -> "Select to include Budget Override": GL_CTX.BUTIL_OVR makes the
+  -- view ADD the signed budget change to the annual AND YTD budget per period
+  -- row (db/v2/106 Excel workbook / GL drawer).
+  l_ovr    VARCHAR2(4)   := UPPER(NVL([COLON]ovr,'N'));
   l_end    DATE;
   l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 5000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
-  t_bud NUMBER; t_ap NUMBER; t_grn NUMBER; t_pr NUMBER; t_po NUMBER; t_fund NUMBER;
+  l_misscc NUMBER; t_misscc NUMBER;
+  l_negcnt NUMBER; t_negfund NUMBER;
+  t_bud NUMBER; t_buda NUMBER; t_ap NUMBER; t_grn NUMBER; t_pr NUMBER; t_po NUMBER; t_fund NUMBER;
+  t_ovr NUMBER; t_ovra NUMBER; t_ovrn NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
+  END IF;
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
   IF l_period = '' THEN l_period := NULL; END IF;
   IF l_period IS NOT NULL THEN
@@ -187,14 +239,26 @@ BEGIN
   -- YTD window: view fact CTEs read GL_CTX.BUTIL_END; always cleared below
   IF l_end IS NOT NULL THEN dct_gl_class_pkg.set_butil_end(l_end);
   ELSE dct_gl_class_pkg.clear_butil_end; END IF;
-  SELECT COUNT(*), NVL(SUM(budget),0), NVL(SUM(actual_ap),0), NVL(SUM(actual_grn),0),
-         NVL(SUM(commitment_pr),0), NVL(SUM(obligation_po),0), NVL(SUM(fund_available),0)
-    INTO l_total, t_bud, t_ap, t_grn, t_pr, t_po, t_fund
+  dct_gl_class_pkg.set_butil_ovr(l_ovr);
+  SELECT COUNT(*), NVL(SUM(budget),0), NVL(SUM(budget_annual),0), NVL(SUM(actual_ap),0), NVL(SUM(actual_grn),0),
+         NVL(SUM(commitment_pr),0), NVL(SUM(obligation_po),0), NVL(SUM(fund_available),0),
+         COUNT(CASE WHEN v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0 THEN 1 END),
+         NVL(SUM(CASE WHEN v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0 THEN v.budget_annual END),0),
+         NVL(SUM(override_budget),0), NVL(SUM(override_budget_annual),0), NVL(SUM(override_lines),0),
+         COUNT(CASE WHEN v.fund_available < -0.005 THEN 1 END),
+         NVL(SUM(CASE WHEN v.fund_available < -0.005 THEN v.fund_available END),0)
+    INTO l_total, t_bud, t_buda, t_ap, t_grn, t_pr, t_po, t_fund, l_misscc, t_misscc,
+         t_ovr, t_ovra, t_ovrn, l_negcnt, t_negfund
     FROM prod.dct_budget_utilization_v v
    WHERE v.budget_year = l_year
-     AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+     AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
+     AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
      AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
      AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+               AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
      AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                            OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
      AND (l_proj   IS NULL OR (INSTR(l_proj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
@@ -206,18 +270,35 @@ BEGIN
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
   APEX_JSON.write('year', l_year);
+  -- data-quality flag: budget lines (annual budget <> 0) with NO cost centre in
+  -- the filtered set -> drives the red alert band on the Budget Utilization page
+  APEX_JSON.write('missingCc', l_misscc);
+  APEX_JSON.write('missingCcBudget', t_misscc);
+  -- over-budget flag: lines whose Fund Available is NEGATIVE in the filtered
+  -- set -> drives the over-budget warning band above the Overview region
+  APEX_JSON.write('negFund', l_negcnt);
+  APEX_JSON.write('negFundTotal', t_negfund);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
+  APEX_JSON.write('considerOverride', l_ovr);
   APEX_JSON.open_object('totals');
-  APEX_JSON.write('budget', t_bud); APEX_JSON.write('actualAp', t_ap); APEX_JSON.write('actualGrn', t_grn);
+  APEX_JSON.write('budget', t_bud); APEX_JSON.write('budgetAnnual', t_buda);
+  APEX_JSON.write('actualAp', t_ap); APEX_JSON.write('actualGrn', t_grn);
   APEX_JSON.write('commitmentPr', t_pr); APEX_JSON.write('obligationPo', t_po); APEX_JSON.write('fundAvailable', t_fund);
+  APEX_JSON.write('overrideBudget', t_ovr); APEX_JSON.write('overrideBudgetAnnual', t_ovra);
+  APEX_JSON.write('overrideLines', t_ovrn);
   APEX_JSON.close_object;
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT v.* FROM prod.dct_budget_utilization_v v
     WHERE v.budget_year = l_year
-      AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+      AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
+      AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
       AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
       AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+               AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
       AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                             OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
       AND (l_proj   IS NULL OR (INSTR(l_proj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
@@ -233,6 +314,7 @@ BEGIN
     APEX_JSON.write('projectType', NVL(r.project_type,''));
     APEX_JSON.write('sector', NVL(r.sector,''));
     APEX_JSON.write('department', NVL(r.department,''));
+    APEX_JSON.write('organization', NVL(r.task_organization,''));
     APEX_JSON.write('costCentre', NVL(r.cost_centre,''));
     APEX_JSON.write('projectNumber', NVL(r.project_number,''));
     APEX_JSON.write('projectName', NVL(r.project_name,''));
@@ -243,16 +325,23 @@ BEGIN
     APEX_JSON.write('program', NVL(r.program,''));
     APEX_JSON.write('expenditureType', NVL(r.expenditure_type,''));
     APEX_JSON.write('budget', r.budget);
+    APEX_JSON.write('budgetAnnual', r.budget_annual);
     APEX_JSON.write('actualAp', r.actual_ap);
     APEX_JSON.write('actualGrn', r.actual_grn);
     APEX_JSON.write('commitmentPr', r.commitment_pr);
     APEX_JSON.write('obligationPo', r.obligation_po);
     APEX_JSON.write('fundAvailable', r.fund_available);
+    APEX_JSON.write('overrideBudget', r.override_budget);
+    APEX_JSON.write('overrideBudgetAnnual', r.override_budget_annual);
+    APEX_JSON.write('overrideLines', r.override_lines);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
   dct_gl_class_pkg.clear_butil_end;
-EXCEPTION WHEN OTHERS THEN dct_gl_class_pkg.clear_butil_end; dct_rest.err(500, SQLERRM);
+  dct_gl_class_pkg.clear_butil_ovr;
+EXCEPTION WHEN OTHERS THEN
+  dct_gl_class_pkg.clear_butil_end; dct_gl_class_pkg.clear_butil_ovr;
+  dct_rest.err(500, SQLERRM);
 END;
 !');
 
@@ -262,8 +351,9 @@ END;
     --                       [&projecttype=&sector=&search=]
     --                       [&costcenter=&fproject=&ftask=&fetype=]
     --                       [&period=MM-YYYY]  (YTD through the period)
-    --   metric in ap | grn | pr | po (Actual AP / Actual GRN / Commitment PR /
-    --     Obligation PO). Two modes off ONE query (a `kys` key-set CTE):
+    --   metric in ap | grn | pr | po | budget | budgetannual (Actual AP /
+    --     Actual GRN / Commitment PR / Obligation PO / YTD Budget periods /
+    --     Annual Budget periods). Two modes off ONE query (a `kys` key-set CTE):
     --     * ROW drill  (project [+task+etype] supplied) -> that one budget line.
     --     * CARD drill (project omitted) -> aggregate across every budget line
     --       matching the /gl/butil filters (projecttype/sector/search) -- the
@@ -278,22 +368,30 @@ END;
     --   Returns {metric, aggregate, total, count, columns[{key,label,type}], rows[]}.
     -- =========================================================================
     def_template('butil/lines');
-    def_handler('butil/lines', 'GET', q'!
+    def_handler('butil/lines', 'GET', TO_CLOB(q'!
 DECLARE
   l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year    NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
   l_project VARCHAR2(120) := [COLON]project;
   l_task    VARCHAR2(120) := [COLON]task;
   l_etype   VARCHAR2(255) := [COLON]etype;
-  l_metric  VARCHAR2(10)  := LOWER([COLON]metric);
-  l_ptype   VARCHAR2(100) := [COLON]projecttype;
+  l_metric  VARCHAR2(20)  := LOWER([COLON]metric);   -- fits 'budgetannual' (12); a DECLARE-section VALUE_ERROR = uncatchable 555
+  l_ptype   VARCHAR2(1000) := [COLON]projecttype;
   l_sector  VARCHAR2(200) := [COLON]sector;
   l_chapter VARCHAR2(2000) := [COLON]chapter;
+  l_bu      VARCHAR2(2000) := [COLON]bu;
+  l_approp  VARCHAR2(2000) := [COLON]appropriation;
+  l_program VARCHAR2(2000) := [COLON]program;
   l_cc      VARCHAR2(2000) := [COLON]costcenter;
   l_fproj   VARCHAR2(2000) := [COLON]fproject;
   l_ftask   VARCHAR2(200) := [COLON]ftask;
   l_fetype  VARCHAR2(255) := [COLON]fetype;
   l_search  VARCHAR2(200) := [COLON]search;
+  -- ovr=Y: budget drills add the signed budget change so they reconcile to
+  -- the page figures when Budget Override is included
+  l_ovr     VARCHAR2(4)   := UPPER(NVL([COLON]ovr,'N'));
   l_period  VARCHAR2(10)  := [COLON]period;
   l_end     DATE;
   l_agg     BOOLEAN;
@@ -305,6 +403,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
+  END IF;
   IF l_year IS NULL OR l_metric IS NULL THEN dct_rest.err(400,'year and metric are required'); RETURN; END IF;
   -- project/task/etype set -> single row drill; project omitted -> aggregate
   -- drill (KPI card) filtered like /gl/butil: projecttype/sector/search plus
@@ -316,6 +417,7 @@ BEGIN
   IF l_ptype   = '' THEN l_ptype   := NULL; END IF;
   IF l_sector  = '' THEN l_sector  := NULL; END IF;
   IF l_chapter = '' THEN l_chapter := NULL; END IF;
+  IF l_bu = '' THEN l_bu := NULL; END IF;
   IF l_cc      = '' THEN l_cc      := NULL; END IF;
   IF l_fproj   = '' THEN l_fproj   := NULL; END IF;
   IF l_ftask   = '' THEN l_ftask   := NULL; END IF;
@@ -348,11 +450,15 @@ BEGIN
       WITH kys AS (
              SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
              UNION ALL
-             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_butil_key_cache v
              WHERE l_project IS NULL AND v.budget_year = l_year
-               AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+               AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
                AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+               AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                      OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
                AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
@@ -404,22 +510,37 @@ BEGIN
     APEX_JSON.close_array;
 
   ELSIF l_metric = 'grn' THEN
+    -- full register parity (2026-07-27): the aggregate drill carries every
+    -- column of the BUDGET_UTIL_REGISTER "GRN Receipts" sheet -- project name,
+    -- expenditure type, PO-distribution Invoiced/Uninvoiced AED and the
+    -- comma-separated Related Invoices list. Amount (AED) stays LAST so the
+    -- drawer's reconciling total footer lands under it.
     APEX_JSON.open_array('columns');
-    IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
+    IF l_agg THEN
+      col('project','Project','text'); col('projectName','Project name','text');
+      col('task','Task','text'); col('etype','Expenditure type','text');
+    END IF;
     col('receipt','GRN #','text'); col('line','Line','text'); col('date','Date','date');
     col('po','PO #','text'); col('poLine','PO Line','text'); col('supplier','Supplier','text'); col('currency','Cur','text');
-    col('rate','Rate','num'); col('amount','Amount (AED)','money');
+    col('rate','Rate','num');
+    col('invoicedAed','Invoiced (AED)','money'); col('uninvoicedAed','Uninvoiced (AED)','money');
+    col('relatedInvoices','Related Invoices','text');
+    col('amount','Amount (AED)','money');
     APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
     FOR r IN (
       WITH kys AS (
              SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
              UNION ALL
-             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_butil_key_cache v
              WHERE l_project IS NULL AND v.budget_year = l_year
-               AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+               AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
                AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+               AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                      OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
                AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
@@ -427,18 +548,41 @@ BEGIN
                AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
                AND (l_fetype IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_fetype)||'%')
                AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
-           proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
+           proj AS (SELECT project_id, MAX(project_number) project_number, MAX(project_name) project_name FROM prod.projects GROUP BY project_id),
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
            po_dist AS (SELECT po_distribution_id, MAX(charge_account) charge_account FROM prod.po_distributions GROUP BY po_distribution_id),
            poh AS (SELECT po_header_id, MAX(order_number) order_number, MAX(supplier_name) supplier_name FROM prod.po_headers GROUP BY po_header_id),
-           pol AS (SELECT po_header_id, po_line_id, MAX(line) line FROM prod.po_lines GROUP BY po_header_id, po_line_id)
+           pol AS (SELECT po_header_id, po_line_id, MAX(line) line FROM prod.po_lines GROUP BY po_header_id, po_line_id),
+           inv AS (SELECT pk.po_distribution_id,
+                          SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) inv_aed,
+                          LISTAGG(DISTINCT ih.invoice_number, ', ' ON OVERFLOW TRUNCATE) WITHIN GROUP (ORDER BY ih.invoice_number) related_inv,
+                          LISTAGG(DISTINCT ih.invoice_number || '~' || TO_CHAR(ih.invoice_id), '|' ON OVERFLOW TRUNCATE)
+                            WITHIN GROUP (ORDER BY ih.invoice_number || '~' || TO_CHAR(ih.invoice_id)) related_pairs
+                   FROM prod.ap_invoice_distributions d
+                   LEFT JOIN (SELECT invoice_id, MAX(invoice_number) invoice_number FROM prod.ap_invoices GROUP BY invoice_id) ih ON ih.invoice_id = d.invoice_id
+                   JOIN (SELECT ph2.order_number po_number, pl2.line po_line, pod.distribution_number po_dist_line, MAX(pod.po_distribution_id) po_distribution_id
+                         FROM prod.po_distributions pod
+                         JOIN prod.po_lines pl2 ON pl2.po_header_id = pod.po_header_id AND pl2.po_line_id = pod.po_line_id
+                         JOIN prod.po_headers ph2 ON ph2.po_header_id = pod.po_header_id
+                         GROUP BY ph2.order_number, pl2.line, pod.distribution_number) pk
+                     ON pk.po_number = d.po_number AND pk.po_line = d.po_line AND pk.po_dist_line = d.po_distribution_line
+                   WHERE NVL(d.reversal_indicator,'N') <> 'Y'
+                     AND EXTRACT(YEAR FROM d.accounting_date) = l_year
+                     AND (l_end IS NULL OR d.accounting_date < l_end + 1)
+                   GROUP BY pk.po_distribution_id),
+           grn_dist AS (SELECT po_distribution_id, SUM(ledger_amount) recv_aed FROM prod.grn_all_v2
+                        WHERE EXTRACT(YEAR FROM NVL(accounted_date, transaction_date)) = l_year
+                          AND (l_end IS NULL OR NVL(accounted_date, transaction_date) < l_end + 1)
+                        GROUP BY po_distribution_id)
       SELECT * FROM (
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) tkey,
+             pj.project_name pname, g.expenditure_type et_name,
              g.receipt_number, g.receipt_line_number line_no,
              TO_CHAR(NVL(g.accounted_date, g.transaction_date),'YYYY-MM-DD') td, g.currency_code,
              ph.order_number po_number, pl.line po_line, ph.supplier_name, g.po_header_id,
              g.conversion_rate, g.ledger_amount amt_aed,
+             NVL(i.inv_aed,0) inv_aed, NVL(gd.recv_aed,0) - NVL(i.inv_aed,0) uninv_aed, i.related_inv, i.related_pairs,
              COUNT(*) OVER () full_n, SUM(g.ledger_amount) OVER () full_tot
       FROM prod.grn_all_v2 g
       JOIN po_dist pod ON pod.po_distribution_id = g.po_distribution_id
@@ -446,6 +590,8 @@ BEGIN
       LEFT JOIN pol pl ON pl.po_header_id = g.po_header_id AND pl.po_line_id = g.po_line_id
       LEFT JOIN proj pj ON pj.project_id = g.project_id
       LEFT JOIN tsk  tk ON tk.task_id    = g.task_id
+      LEFT JOIN inv i ON i.po_distribution_id = g.po_distribution_id
+      LEFT JOIN grn_dist gd ON gd.po_distribution_id = g.po_distribution_id
       WHERE g.project_id IS NOT NULL AND pod.charge_account IS NOT NULL
         AND NVL(g.ledger_amount,0) <> 0
         AND EXTRACT(YEAR FROM NVL(g.accounted_date, g.transaction_date)) = l_year
@@ -458,18 +604,26 @@ BEGIN
     ) LOOP
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
-      IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
+      IF l_agg THEN
+        APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('projectName', NVL(r.pname,''));
+        APEX_JSON.write('task', NVL(r.tkey,'')); APEX_JSON.write('etype', NVL(r.et_name,''));
+      END IF;
       APEX_JSON.write('receipt', NVL(TO_CHAR(r.receipt_number),'')); APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
       APEX_JSON.write('date', NVL(r.td,''));
       APEX_JSON.write('po', NVL(TO_CHAR(r.po_number),'')); APEX_JSON.write('poHeaderId', r.po_header_id);
       APEX_JSON.write('poLine', NVL(TO_CHAR(r.po_line),''));
       APEX_JSON.write('supplier', NVL(r.supplier_name,''));
       APEX_JSON.write('currency', NVL(r.currency_code,'AED')); APEX_JSON.write('rate', NVL(r.conversion_rate,1));
+      APEX_JSON.write('invoicedAed', r.inv_aed); APEX_JSON.write('uninvoicedAed', r.uninv_aed);
+      APEX_JSON.write('relatedInvoices', NVL(r.related_inv,''));
+      -- hidden number~id pairs (pipe-separated) -> per-invoice Fusion deep-links
+      APEX_JSON.write('relatedInvPairs', NVL(r.related_pairs,''));
       APEX_JSON.write('amount', r.amt_aed);
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
 
+!') || TO_CLOB(q'!
   ELSIF l_metric = 'pr' THEN
     APEX_JSON.open_array('columns');
     IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
@@ -481,11 +635,15 @@ BEGIN
       WITH kys AS (
              SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
              UNION ALL
-             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_butil_key_cache v
              WHERE l_project IS NULL AND v.budget_year = l_year
-               AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+               AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
                AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+               AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                      OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
                AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
@@ -541,11 +699,15 @@ BEGIN
       WITH kys AS (
              SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
              UNION ALL
-             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_butil_key_cache v
              WHERE l_project IS NULL AND v.budget_year = l_year
-               AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+               AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
                AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+               AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                      OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
                AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
@@ -600,6 +762,98 @@ BEGIN
     END LOOP;
     APEX_JSON.close_array;
 
+  ELSIF l_metric IN ('budget','budgetannual') THEN
+    -- budget drill (2026-07-21): the line's ACCOUNTING_PERIOD (MM-YYYY) rows
+    -- from prod.projects_budget. metric=budget -> YTD (periods on/before the
+    -- period end; a NULL/unparseable period counts as annual = always
+    -- included, mirroring the view's pb CTE); budgetannual -> ALL periods.
+    APEX_JSON.open_array('columns');
+    IF l_agg THEN col('project','Project','text'); col('task','Task','text'); col('etype','Expenditure type','text'); END IF;
+    col('period','Accounting period','text'); col('amount','Budget (AED)','money');
+    col('override','Budget change (AED)','money');
+    col('updatedBy','Updated by','text'); col('updated','Updated on','date');
+    APEX_JSON.close_array;
+    APEX_JSON.open_array('rows');
+    FOR r IN (
+      WITH kys AS (
+             SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
+             UNION ALL
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_butil_key_cache v
+             WHERE l_project IS NULL AND v.budget_year = l_year
+               AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
+               AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
+               AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+               AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
+               AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
+                                     OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
+               AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
+                                     OR INSTR('|'||l_fproj||'|', '|'||v.project_number||'|') > 0)
+               AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
+               AND (l_fetype IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_fetype)||'%')
+               AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
+           proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
+           tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id)
+      SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)) pkey,
+             COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END) tkey,
+             b.expenditure_type et, b.accounting_period,
+             b.budget + CASE WHEN l_ovr = 'Y' THEN b.chg ELSE 0 END amt,
+             NULLIF(b.chg,0) ovr_amt,
+             b.updated_by, TO_CHAR(b.update_date,'YYYY-MM-DD') upd,
+             COUNT(*) OVER () full_n,
+             SUM(b.budget + CASE WHEN l_ovr = 'Y' THEN b.chg ELSE 0 END) OVER () full_tot
+      FROM (
+             -- Fusion period rows and the signed budget changes folded into ONE
+             -- row per period (v2 2026-08-17). UNION ALL, not a join: the budget
+             -- is un-phased, so a change booked at a period with no budget row
+             -- would vanish from the drill and stop it reconciling to the KPI.
+             SELECT project_id, task_id, expenditure_type, accounting_period, budget_year,
+                    SUM(budget) budget, SUM(chg) chg,
+                    COALESCE(MAX(chg_by), MAX(bud_by))     updated_by,
+                    COALESCE(MAX(chg_on), MAX(bud_on))     update_date
+             FROM (
+               SELECT b0.project_id, b0.task_id, b0.expenditure_type, b0.accounting_period,
+                      b0.budget_year, b0.budget, 0 AS chg,
+                      CAST(NULL AS VARCHAR2(100)) chg_by, CAST(NULL AS DATE) chg_on,
+                      b0.updated_by bud_by, CAST(b0.update_date AS DATE) bud_on
+               FROM prod.projects_budget b0
+               UNION ALL
+               SELECT u0.project_id, u0.task_id, u0.expenditure_type, u0.accounting_period,
+                      TO_NUMBER(SUBSTR(u0.accounting_period,4,4) DEFAULT NULL ON CONVERSION ERROR),
+                      0 AS budget, u0.budget_change AS chg,
+                      u0.updated_by, CAST(u0.updated_at AS DATE),
+                      CAST(NULL AS VARCHAR2(100)), CAST(NULL AS DATE)
+               FROM prod.dct_project_budget_user u0
+             )
+             GROUP BY project_id, task_id, expenditure_type, accounting_period, budget_year
+           ) b
+      LEFT JOIN proj pj ON pj.project_id = b.project_id
+      LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
+      WHERE b.budget_year = l_year
+        AND NVL(b.budget + CASE WHEN l_ovr = 'Y' THEN b.chg ELSE 0 END,0) <> 0
+        AND (l_metric = 'budgetannual' OR l_end IS NULL
+             OR NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                    DATE '1900-01-01') < l_end + 1)
+        AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)),
+             NVL(COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END),'~'),
+             NVL(b.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
+      ORDER BY NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'), DATE '1900-01-01'),
+               pkey, tkey FETCH FIRST 10000 ROWS ONLY
+    ) LOOP
+      l_count := r.full_n; l_total := r.full_tot;
+      APEX_JSON.open_object;
+      IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); APEX_JSON.write('etype', NVL(r.et,'')); END IF;
+      APEX_JSON.write('period', NVL(r.accounting_period,'(annual)'));
+      APEX_JSON.write('amount', r.amt);
+      APEX_JSON.write('override', r.ovr_amt, p_write_null => TRUE);
+      APEX_JSON.write('updatedBy', NVL(r.updated_by,''));
+      APEX_JSON.write('updated', NVL(r.upd,''));
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+
   ELSE
     dct_rest.err(400,'Unknown metric'); RETURN;
   END IF;
@@ -609,7 +863,7 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-!');
+!'));
 
     COMMIT;
 END setup_gl_butil_ords_tmp;

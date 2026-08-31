@@ -84,6 +84,16 @@ run parameters, e.g. `{"year":2026,"sector":"Tourism"}`; absent/`{}` keeps the d
   `docxtpl` + `libreoffice-writer` + Noto Arabic fonts (deploy_worker.sh installs them).
   docxtpl gotcha: each `{%tr%}`/`{%tc%}` loop tag must sit in its OWN table row/cell.
 
+- **PowerPoint (.pptx) decks (2026-07-18):** a fourth output format alongside PDF/XLSX/CSV.
+  `runner/render_pptx.py` (python-pptx) turns a MULTI report's sections into an executive 16:9
+  slide deck with native, editable tables and charts. Enqueue any MULTI report with
+  `p_formats='PPTX'`; the runner's `PPTX` branch builds `build_deck(sections, ctx)`. **`PPTX` must
+  be a `RPT_FORMAT` lookup value** (`reporting/db/26`) or `record_output` raises ORA-20090. No
+  LibreOffice needed — the .pptx is delivered as-is and opens in PowerPoint. First deck:
+  `BUDGET_UTIL_BOOK` rendered as PPTX (cover · KPIs · sector chart · composition · pressure ·
+  actuals · open PO/PR · insights · methodology), runnable from the GL Budget Utilization page's
+  **Generate Report → PowerPoint** (bridge `POST /gl/butil/ppt`).
+
 - **Budget Utilization Briefing Book (2026-07-08):** `BUDGET_UTIL_BOOK` (`reporting/db/21`) —
   executive "briefing book" PDF over the same GL utilization layer: professional cover
   (scope + "Prepared by Financial Planning and Budgeting — Finance Department") + contents page,

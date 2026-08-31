@@ -23,8 +23,9 @@ function (ko, roleService, settingService, i18n, formGuard) {
     // enh-2: per-role landing page → LANDING_<CODE> system setting.
     // '' = default (dashboard). Routes must stay in the appController
     // KNOWN_ROUTES allow-list or the landing falls back to dashboard.
-    var LANDING_ROUTES = ['dashboard', 'profile', 'notifications', 'pendingApprovals',
-      'users', 'roles', 'orgHierarchy', 'approvalMonitor', 'auditLog'];
+    // pendingApprovals / approvalMonitor moved to Fusion BPM (App 214) 2026-08-01
+    var LANDING_ROUTES = ['dashboard', 'profile', 'notifications',
+      'users', 'roles', 'orgHierarchy', 'auditLog'];
     self.landingRoute    = ko.observable('');
     self._landingLoaded  = '';
     self.landingOptions  = [{ value: '', label: i18n.t('role.landingDefault') }].concat(

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>i-Finance — Login Concepts</title>
+  <style>
+    :root{--red:#c74634;--red-hover:#a83b2b;--ink:#161513;--muted:#5f5c58;--line:#d6d3ce;--canvas:#f7f6f4;--focus:#00688c;--dark:#252321}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;color:var(--ink);font-family:"Oracle Sans","Segoe UI",sans-serif;background:var(--canvas)}button,input{font:inherit}
+    .switcher{position:fixed;z-index:10;inset:20px 22px auto auto;display:flex;gap:2px;padding:3px;border:1px solid #cbc7c1;border-radius:6px;background:#fff;box-shadow:0 4px 18px #211d1814}
+    .switcher button{border:0;border-radius:4px;padding:8px 13px;background:transparent;color:#56524e;font-size:12px;cursor:pointer}.switcher button.on{background:#e8e5e1;color:#1d1b19;font-weight:700}
+    .screen{display:none;min-height:100%}.screen.on{display:flex}.wordmark{display:flex;align-items:center;gap:12px}.logo{color:var(--red);font-size:25px;font-weight:800;letter-spacing:-1.5px}.product{padding-inline-start:12px;border-inline-start:1px solid #aaa5a0;font-size:17px;font-weight:650}
+    .field{display:grid;gap:7px;margin-top:20px}.field label{font-size:13px;font-weight:650}.field input{height:44px;width:100%;padding:0 12px;border:1px solid #817d78;border-radius:2px;background:#fff;outline:0}.field input:focus{border-color:var(--focus);box-shadow:0 0 0 2px #00688c2b}
+    .primary{width:100%;height:44px;margin-top:24px;border:0;border-radius:2px;background:var(--red);color:#fff;font-weight:700;cursor:pointer}.primary:hover{background:var(--red-hover)}
+    .link{color:#075b76;text-decoration:none;font-size:13px}.meta{color:#77736e;font-size:12px}.language{border:0;background:transparent;color:#3d5e6f;cursor:pointer;font-weight:650}
+
+    /* 1 — close to the current OCI/Fusion identity experience */
+    #fusion{flex-direction:column;background:#fff}.f-head{height:72px;display:flex;align-items:center;padding:0 42px;border-bottom:1px solid #e2dfdb}.f-main{flex:1;display:grid;place-items:center;padding:76px 20px 54px}.signin{width:min(368px,100%)}.signin h1{margin:0 0 10px;font-size:26px;font-weight:600;letter-spacing:-.02em}.signin .intro{margin:0 0 30px;color:var(--muted);font-size:14px;line-height:1.5}.domain{margin-bottom:24px;padding:11px 12px;background:#f1efec;border-inline-start:3px solid var(--red);font-size:12px}.domain b{display:block;margin-top:3px;font-size:13px}.password-row{display:flex;justify-content:space-between;align-items:center}.signin-foot{display:flex;justify-content:space-between;margin-top:22px}.f-foot{display:flex;justify-content:space-between;align-items:center;padding:19px 42px;border-top:1px solid #e2dfdb}
+
+    /* 2 — DCT branded, while preserving Redwood controls and density */
+    #branded{background:#eeece8}.b-brand{position:relative;width:38%;min-width:400px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;padding:42px;color:#fff;background:#302d2a}.b-brand:before,.b-brand:after{content:"";position:absolute;border:1px solid #ffffff2c;border-radius:50%}.b-brand:before{width:560px;height:560px;inset:-240px auto auto -260px;box-shadow:0 0 0 78px #ffffff08,0 0 0 156px #ffffff07}.b-brand:after{width:460px;height:460px;inset:auto -260px -270px auto;box-shadow:0 0 0 68px #c746341e}.b-brand .wordmark,.brand-copy{position:relative;z-index:1}.b-brand .logo{color:#ff7965}.brand-copy{max-width:390px}.brand-copy h1{margin:0 0 14px;font-family:Georgia,serif;font-size:38px;font-weight:400;line-height:1.14}.brand-copy p{margin:0;color:#d7d2cc;font-size:15px;line-height:1.6}.b-side{flex:1;display:flex;flex-direction:column;background:#faf9f7}.b-top{display:flex;justify-content:flex-end;padding:28px 36px}.b-main{flex:1;display:grid;place-items:center;padding:20px}.b-card{width:min(390px,100%);padding:36px 38px;border:1px solid var(--line);border-radius:4px;background:#fff;box-shadow:0 12px 34px #2a241c12}.b-card h2{margin:0 0 9px;font-size:25px;font-weight:600}.b-card>p{margin:0 0 28px;color:var(--muted);font-size:14px;line-height:1.5}.employee{margin-top:22px;padding-top:20px;border-top:1px solid #e4e1dd;text-align:center}.b-foot{padding:24px 36px;text-align:end}
+    @media(max-width:760px){.switcher{inset:10px 10px auto auto}.f-head{padding:0 22px}.f-foot{padding:16px 22px}.b-brand{display:none}.b-card{border:0;box-shadow:none;background:transparent}.b-side{background:#fff}.product{font-size:15px}}
+  </style>
+</head>
+<body>
+  <nav class="switcher" aria-label="Choose concept"><button class="on" data-screen="fusion">1 · Fusion IAM</button><button data-screen="branded">2 · DCT branded</button></nav>
+
+  <section class="screen on" id="fusion">
+    <header class="f-head"><div class="wordmark"><span class="logo">DCT</span><span class="product">i-Finance</span></div></header>
+    <main class="f-main"><form class="signin">
+      <h1>Sign in</h1><p class="intro">Enter your i-Finance account details.</p>
+      <div class="domain">Signing in to<b>DCT · i-Finance Production</b></div>
+      <div class="field"><label for="f-user">User name</label><input id="f-user" autocomplete="username" autofocus></div>
+      <div class="field"><div class="password-row"><label for="f-pass">Password</label><a class="link" href="#">Forgot password?</a></div><input id="f-pass" type="password" autocomplete="current-password"></div>
+      <button class="primary" type="button">Sign in</button>
+      <div class="signin-foot"><a class="link" href="#">Need help?</a><span class="meta">Authorized users only</span></div>
+    </form></main>
+    <footer class="f-foot"><span class="meta">© 2026 Department of Culture and Tourism</span><button class="language">العربية</button></footer>
+  </section>
+
+  <section class="screen" id="branded">
+    <aside class="b-brand"><div class="wordmark"><span class="logo">DCT</span><span class="product">i-Finance</span></div><div class="brand-copy"><h1>Finance, connected.</h1><p>A unified workspace for finance operations, approvals and enterprise reporting.</p></div><span class="meta" style="color:#aaa49e">Secure enterprise platform</span></aside>
+    <div class="b-side"><header class="b-top"><button class="language">العربية</button></header><main class="b-main"><form class="b-card">
+      <h2>Welcome to i-Finance</h2><p>Sign in with your DCT network account.</p>
+      <div class="field"><label for="b-user">User name</label><input id="b-user" autocomplete="username"></div>
+      <div class="field"><div class="password-row"><label for="b-pass">Password</label><a class="link" href="#">Forgot password?</a></div><input id="b-pass" type="password" autocomplete="current-password"></div>
+      <button class="primary" type="button">Sign in</button>
+      <div class="employee"><a class="link" href="#">Contact i-Finance support</a></div>
+    </form></main><footer class="b-foot meta">Privacy · Accessibility · Authorized use only</footer></div>
+  </section>
+  <script>document.querySelectorAll('.switcher button').forEach(function(b){b.onclick=function(){document.querySelectorAll('.switcher button,.screen').forEach(function(x){x.classList.remove('on')});b.classList.add('on');document.getElementById(b.dataset.screen).classList.add('on')}})</script>
+</body>
+</html>

@@ -43,6 +43,12 @@
 --        enqueues ENC_PENDING_REGISTER (Excel register, reporting/db/24)
 --   GET  /gl/pending/xlsx/[COLON]id      -> {runId, status, rowCount, error, hasFile}
 --   GET  /gl/pending/xlsx/[COLON]id/file -> authed XLSX download of a finished run
+--   POST /gl/pending/ppt          -- the FULL butil filter set -> {runId};
+--        enqueues ENC_PENDING_BOOK with formats='PPTX' (executive PowerPoint
+--        deck; runner/render_pptx.py builds the pending-approval deck from the
+--        same MULTI sections as the Briefing Book PDF)
+--   GET  /gl/pending/ppt/[COLON]id      -> {runId, status, rowCount, error, hasFile}
+--   GET  /gl/pending/ppt/[COLON]id/file -> authed PPTX download of a finished run
 -- =============================================================================
 
 SET DEFINE OFF
@@ -74,8 +80,10 @@ BEGIN
     def_handler('pending', 'GET', q'!
 DECLARE
   l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year    NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
-  l_ptype   VARCHAR2(100) := [COLON]projecttype;
+  l_ptype   VARCHAR2(1000) := [COLON]projecttype;
   l_sector  VARCHAR2(200) := [COLON]sector;
   l_chapter VARCHAR2(2000) := [COLON]chapter;
   l_cc      VARCHAR2(2000) := [COLON]costcenter;
@@ -120,6 +128,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
   IF l_ptype   = '' THEN l_ptype   := NULL; END IF;
   IF l_sector  = '' THEN l_sector  := NULL; END IF;
@@ -219,8 +230,9 @@ BEGIN
       SELECT v.project_number pk, NVL(v.task_number,'~') tk, NVL(v.expenditure_type,'~') et
       FROM prod.dct_budget_utilization_v v
       WHERE v.budget_year = l_year
-        AND (l_ptype   IS NULL OR v.project_type = l_ptype)
+        AND (l_ptype   IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
         AND (l_sector  IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
         AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
         AND (l_cc      IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
@@ -397,6 +409,8 @@ END;
     def_handler('pending/book', 'POST', q'!
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year   NUMBER;
   l_period VARCHAR2(10);
   l_params CLOB;
@@ -408,6 +422,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
   dct_rest.parse_body([COLON]body);
   l_year := APEX_JSON.get_number(p_path=>'year');
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
@@ -449,9 +466,14 @@ END;
     def_handler('pending/book/[COLON]id', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_pdf  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
   FOR c IN (SELECT run_id, status, row_count, error_msg, started_at, finished_at
               FROM dct_rpt_run
              WHERE run_id = [COLON]id AND report_code = 'ENC_PENDING_BOOK') LOOP
@@ -478,9 +500,14 @@ END;
     def_handler('pending/book/[COLON]id/pdf', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_blob BLOB; l_name VARCHAR2(260);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
   BEGIN
     SELECT o.file_blob, o.file_name INTO l_blob, l_name FROM (
       SELECT o.file_blob, o.file_name
@@ -502,6 +529,8 @@ END;
     def_handler('pending/xlsx', 'POST', q'!
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year   NUMBER;
   l_period VARCHAR2(10);
   l_source VARCHAR2(10);
@@ -514,6 +543,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
   dct_rest.parse_body([COLON]body);
   l_year := APEX_JSON.get_number(p_path=>'year');
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
@@ -560,9 +592,14 @@ END;
     def_handler('pending/xlsx/[COLON]id', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_xls  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
   FOR c IN (SELECT run_id, status, row_count, error_msg, started_at, finished_at
               FROM dct_rpt_run
              WHERE run_id = [COLON]id AND report_code = 'ENC_PENDING_REGISTER') LOOP
@@ -589,9 +626,14 @@ END;
     def_handler('pending/xlsx/[COLON]id/file', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_blob BLOB; l_name VARCHAR2(260); l_mime VARCHAR2(200);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
   BEGIN
     SELECT o.file_blob, o.file_name, o.mime_type INTO l_blob, l_name, l_mime FROM (
       SELECT o.file_blob, o.file_name, o.mime_type
@@ -603,6 +645,129 @@ BEGIN
   EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'File not found'); RETURN; END;
   OWA_UTIL.mime_header(NVL(l_mime,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'), FALSE);
   HTP.p('Content-Disposition[COLON] attachment; filename="'||NVL(l_name,'enc_pending_register.xlsx')||'"');
+  OWA_UTIL.http_header_close;
+  WPG_DOCLOAD.download_file(l_blob);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- executive PowerPoint deck: SAME ENC_PENDING_BOOK definition/sections as
+    -- the Briefing Book PDF, enqueued with formats='PPTX' so the runner's PPTX
+    -- branch (render_pptx.build_deck) produces the pending-approval deck.
+    def_template('pending/ppt');
+    def_handler('pending/ppt', 'POST', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
+  l_year   NUMBER;
+  l_period VARCHAR2(10);
+  l_params CLOB;
+  l_run    NUMBER;
+  PROCEDURE put(p_key VARCHAR2) IS
+    l_val VARCHAR2(2000) := APEX_JSON.get_varchar2(p_path => p_key);
+  BEGIN
+    IF l_val IS NOT NULL THEN APEX_JSON.write(p_key, l_val); END IF;
+  END;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
+  dct_rest.parse_body([COLON]body);
+  l_year := APEX_JSON.get_number(p_path=>'year');
+  IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
+  l_period := APEX_JSON.get_varchar2(p_path=>'period');
+  IF l_period IS NOT NULL THEN
+    IF NOT REGEXP_LIKE(l_period, '^(0[1-9]|1[0-2])-[0-9]{4}$')
+       OR TO_NUMBER(SUBSTR(l_period, 4)) <> l_year THEN
+      dct_rest.err(400,'period must be MM-YYYY within the selected year'); RETURN;
+    END IF;
+  END IF;
+  APEX_JSON.initialize_clob_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('year', l_year);
+  IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
+  put('sector'); put('chapter'); put('projecttype'); put('costcenter');
+  put('project'); put('task'); put('etype'); put('search'); put('bu');
+  APEX_JSON.close_object;
+  l_params := APEX_JSON.get_clob_output;
+  APEX_JSON.free_output;
+  l_run := dct_rpt_pkg.enqueue(p_report_code  => 'ENC_PENDING_BOOK',
+                               p_params       => l_params,
+                               p_trigger      => 'ONDEMAND',
+                               p_requested_by => l_user,
+                               p_formats      => 'PPTX');
+  COMMIT;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('runId', l_run);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN OTHERS THEN
+    ROLLBACK;
+    IF SQLCODE = -20404 THEN dct_rest.err(404, SQLERRM);
+    ELSE dct_rest.err(500, SQLERRM); END IF;
+END;
+!');
+
+    def_template('pending/ppt/[COLON]id');
+    def_handler('pending/ppt/[COLON]id', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
+  l_ppt  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
+  FOR c IN (SELECT run_id, status, row_count, error_msg, started_at, finished_at
+              FROM dct_rpt_run
+             WHERE run_id = [COLON]id AND report_code = 'ENC_PENDING_BOOK') LOOP
+    SELECT COUNT(*) INTO l_ppt
+      FROM dct_rpt_output WHERE run_id = c.run_id AND format = 'PPTX';
+    dct_rest.json_header; APEX_JSON.initialize_output;
+    APEX_JSON.open_object;
+    APEX_JSON.write('runId', c.run_id);
+    APEX_JSON.write('status', c.status);
+    APEX_JSON.write('rowCount', c.row_count);
+    APEX_JSON.write('error', NVL(DBMS_LOB.SUBSTR(c.error_msg, 500, 1), ''));
+    APEX_JSON.write('startedAt', NVL(TO_CHAR(dct_to_local(c.started_at),'YYYY-MM-DD HH[COLON]MI AM'),''));
+    APEX_JSON.write('finishedAt', NVL(TO_CHAR(dct_to_local(c.finished_at),'YYYY-MM-DD HH[COLON]MI AM'),''));
+    APEX_JSON.write('hasFile', l_ppt > 0);
+    APEX_JSON.close_object;
+    RETURN;
+  END LOOP;
+  dct_rest.err(404,'Run not found');
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('pending/ppt/[COLON]id/file');
+    def_handler('pending/ppt/[COLON]id/file', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
+  l_blob BLOB; l_name VARCHAR2(260); l_mime VARCHAR2(200);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_PENDING_APPROVALS', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_PENDING_APPROVALS required'); RETURN;
+  END IF;
+  BEGIN
+    SELECT o.file_blob, o.file_name, o.mime_type INTO l_blob, l_name, l_mime FROM (
+      SELECT o.file_blob, o.file_name, o.mime_type
+        FROM dct_rpt_output o
+        JOIN dct_rpt_run r ON r.run_id = o.run_id
+       WHERE o.run_id = [COLON]id AND o.format = 'PPTX'
+         AND r.report_code = 'ENC_PENDING_BOOK'
+       ORDER BY o.output_id DESC) o WHERE ROWNUM = 1;
+  EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'File not found'); RETURN; END;
+  OWA_UTIL.mime_header(NVL(l_mime,'application/vnd.openxmlformats-officedocument.presentationml.presentation'), FALSE);
+  HTP.p('Content-Disposition[COLON] attachment; filename="'||NVL(l_name,'enc_pending_book.pptx')||'"');
   OWA_UTIL.http_header_close;
   WPG_DOCLOAD.download_file(l_blob);
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);

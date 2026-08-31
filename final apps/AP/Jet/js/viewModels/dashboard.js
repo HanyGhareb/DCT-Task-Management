@@ -4,8 +4,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
   'use strict';
 
   // Aging ramp — single-hue ordinal steps (validated light->dark, brand hue)
-  var RAMP  = ['#D293AC', '#BE7392', '#A85578', '#8E3B5C', '#742B48', '#5A1F37'];
-  var BRAND = '#8E3B5C', BRAND_MID = '#A85578';
+  var RAMP  = ['#9ECBAD', '#6FAF83', '#3C8B54', '#14682F', '#0F4E23', '#0B3A1A'];
+  var BRAND = '#14682F', BRAND_MID = '#3C8B54';
   var AG_ORDER = ['CURRENT', 'D1_30', 'D31_60', 'D61_90', 'D91_180', 'D180P'];
   var AG_KEYS  = ['ag.current', 'ag.b1', 'ag.b2', 'ag.b3', 'ag.b4', 'ag.b5'];
   var PAY_COLORS = { 'Paid': '#0ca30c', 'Unpaid': '#fab219' };
@@ -19,6 +19,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       { key: 'invoiceDate',      labelKey: 'tbl.date', sort: 'date' },
       { key: 'supplier',         labelKey: 'tbl.supplier', sort: 'supplier', clip: true },
       { key: 'isBeneficiary',    labelKey: 'tbl.isBenef' },
+      { key: 'businessUnit',     labelKey: 'f.bu', clip: true },
       { key: 'description',      labelKey: 'tbl.description', clip: true },
       { key: 'invoiceType',      labelKey: 'tbl.invType', hide: true },
       { key: 'currency',         labelKey: 'tbl.currency' },
@@ -48,6 +49,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       { key: 'invoiceDate',      labelKey: 'tbl.date', sort: 'date' },
       { key: 'supplier',         labelKey: 'tbl.supplier', clip: true },
       { key: 'isBeneficiary',    labelKey: 'tbl.isBenef', hide: true },
+      { key: 'businessUnit',     labelKey: 'f.bu', hide: true, clip: true },
       { key: 'lineNumber',       labelKey: 'tbl.line' },
       { key: 'lineType',         labelKey: 'tbl.lineType' },
       { key: 'description',      labelKey: 'tbl.description', clip: true },
@@ -73,6 +75,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       { key: 'invoiceDate',       labelKey: 'tbl.date', sort: 'date' },
       { key: 'supplier',          labelKey: 'tbl.supplier', clip: true },
       { key: 'isBeneficiary',     labelKey: 'tbl.isBenef', hide: true },
+      { key: 'businessUnit',      labelKey: 'f.bu', hide: true, clip: true },
       { key: 'lineNumber',        labelKey: 'tbl.line' },
       { key: 'distNumber',        labelKey: 'tbl.dist' },
       { key: 'distType',          labelKey: 'tbl.distType', hide: true },
@@ -110,12 +113,41 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       { key: 'validationStatus',  labelKey: 'tbl.validation', badge: 'val', hide: true },
       { key: 'accountingStatus',  labelKey: 'tbl.accounting', badge: 'acc', hide: true },
       { key: 'paymentStatus',     labelKey: 'tbl.payStatus', badge: 'pay', hide: true },
+    ],
+    // installment level — ATD_AP_INVOICE_INSTALLMENTS (invoice x installment):
+    // payment schedule w/ per-installment method, vendor bank account, pay group
+    inst: [
+      { key: 'invoiceNumber',    labelKey: 'tbl.invoiceNo' },
+      { key: 'invoiceDate',      labelKey: 'tbl.date', sort: 'date' },
+      { key: 'supplier',         labelKey: 'tbl.supplier', clip: true },
+      { key: 'isBeneficiary',    labelKey: 'tbl.isBenef', hide: true },
+      { key: 'businessUnit',     labelKey: 'f.bu', hide: true, clip: true },
+      { key: 'installmentNumber', labelKey: 'tbl.installment' },
+      { key: 'dueDate',          labelKey: 'tbl.dueDate', sort: 'due' },
+      { key: 'priority',         labelKey: 'tbl.priority', hide: true },
+      { key: 'paymentMethod',    labelKey: 'tbl.method' },
+      { key: 'bankAccount',      labelKey: 'tbl.bankAccount', clip: true },
+      { key: 'payGroup',         labelKey: 'tbl.payGroup' },
+      { key: 'installmentPaid',  labelKey: 'tbl.instPaid', badge: 'pay' },
+      { key: 'onHold',           labelKey: 'tbl.onHold', hide: true },
+      { key: 'amount',           labelKey: 'tbl.amount', amt: true, hide: true },
+      { key: 'amountAed',        labelKey: 'tbl.amountAed', amt: true, sort: 'amount' },
+      { key: 'unpaidAmount',     labelKey: 'tbl.unpaid', amt: true, hide: true },
+      { key: 'unpaidAmountAed',  labelKey: 'tbl.unpaidAed', amt: true },
+      { key: 'currency',         labelKey: 'tbl.currency', hide: true },
+      { key: 'paymentCurrency',  labelKey: 'tbl.payCurrency', hide: true },
+      { key: 'validationStatus', labelKey: 'tbl.validation', badge: 'val', hide: true },
+      { key: 'accountingStatus', labelKey: 'tbl.accounting', badge: 'acc', hide: true },
+      { key: 'paymentStatus',    labelKey: 'tbl.payStatus', badge: 'pay', hide: true },
+      { key: 'lastUpdatedBy',    labelKey: 'tbl.updBy', hide: true },
+      { key: 'lastUpdatedDate',  labelKey: 'tbl.updOn', hide: true },
     ]
   };
 
   // facet groups: counted = checkbox list w/ counts, searchable = mini filter,
   // coded = {code,name} pairs (value=code, label=code — name)
   var GROUP_DEFS = [
+    { key: 'bu',        labelKey: 'f.bu',        src: 'businessUnits',    counted: true, open: true },
     { key: 'paid',      labelKey: 'f.paid',      src: 'paymentStatus',    counted: true, open: true },
     { key: 'val',       labelKey: 'f.val',       src: 'validationStatus', counted: true, open: true },
     { key: 'acc',       labelKey: 'f.acc',       src: 'accountingStatus', counted: true },
@@ -125,7 +157,9 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     { key: 'curr',      labelKey: 'f.curr',      src: 'currency',         counted: true },
     { key: 'paygroup',  labelKey: 'f.paygroup',  src: 'payGroup',         counted: true, searchable: true },
     { key: 'paymethod', labelKey: 'f.paymethod', src: 'paymentMethod',    counted: true },
+    { key: 'bank',      labelKey: 'f.bank',      src: 'bankAccounts',     searchable: true },
     { key: 'sector',    labelKey: 'f.sector',    src: 'sectors',          counted: true },
+    { key: 'chapter',   labelKey: 'f.chapter',   src: 'chapters',         counted: true },
     { key: 'supplier',  labelKey: 'f.supplier',  src: 'suppliers',        searchable: true },
     { key: 'dept',      labelKey: 'f.dept',      src: 'departments',      searchable: true },
     { key: 'cc',        labelKey: 'f.cc',        src: 'costCenters',      searchable: true, coded: true },
@@ -140,12 +174,16 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
   // the generic BENEFICIARY supplier (opts.suppnum, default 26553). The
   // beneficiary name acts as the supplier name (effective supplier) and the
   // supplier SITE number as the beneficiary's supplier number.
+  // opts.nopo: Direct AP mode — the same dashboard locked to invoices with NO
+  // PO reference and NO project coding (nopo=Y facet, dct_ap_pkg.filtered_ids);
+  // adds the Briefing Book (Excel) button (AP_DIRECT_REGISTER via AP/db/14).
   function DashboardViewModel(opts) {
     opts = opts || {};
     var self = this;
     var benef = !!opts.benef;
+    var nopo = !!opts.nopo;
     var SUPPNUM = opts.suppnum || '26553';
-    var FP = benef ? 'ap-beneficiaries-' : 'ap-';          // export file prefix
+    var FP = nopo ? 'ap-direct-' : (benef ? 'ap-beneficiaries-' : 'ap-');  // export file prefix
     var LBL = benef ? {
       'dash.title': 'ben.title',        'dash.subtitle': 'ben.subtitle',
       'kpi.suppliers': 'ben.kpiCount',  'ch.topSuppliers': 'ben.chTop',
@@ -154,17 +192,24 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       'rg.register': 'ben.register',    'pr.title': 'ben.prTitle',
       'rg.analytics.hint': 'ben.analytics.hint',
       'rg.register.hint': 'ben.register.hint'
+    } : nopo ? {
+      'dash.title': 'dap.title',        'dash.subtitle': 'dap.subtitle',
+      'rg.register': 'dap.register',    'pr.title': 'dap.prTitle',
+      'rg.analytics.hint': 'dap.analytics.hint',
+      'rg.register.hint': 'dap.register.hint'
     } : {};
     var _t = i18n.t;
     function lt(key, args) { return _t(LBL[key] || key, args); }
     self.t = lt;
-    self.irCode = benef ? 'AP_BENEF_REGISTER' : 'AP_REGISTER';
+    self.irCode = nopo ? 'AP_DIRECT_REGISTER' : (benef ? 'AP_BENEF_REGISTER' : 'AP_REGISTER');
+    self.benefMode = benef;                     // view flag (AI dup-check button etc.)
+    self.nopoMode = nopo;                       // view flag (Briefing Book button, refs inputs)
 
     // per-instance column catalog: benef replaces the Is-Beneficiary column
     // with the site number (= the beneficiary's supplier number); the standard
     // dashboard gains the site as a hidden-by-default column
     var cols = {};
-    ['header', 'line', 'dist'].forEach(function (lvl) {
+    ['header', 'line', 'dist', 'inst'].forEach(function (lvl) {
       var arr = COLS[lvl].map(function (c) { return Object.assign({}, c); });
       var at = arr.map(function (c) { return c.key; }).indexOf('isBeneficiary');
       if (benef) {
@@ -175,11 +220,29 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       cols[lvl] = arr;
     });
 
+    // Direct AP mode: PO / PR / project-coding columns are empty by definition
+    // — hidden by default (the column chooser can still re-enable them)
+    if (nopo) {
+      var NOPO_HIDE = { poNumbers: 1, prNumbers: 1, poNumber: 1, poLine: 1, prNumber: 1,
+                        projectNumber: 1, taskNumber: 1, expType: 1, receiptNumber: 1,
+                        requestor: 1, poChargeAccount: 1, chargeSource: 1 };
+      ['header', 'line', 'dist', 'inst'].forEach(function (lvl) {
+        cols[lvl].forEach(function (c) { if (NOPO_HIDE[c.key]) c.hide = true; });
+      });
+    }
+
     // facet groups: benef swaps the raw supplier-name facet for the effective
-    // supplier (the /filters suppliers LOV lists beneficiary names then)
+    // supplier (the /filters suppliers LOV lists beneficiary names then);
+    // Direct AP drops the facets that are empty by definition (project /
+    // expenditure type / requestor all come from PO- or project-coded rows)
     var groupDefs = GROUP_DEFS.map(function (d) { return Object.assign({}, d); });
     if (benef) {
       groupDefs.filter(function (d) { return d.key === 'supplier'; })[0].key = 'esupplier';
+    }
+    if (nopo) {
+      groupDefs = groupDefs.filter(function (d) {
+        return ['project', 'etype', 'req'].indexOf(d.key) === -1;
+      });
     }
 
     // ── state ───────────────────────────────────────────────────────────
@@ -189,6 +252,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self.dateto   = ko.observable('');
     self.gldatefrom = ko.observable('');
     self.gldateto   = ko.observable('');
+    self.duefrom = ko.observable('');                  // installment due-date range
+    self.dueto   = ko.observable('');
     self.inclCancelled = ko.observable(false);         // include cancelled invoices? (default OFF)
     self.po   = ko.observable('');
     self.pr   = ko.observable('');
@@ -221,8 +286,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self._lastSummary = null;
 
     // ── register columns: show/hide per user (BI-viewer style) ──────────
-    var COLS_PREF = benef ? 'ap.benef.cols' : 'ap.dash.cols';       // server pref (follows the user)
-    var COLS_LS   = benef ? 'ifinance.ap.benef.cols' : 'ifinance.ap.cols';  // instant local autosave
+    var COLS_PREF = nopo ? 'ap.direct.cols' : (benef ? 'ap.benef.cols' : 'ap.dash.cols');  // server pref (follows the user)
+    var COLS_LS   = nopo ? 'ifinance.ap.direct.cols' : (benef ? 'ifinance.ap.benef.cols' : 'ifinance.ap.cols');  // instant local autosave
     function hiddenDefaults(level) {
       return cols[level].filter(function (c) { return c.hide; }).map(function (c) { return c.key; });
     }
@@ -230,6 +295,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       header: ko.observableArray(hiddenDefaults('header')),
       line:   ko.observableArray(hiddenDefaults('line')),
       dist:   ko.observableArray(hiddenDefaults('dist')),
+      inst:   ko.observableArray(hiddenDefaults('inst')),
     };
     self.colsOpen = ko.observable(false);
     self.toggleColsPanel = function () { self.colsOpen(!self.colsOpen()); };
@@ -242,13 +308,14 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       return self._hidden[self.level()]().indexOf(col.key) === -1;
     };
     function applyColPrefs(obj) {
-      ['header', 'line', 'dist'].forEach(function (lvl) {
+      ['header', 'line', 'dist', 'inst'].forEach(function (lvl) {
         if (obj && Array.isArray(obj[lvl])) self._hidden[lvl](obj[lvl]);
       });
     }
     var colsSaveTimer = null;
     function persistCols() {
-      var obj = { header: self._hidden.header(), line: self._hidden.line(), dist: self._hidden.dist() };
+      var obj = { header: self._hidden.header(), line: self._hidden.line(),
+                  dist: self._hidden.dist(), inst: self._hidden.inst() };
       try { localStorage.setItem(COLS_LS, JSON.stringify(obj)); } catch (e) {}
       clearTimeout(colsSaveTimer);
       colsSaveTimer = setTimeout(function () {
@@ -373,12 +440,15 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       if (self.dateto())          p.dateto   = self.dateto();
       if (self.gldatefrom())      p.glfrom   = self.gldatefrom();
       if (self.gldateto())        p.glto     = self.gldateto();
+      if (self.duefrom())         p.duefrom  = self.duefrom();
+      if (self.dueto())           p.dueto    = self.dueto();
       if (!self.inclCancelled())  p.inclcxl  = 'N';
       if ((self.po() || '').trim())     p.po     = self.po().trim();
       if ((self.pr() || '').trim())     p.pr     = self.pr().trim();
       if ((self.task() || '').trim())   p.task   = self.task().trim();
       if ((self.search() || '').trim()) p.search = self.search().trim();
       if (benef) p.suppnum = SUPPNUM;                // locked scope, never a chip
+      if (nopo) p.nopo = 'Y';                        // locked scope, never a chip
       return p;
     }
     self.buildParams = buildParams;
@@ -402,6 +472,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       }
       add(self.datefrom, 'f.datefrom'); add(self.dateto, 'f.dateto');
       add(self.gldatefrom, 'f.glfrom'); add(self.gldateto, 'f.glto');
+      add(self.duefrom, 'f.duefrom'); add(self.dueto, 'f.dueto');
       // cancelled invoices are EXCLUDED by default — chip marks the deviation
       if (self.inclCancelled()) {
         out.push({ label: lt('f.inclCxl'), value: lt('f.yes'),
@@ -419,6 +490,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       });
       self.datefrom(''); self.dateto('');
       self.gldatefrom(''); self.gldateto(''); self.inclCancelled(false);
+      self.duefrom(''); self.dueto('');
       self.po(''); self.pr(''); self.task(''); self.search('');
       scheduleReload();
     };
@@ -451,9 +523,10 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     // shared component. layoutsApi null = localStorage-autosaved layouts.
     var IR_MAX = 10000;
     var IR_DATE_KEYS = { invoiceDate: 1, termsDate: 1, dueDate: 1, accountingDate: 1 };
+    // document numbers (PO/PR/receipt/voucher) are TEXT — 'num' would render
+    // them comma-grouped like amounts (451,102,007,704) and they'd read as ids
     var IR_NUM_KEYS  = { daysPastDue: 1, lineNumber: 1, distNumber: 1, activeHolds: 1,
-                         poNumber: 1, poLine: 1, prNumber: 1, receiptNumber: 1,
-                         voucherNum: 1, lineCount: 1, distCount: 1 };
+                         poLine: 1, lineCount: 1, distCount: 1 };
     self.viewMode = ko.observable('standard');          // standard | ir
     self.irData   = ko.observable(null);
     function irType(c) {
@@ -473,6 +546,11 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         truncated: (d.total || 0) > items.length,
         maxRows: IR_MAX,
         section: self.level(),          // scopes the component's autosave per level
+        // Fusion deep-links inside the IR grid (same rule set as the standard table)
+        cellLink: function (row, colKey) {
+          var l = self.cellLink(row, { key: colKey });
+          return l ? l.href : null;
+        },
       };
     }
     self.toggleViewMode = function () {
@@ -770,6 +848,46 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       }).catch(function () { toast.error(lt('msg.error')); });
     };
 
+    // ── Briefing Book (Excel) — Direct AP mode only ─────────────────────
+    // Enqueues AP_DIRECT_REGISTER via the AP/db/14 bridge with the page's
+    // current criteria (book scope = page scope), polls until the workbook
+    // downloads — same pattern as the GL butil Briefing Book button.
+    self.bookBusy = ko.observable(false);
+    var bookTimer = null;
+    function pollBook(runId) {
+      bookTimer = setTimeout(function () {
+        api.get('/direct/report/' + runId).then(function (st) {
+          if (st.status === 'SUCCESS' && st.hasFile) {
+            api.fetchBlobUrl('/direct/report/' + runId + '/file').then(function (url) {
+              downloadBlobUrl(url, FP + 'briefing-book-' + today() + '.xlsx');
+              self.bookBusy(false);
+              toast.success(lt('dap.bookDone'));
+            });
+          } else if (st.status === 'FAILED') {
+            self.bookBusy(false);
+            toast.error(lt('dap.bookFailed', [(st.error || '').slice(0, 160)]));
+          } else {
+            pollBook(runId);
+          }
+        }).catch(function () { pollBook(runId); });
+      }, 5000);
+    }
+    self.runBook = function () {
+      if (self.bookBusy()) return;
+      var p = buildParams();
+      var body = { format: 'XLSX' };
+      ['bu', 'supplier', 'paid', 'val', 'chapter', 'datefrom', 'dateto', 'search', 'inclcxl']
+        .forEach(function (k) { if (p[k] != null && p[k] !== '') body[k] = p[k]; });
+      self.bookBusy(true);
+      toast.info(lt('dap.bookRunning'));
+      api.post('/direct/report', body).then(function (r) {
+        pollBook(r.runId);
+      }).catch(function (e) {
+        self.bookBusy(false);
+        toast.error((e && e.message) || lt('msg.error'));
+      });
+    };
+
     self.exportSummaryCsv = function () {
       var d = self._lastSummary;
       if (!d) return;
@@ -880,6 +998,49 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self.ccMove = function (r, e) { placeTip(e); return true; };
     self.ccOut  = function () { self.tipShow(false); return true; };
 
+    // ── the same popover on the REGISTER's combination columns (standard
+    //    table + interactive view), delegated on the region container; the
+    //    cell carries only the cc string, so segments come from GET /ap/cc
+    //    (lazy, cached per combination) ──────────────────────────────────
+    var CC_HOVER_KEYS = { glCombination: 1, chargeAccount: 1, poChargeAccount: 1 };
+    var ccCache = {};                                // cc -> seg obj | 'P' | 'NF'
+    var ccHoverCc = null;
+    function ccCellFrom(e) {
+      var el = e && e.target;
+      var td = el && el.closest ? el.closest('td[data-key]') : null;
+      return (td && CC_HOVER_KEYS[td.getAttribute('data-key')]) ? td : null;
+    }
+    function showCcTip(r, e) {
+      self.tipRows(SEG_DEFS.map(function (s) {
+        return { label: lt(s[0]), code: r[s[1]] || '', desc: r[s[2]] || '' };
+      }));
+      placeTip(e); self.tipShow(true);
+    }
+    self.ccRegOver = function (d, e) {
+      var td = ccCellFrom(e);
+      if (!td) return true;
+      var cc = (td.textContent || '').trim();
+      if (!cc || cc.indexOf('.') < 0) return true;
+      ccHoverCc = cc;
+      var hit = ccCache[cc];
+      if (hit && typeof hit === 'object') { showCcTip(hit, e); return true; }
+      if (hit === 'P' || hit === 'NF') return true;
+      ccCache[cc] = 'P';
+      api.get('/cc?cc=' + encodeURIComponent(cc), { silent: true }).then(function (r) {
+        if (r && r.found === 'Y') { ccCache[cc] = r; if (ccHoverCc === cc) showCcTip(r, e); }
+        else { ccCache[cc] = 'NF'; }
+      }).catch(function () { delete ccCache[cc]; });
+      return true;
+    };
+    self.ccRegMove = function (d, e) {
+      if (self.tipShow() && ccCellFrom(e)) placeTip(e);
+      return true;
+    };
+    self.ccRegOut = function (d, e) {
+      if (ccCellFrom(e)) { ccHoverCc = null; self.tipShow(false); }
+      return true;
+    };
+
     // ── rich hint popover (ⓘ on charts + regions): title + description +
     //    live figures computed from the loaded summary/register state ──────
     var HINT_DEFS = {
@@ -981,7 +1142,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         add(lt('ht.filters'), self.fmtInt(self.chips().length));
       } else if (key === 'register') {
         var lvlKey = self.level() === 'header' ? 'dash.levelHeader'
-                   : self.level() === 'line' ? 'dash.levelLine' : 'dash.levelDist';
+                   : self.level() === 'line' ? 'dash.levelLine'
+                   : self.level() === 'dist' ? 'dash.levelDist' : 'dash.levelInst';
         add(lt('ht.level'), lt(lvlKey));
         add(lt('ht.rows'), self.fmtInt(self.total()));
         if (self.rowTotals()) add(lt('tbl.totalAmount'), self.fmtAmt(self.rowTotals().amountAed));
@@ -1090,6 +1252,13 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       downloadBlobUrl(URL.createObjectURL(blob), FP + 'drill-' + name + '-' + today() + '.csv');
     };
 
+    // \u2500\u2500 AI duplicate check moved to its own page (aiDuplicates view,
+    // v1.16.0) \u2014 the header button just navigates there.
+    self.runAiDup = function () {
+      var shellVm = ko.dataFor(document.getElementById('globalBody'));
+      if (shellVm && shellVm.navigate) shellVm.navigate('aiDuplicates');
+    };
+
     // ── print (pixel report window, same criteria) ──────────────────────
     function esc(s) {
       return String(s == null ? '' : s)
@@ -1128,7 +1297,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       h.push('<div class="hd"><div><h1>' + esc(t('pr.title')) + '</h1><div style="font-size:11px;color:#5b6573">i-Finance · ' + esc(t('mod.ap')) + ' · APP 212</div></div>');
       h.push('<div class="meta">' + esc(t('pr.generated')) + ': ' + esc(new Date().toLocaleString('en-AE')) +
              '<br>' + esc(t('pr.by')) + ': ' + esc(user.displayName || user.username || '') +
-             '<br>' + esc(t('pr.level')) + ': ' + esc(t(lvl === 'header' ? 'dash.levelHeader' : lvl === 'line' ? 'dash.levelLine' : 'dash.levelDist')) + '</div></div>');
+             '<br>' + esc(t('pr.level')) + ': ' + esc(t(lvl === 'header' ? 'dash.levelHeader' : lvl === 'line' ? 'dash.levelLine' : lvl === 'dist' ? 'dash.levelDist' : 'dash.levelInst')) + '</div></div>');
 
       h.push('<div class="crit"><b>' + esc(t('pr.criteria')) + ':</b> ');
       if (!chipList.length) h.push('<span>' + esc(t('pr.all')) + '</span>');
@@ -1190,11 +1359,15 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       .forEach(function (obs) { obs.subscribe(scheduleReload); });
 
     // Facet LOVs + counts follow the include-cancelled setting; a re-fetch
-    // keeps the user's selections and which groups are open.
+    // keeps the user's selections and which groups are open. On the very
+    // first load the Business-unit facet defaults to the DCT BU, and the
+    // initial summary/register load waits for it so the page opens scoped.
+    var firstFilters = true;
     function loadFilters() {
       self.loadingFilters(true);
       var p = self.inclCancelled() ? { inclcxl: 'Y' } : { inclcxl: 'N' };
       if (benef) p.suppnum = SUPPNUM;
+      if (nopo) p.nopo = 'Y';
       ap.getFilters(p).then(function (f) {
         var sel = {}, openSt = {};
         self.groups().forEach(function (g) {
@@ -1209,16 +1382,23 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
             var hit = g.items().filter(function (i) { return i.value === v; })[0];
             if (hit) hit.checked(true);
           });
+          if (firstFilters && def.key === 'bu') {
+            var dct = g.items().filter(function (i) {
+              return /^Department of Culture/i.test(i.value || '');
+            })[0];
+            if (dct) dct.checked(true);
+          }
           return g;
         }));
         self.loadingFilters(false);
-      }).catch(function () { self.loadingFilters(false); toast.error(lt('msg.error')); });
+        if (firstFilters) { firstFilters = false; loadSummary(); loadRows(); }
+      }).catch(function () {
+        self.loadingFilters(false); toast.error(lt('msg.error'));
+        if (firstFilters) { firstFilters = false; loadSummary(); loadRows(); }
+      });
     }
     self.inclCancelled.subscribe(loadFilters);
     loadFilters();
-
-    loadSummary();
-    loadRows();
   }
 
   return DashboardViewModel;

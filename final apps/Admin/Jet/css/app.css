@@ -12,3 +12,31 @@
   --brand-dark: #A33327;
   --brand-soft: #FDEEEB;
 }
+
+/* ── System Settings — action button hints (Admin-only) ───────────────── */
+.ss-act { display:inline-flex; align-items:center; gap:7px; }
+.ss-hint {
+  position:relative; display:inline-flex; align-items:center; justify-content:center;
+  width:17px; height:17px; border-radius:50%; flex:0 0 auto;
+  border:1px solid var(--border); background:var(--surface-1,#fff);
+  color:var(--text-3); font:italic 700 11px/1 Georgia,'Times New Roman',serif;
+  cursor:help; user-select:none;
+}
+.ss-hint:hover, .ss-hint:focus-visible { border-color:#0572ce; color:#0572ce; outline:none; }
+.ss-hint-pop {
+  position:absolute; z-index:70; top:calc(100% + 9px); inset-inline-end:0;
+  width:min(330px,82vw); padding:11px 13px; border-radius:9px;
+  background:#1f2733; color:#e7ecf3; box-shadow:0 12px 34px rgba(0,0,0,.30);
+  font:400 11.5px/1.55 inherit; text-align:start; white-space:normal;
+  opacity:0; visibility:hidden; transform:translateY(-5px);
+  transition:opacity .15s ease, transform .15s ease; pointer-events:none;
+}
+.ss-hint:hover .ss-hint-pop, .ss-hint:focus-within .ss-hint-pop, .ss-hint:focus .ss-hint-pop {
+  opacity:1; visibility:visible; transform:translateY(0);
+}
+.ss-hint-pop b { display:block; margin-bottom:5px; font-size:12px; font-weight:700; color:#fff; }
+.ss-hint-pop::after {
+  content:''; position:absolute; bottom:100%; inset-inline-end:11px;
+  border:6px solid transparent; border-bottom-color:#1f2733;
+}
+[dir="rtl"] .ss-hint-pop { text-align:right; }

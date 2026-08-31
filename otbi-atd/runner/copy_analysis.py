@@ -11,9 +11,14 @@ tab; we click Criteria, optionally add the filter, then Save As into the SOURCE'
 
 Modes:
   --probe "<src>"                              open + Criteria, dump controls, exit
+  --dump-sql "<src>"                           open + Advanced tab, print the analysis's
+                                               logical SQL (read-only; never saves)
   --copy "<src>" --to "<NAME>"                 plain Save-As copy (same folder)
         [--hour N | --minute N] [--on-column "<heading>"]   + relative-time filter
                                                (default column heading: "Last Updated Date")
+  --edit "<src>" --remove-columns "A,B,C"      edit IN PLACE: delete the named columns
+                                               from Criteria, then Save As the SAME name
+                                               (Confirm Overwrite). Existing filters kept.
 
 Verify: pass --verify to download the new analysis as CSV after saving (row sanity).
 Env: same as the runner (OTBI_USER/PWD, ATD_STATE_DIR, OTBI_ANALYTICS_BASE, OTBI_ENV_NAME).
@@ -135,6 +140,126 @@ def add_relative_filter(page, heading, unit, n):
     _step("filter applied")
 
 
+def remove_column(page, heading):
+    """Delete the Selected-Columns column whose header starts with `heading` via its
+    gear menu. Gear ids re-render after each removal, so resolve live every time."""
+    gear = _gear_for(page, heading)
+    if not gear:
+        raise RuntimeError(f"column not found in Selected Columns: {heading!r}")
+    page.locator(f'#{gear}').first.click(timeout=10000); time.sleep(1.2)
+    for sel in ('#menuOptionItem_Delete', 'td:text-is("Delete")', 'a:text-is("Delete")',
+                'span:text-is("Delete")'):
+        loc = page.locator(sel)
+        for i in range(min(loc.count(), 6)):
+            try:
+                el = loc.nth(i)
+                if el.is_visible():
+                    el.click(); time.sleep(2.0)
+                    _step(f"column removed: {heading}")
+                    return
+            except Exception:
+                continue
+    items = page.evaluate("""() => [...document.querySelectorAll('[id^=menuOptionItem]')]
+        .filter(e => e.offsetParent).map(e => e.id + ':' + (e.innerText||'').trim())""")
+    raise RuntimeError(f"Delete option not found for {heading!r}; visible menu: {items}")
+
+
+def _headings(page):
+    """Current Selected-Columns headings (first line of each columnHeader), in order.
+    Sorted columns render a sort-order badge prefix ('2<TAB><NBSP>Entity Code') — strip it."""
+    return page.evaluate(r"""() => [...document.querySelectorAll('div.columnHeader')]
+        .map(e => (e.innerText||'').trim().split('\n')[0]
+             .replace(/^\d+[\t ]* [\t ]*/, '').trim())""")
+
+
+def _gear_exact(page, heading):
+    """Gear id of the column whose displayed heading EXACTLY equals `heading`
+    (sort-order badge prefix stripped before comparing)."""
+    return page.evaluate(r"""(h) => {
+      for (const e of document.querySelectorAll('div.columnHeader')) {
+        const t = (e.innerText||'').trim().split('\n')[0]
+                    .replace(/^\d+[\t ]* [\t ]*/, '').trim();
+        if (t === h) { const g = e.querySelector('img[id$="_columnMenuImg"]'); if (g) return g.id; }
+      }
+      return '';
+    }""", heading)
+
+
+def _open_formula_dialog(page, heading):
+    gear = _gear_exact(page, heading)
+    if not gear:
+        raise RuntimeError(f"column not found (exact): {heading!r}")
+    page.locator(f'#{gear}').first.click(timeout=10000); time.sleep(1.2)
+    for sel in ('#menuOptionItem_EditFormula', 'td:has-text("Edit formula")',
+                'a:has-text("Edit formula")', 'span:has-text("Edit formula")'):
+        loc = page.locator(sel)
+        for i in range(min(loc.count(), 6)):
+            try:
+                el = loc.nth(i)
+                if el.is_visible():
+                    el.click(); time.sleep(3.0)
+                    return
+            except Exception:
+                continue
+    items = page.evaluate("""() => [...document.querySelectorAll('[id^=menuOptionItem]')]
+        .filter(e => e.offsetParent).map(e => e.id + ':' + (e.innerText||'').trim())""")
+    raise RuntimeError(f"Edit-formula option not found for {heading!r}; visible menu: {items}")
+
+
+def _dump_formula_dialog(page):
+    """Discovery: list every visible input/checkbox in the open dialog with row context."""
+    return page.evaluate(r"""() => {
+      const vis = e => e.offsetParent !== null;
+      const row = e => { const tr = e.closest('tr');
+                         return tr ? (tr.innerText||'').trim().split('\n')[0].slice(0,60) : ''; };
+      return [...document.querySelectorAll('input,textarea')].filter(vis).map(e => ({
+        tag: e.tagName, id: e.id, name: e.name || '', type: e.type || '',
+        value: (e.value||'').slice(0,60), checked: !!e.checked, row: row(e), dis: e.disabled
+      }));
+    }""")
+
+
+def pin_heading(page, current, required):
+    """Open Edit Column Formula for the column now headed `current`; tick Custom
+    Headings; set Column Heading = `required`; OK. Idempotent."""
+    _open_formula_dialog(page, current)
+    cb = page.locator('input[name="customHdg"]:visible').first
+    cb.wait_for(state="visible", timeout=10000)
+    if not cb.is_checked():
+        cb.evaluate("el => el.click()"); time.sleep(0.6)
+    box = page.locator('input[name="columnHdg"]:visible').first
+    for _ in range(10):                       # enables once customHdg is ticked
+        if box.is_enabled():
+            break
+        time.sleep(0.5)
+    box.fill(required); time.sleep(0.4)
+    _click_ok_topmost(page); time.sleep(2.0)
+    _step(f"pinned: {current!r} -> {required!r}")
+
+
+def do_pin(page, base, src, expected, renames):
+    """Pin EVERY column's Custom Heading. `expected` = required headings; `renames` maps
+    a currently-displayed heading -> its required heading. Saves over the SAME name.
+    Returns (before, after) heading lists."""
+    open_existing(page, base, src)
+    click_tab(page, "Criteria")
+    if not _wait_columns(page):
+        _shot(page, "nocols"); raise RuntimeError("Criteria columns did not render")
+    before = _headings(page)
+    _step(f"current headings ({len(before)}): {before}")
+    exp = set(expected)
+    for cur in before:
+        req = renames.get(cur) or (cur if cur in exp else None)
+        if req is None:
+            _step(f"SKIP unexpected column (not in colmap, no rename): {cur!r}")
+            continue
+        pin_heading(page, cur, req)
+    after = _headings(page)
+    _step(f"headings after edits ({len(after)}): {after}")
+    save_as(page, src.rsplit("/", 1)[1])
+    return before, after
+
+
 def save_as(page, name):
     """Save As into the dialog's DEFAULT folder (= the source analysis's folder), under
     `name`. We never navigate away, so the copy lands beside the source."""
@@ -178,6 +303,41 @@ def do_copy(page, base, src, to_name, hour=None, minute=None, on_column="Last Up
     save_as(page, to_name)
 
 
+def do_edit(page, base, src, remove_cols):
+    """In-place edit: remove columns, then Save As under the SAME name (overwrite)."""
+    open_existing(page, base, src)
+    click_tab(page, "Criteria")
+    if not _wait_columns(page):
+        _shot(page, "nocols"); raise RuntimeError("Criteria columns did not render")
+    for heading in remove_cols:
+        remove_column(page, heading)
+    save_as(page, src.rsplit("/", 1)[1])
+
+
+def dump_advanced_sql(page, base, src):
+    """Open the analysis, switch to the Advanced tab, and print its logical SQL.
+    Read-only: nothing is ever saved. The SQL lives in the 'SQL Issued' textarea;
+    dump every SELECT-bearing textarea/pre generically so a DOM rename can't hide it."""
+    open_existing(page, base, src)
+    click_tab(page, "Advanced")
+    time.sleep(LAZY + 4)
+    found = page.evaluate(r"""() => {
+      const out = [];
+      for (const t of document.querySelectorAll('textarea')) {
+        const v = (t.value || t.textContent || '').trim();
+        if (v.length > 20) out.push({kind: 'textarea', id: t.id, name: t.name || '', text: v});
+      }
+      for (const e of document.querySelectorAll('pre,div[id*="sql" i],span[id*="sql" i]')) {
+        const v = (e.innerText || '').trim();
+        if (v.length > 40 && /SELECT/i.test(v)) out.push({kind: e.tagName, id: e.id, text: v.slice(0, 20000)});
+      }
+      return out;
+    }""")
+    import json as _json
+    _step("advanced-tab SQL candidates:\n" + _json.dumps(found, indent=1))
+    _shot(page, "advsql")
+
+
 # --------------------------------------------------------------------------- #
 def _probe(page, base, src):
     page.set_viewport_size({"width": 1920, "height": 1080})
@@ -193,7 +353,12 @@ def _probe(page, base, src):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe")
+    ap.add_argument("--dump-sql", help="open the analysis's Advanced tab and print its logical SQL (read-only)")
+    ap.add_argument("--probe-formula", help="open Edit Column Formula for --column and dump dialog fields")
+    ap.add_argument("--column", help="column heading for --probe-formula")
     ap.add_argument("--copy")
+    ap.add_argument("--edit")
+    ap.add_argument("--remove-columns")
     ap.add_argument("--to")
     ap.add_argument("--hour", type=int)
     ap.add_argument("--minute", type=int)
@@ -212,6 +377,27 @@ def main():
         try:
             if a.probe:
                 _probe(page, DEFAULT_BASE, a.probe)
+            elif a.dump_sql:
+                dump_advanced_sql(page, DEFAULT_BASE, a.dump_sql)
+            elif a.probe_formula and a.column:
+                open_existing(page, DEFAULT_BASE, a.probe_formula)
+                click_tab(page, "Criteria")
+                if not _wait_columns(page):
+                    _shot(page, "nocols"); raise RuntimeError("Criteria columns did not render")
+                _step(f"headings: {_headings(page)}")
+                _open_formula_dialog(page, a.column)
+                import json as _json
+                _step("dialog fields:\n" + _json.dumps(_dump_formula_dialog(page), indent=1))
+                _shot(page, "formula_dlg")
+            elif a.edit and a.remove_columns:
+                cols = [c.strip() for c in a.remove_columns.split(",") if c.strip()]
+                do_edit(page, DEFAULT_BASE, a.edit, cols)
+                _step(f"DONE (edited in place) -> {a.edit}")
+                if a.verify:
+                    _step("verifying CSV download of the edited analysis...")
+                    csv = extract.download_csv(ctx, env, a.edit)
+                    lines = csv.splitlines()
+                    _step(f"VERIFY OK — {len(lines)} CSV lines; header: {lines[0] if lines else '(empty)'}")
             elif a.copy and a.to:
                 folder = a.copy.rsplit("/", 1)[0]
                 new_path = folder + "/" + a.to
@@ -224,7 +410,8 @@ def main():
                     lines = csv.splitlines()
                     _step(f"VERIFY OK — {len(lines)} CSV lines; header: {lines[0] if lines else '(empty)'}")
             else:
-                sys.exit("use --probe <path>  OR  --copy <path> --to <NAME> [--hour N|--minute N]")
+                sys.exit("use --probe <path>  OR  --copy <path> --to <NAME> [--hour N|--minute N]"
+                         "  OR  --edit <path> --remove-columns 'A,B,C'")
         except Exception:
             _shot(page, "error"); raise
         finally:

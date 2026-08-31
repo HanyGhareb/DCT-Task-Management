@@ -23,7 +23,7 @@ import { queryClient } from '@/state/queryClient';
 import { useConnectivity, isOnline } from '@/services/connectivity';
 import type { ApiError } from '@/api/types';
 
-const STORAGE_KEY = 'ifinance_write_queue';
+const STORAGE_KEY_PREFIX = 'ifinance_write_queue';
 const MAX_ATTEMPTS = 5;
 const FLUSH_INTERVAL_MS = 30_000;
 
@@ -32,6 +32,8 @@ export type QueueMethod = 'POST' | 'PUT' | 'DELETE';
 
 export interface QueueItem {
   id: string;
+  /** User that created the write. Never replay an item as another identity. */
+  userId: number;
   /** ORDS module for `api.for(module)`; '' (or omitted) = shared `/dct`. */
   module: string;
   method: QueueMethod;
@@ -50,20 +52,30 @@ export interface QueueItem {
 interface WriteQueueState {
   items: QueueItem[];
   hydrated: boolean;
-  hydrate: () => Promise<void>;
+  ownerUserId: number | null;
+  hydrate: (userId: number) => Promise<void>;
   /** Add an item and attempt an immediate flush. */
-  enqueue: (item: Omit<QueueItem, 'id' | 'createdAt' | 'status' | 'attempts'>) => Promise<void>;
+  enqueue: (item: Omit<QueueItem, 'id' | 'userId' | 'createdAt' | 'status' | 'attempts'>) => Promise<void>;
   flush: () => Promise<void>;
   retry: (id: string) => Promise<void>;
   discard: (id: string) => void;
   clearFailed: () => void;
+  clearMemory: () => void;
 }
 
 let flushing = false;
 let interval: ReturnType<typeof setInterval> | null = null;
 
-function persist(items: QueueItem[]): void {
-  void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+export function queueStorageKey(userId: number): string {
+  return `${STORAGE_KEY_PREFIX}:${userId}`;
+}
+
+export function queueItemsForUser(items: QueueItem[], userId: number): QueueItem[] {
+  return items.filter((item) => item.userId === userId);
+}
+
+function persist(userId: number | null, items: QueueItem[]): void {
+  if (userId !== null) void AsyncStorage.setItem(queueStorageKey(userId), JSON.stringify(items));
 }
 
 function genId(): string {
@@ -81,22 +93,27 @@ function send(item: QueueItem): Promise<unknown> {
 export const useWriteQueue = create<WriteQueueState>((set, get) => ({
   items: [],
   hydrated: false,
+  ownerUserId: null,
 
-  hydrate: async () => {
+  hydrate: async (userId) => {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      const items: QueueItem[] = raw ? JSON.parse(raw) : [];
-      set({ items, hydrated: true });
+      const raw = await AsyncStorage.getItem(queueStorageKey(userId));
+      const parsed: QueueItem[] = raw ? JSON.parse(raw) : [];
+      const items = queueItemsForUser(parsed, userId);
+      set({ items, hydrated: true, ownerUserId: userId });
     } catch {
-      set({ items: [], hydrated: true });
+      set({ items: [], hydrated: true, ownerUserId: userId });
     }
     if (!interval) interval = setInterval(() => void get().flush(), FLUSH_INTERVAL_MS);
     void get().flush();
   },
 
   enqueue: async (partial) => {
+    const ownerUserId = get().ownerUserId;
+    if (ownerUserId === null) throw { status: 401, message: 'No active session.' } as ApiError;
     const item: QueueItem = {
       ...partial,
+      userId: ownerUserId,
       id: genId(),
       createdAt: Date.now(),
       status: 'pending',
@@ -104,12 +121,13 @@ export const useWriteQueue = create<WriteQueueState>((set, get) => ({
     };
     const items = [...get().items, item];
     set({ items });
-    persist(items);
+    persist(ownerUserId, items);
     await get().flush();
   },
 
   flush: async () => {
-    if (flushing || !isOnline()) return;
+    const ownerUserId = get().ownerUserId;
+    if (flushing || !isOnline() || ownerUserId === null) return;
     flushing = true;
     try {
       // Process oldest-first; re-read state each loop since it can change.
@@ -123,7 +141,7 @@ export const useWriteQueue = create<WriteQueueState>((set, get) => ({
           // success → drop it and refresh affected lists
           const next = get().items.filter((i) => i.id !== id);
           set({ items: next });
-          persist(next);
+          persist(ownerUserId, next);
           item.invalidateKeys?.forEach((key) => void queryClient.invalidateQueries({ queryKey: key }));
         } catch (e) {
           const status = (e as ApiError).status ?? 0;
@@ -160,14 +178,16 @@ export const useWriteQueue = create<WriteQueueState>((set, get) => ({
   discard: (id) => {
     const next = get().items.filter((i) => i.id !== id);
     set({ items: next });
-    persist(next);
+    persist(get().ownerUserId, next);
   },
 
   clearFailed: () => {
     const next = get().items.filter((i) => i.status !== 'failed');
     set({ items: next });
-    persist(next);
+    persist(get().ownerUserId, next);
   },
+
+  clearMemory: () => set({ items: [], hydrated: false, ownerUserId: null }),
 }));
 
 function mark(
@@ -178,7 +198,7 @@ function mark(
 ): void {
   const next = get().items.map((i) => (i.id === id ? { ...i, ...patch } : i));
   set({ items: next });
-  persist(next);
+  persist(get().ownerUserId, next);
 }
 
 /** Selectors for the UI (badges). */

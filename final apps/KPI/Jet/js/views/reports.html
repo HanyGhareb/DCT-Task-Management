@@ -1,0 +1,39 @@
+<div class="page-wrap">
+
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: $root.t('rep.title')"></h1>
+      <p class="page-sub" data-bind="text: $root.t('rep.sub')"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: $root.t('rep.bookTitle')"></h2>
+      <div class="region-actions">
+        <select class="form-control" style="width:auto;display:inline-block"
+                data-bind="options: years, value: year, enable: !running()"></select>
+        <button class="btn btn-primary btn-sm" data-bind="click: $vm.run, disable: running(),
+                text: running() ? $root.t('rep.running') : $root.t('rep.generate')"></button>
+      </div>
+    </div>
+    <p class="page-sub" data-bind="text: $root.t('rep.bookDesc')"></p>
+
+    <!-- ko if: statusLine() -->
+    <div class="kp-preview" style="margin-top:10px">
+      <div>
+        <span class="band" data-bind="text: $root.t('rep.lastRun')"></span>
+        <div><b data-bind="text: statusLine()"></b></div>
+      </div>
+      <!-- ko if: lastError() -->
+      <div class="band" style="color:#C7351F" data-bind="text: lastError()"></div>
+      <!-- /ko -->
+      <!-- ko if: pdfReady() -->
+      <button class="btn btn-secondary btn-sm"
+              data-bind="click: $vm.download, text: $root.t('rep.download')"></button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+  </div>
+
+</div>

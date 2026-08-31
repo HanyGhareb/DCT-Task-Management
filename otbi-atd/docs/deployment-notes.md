@@ -1,5 +1,532 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-08-23 — Worker Fleet round: pause/resume, session Account, VM drill-down, age auto re-login, offline banner (db/85 + 42 rework, JET v1.41.0) — **DEPLOYED + TESTED**
+User-requested enhancements to the dashboard Worker Fleet region (5 of the 6 review
+suggestions + a region-header refresh button):
+
+- **db/85_atd_worker_pause_identity.sql** (NEW): `atd_worker_heartbeat` gains `PAUSED`
+  CHAR(1) + `SESSION_ACCOUNT` VARCHAR2(200); routes `POST /atd/workers/:id/pause` +
+  `/resume` ('all' supported, SYS_ADMIN, 404 unknown id); **redefines `GET /atd/workers`**
+  to ship `paused` + `sessionAccount` — **85 SUPERSEDES db/56's handler: after any 13
+  re-run, run 85 (never 56 after 85)**. Seeds runner settings `ATD_AGE_RELOGIN` (Y/N,
+  ships **N**) + `ATD_AGE_RELOGIN_HOURS` (7.5) — count-then-insert, Linux-SQLcl-safe.
+- **db/42 rework (re-deployed)**: `GET /runs` + `/runs/export` accept **`?vm=`** (exact
+  `host_id` match) for the fleet drill-down. Post-13 re-run list unchanged (42 already on it).
+- **runner.py** (fleet-synced vm180-182, atd-worker restarted while fleet idle):
+  * **Pause**: `_operator_paused` gates `claim_next` each loop; a paused worker heartbeats
+    `PAUSED`, still honours check-session/force-re-login, keeps keepalive pings, but skips
+    claiming, self-heal re-login, aging nudge and the idle discovery/build/actions drain.
+    Pause takes effect AFTER the job already in flight (no kill — by design).
+  * **Age-based auto re-login**: when `ATD_AGE_RELOGIN=Y`, an idle worker whose session
+    age ≥ `ATD_AGE_RELOGIN_HOURS` runs the force-re-login flow itself (one MFA push to
+    approve); ONE attempt per session (keyed on the auth-state mtime, like the aging
+    nudge), suppressed during break/pause. The refresh-handler login flow was extracted
+    to `_do_relogin` and is shared. Complements (does not replace) the 06:00
+    `ATD_DAILY_RELOGIN` job and the `ATD_SESSION_WARN_HOURS` Telegram nudge.
+  * **Identity**: `_heartbeat` now stamps `session_account` — the service login
+    (`<credential_ref>_USER`/`OTBI_USER`, cached 10 min) or, on the BUSY beats of a
+    personal-profile job/action, that user's `fusion_login` (resolve_user_cred is
+    cache-hit — the action path resolves it again right after anyway).
+- **ATD JET v1.41.0**: fleet region header → `.section-heading-row` with an **↻ Refresh**
+  button (`loadFleet()` re-fetches workers + job-health together; the old standalone
+  getJobHealth block folded in); new **Account** column (ⓘ hint); **VM name = drill link**
+  (`wk-link`) → navigates to Run Logs with a one-shot `vmFilter` route state; **Pause /
+  Resume** buttons (pill shows PAUSED immediately via the response `paused` flag, heartbeat
+  status catches up); **worker-offline red banner** at the top of the dashboard — fires on
+  `status='DOWN'` OR silent > 5 min while NOT BUSY (a BUSY worker legitimately stops
+  heartbeating for the length of a run). Run Logs page gains a **VM filter dropdown**
+  (fed by /workers; CSV export forwards `vm`) + Clear resets it. `.rstat--PAUSED` (amber ⏸)
+  and `.rstat--DOWN` (red) pills.
+- **KO GOTCHA (bit this round)**: the VM filter is `options: vms, optionsCaption:` — NOT
+  an `<option>`-foreach inside the `<select>`. KO applies an element's own `value` binding
+  before its DESCENDANT foreach renders, so a foreach-in-select blanks a pre-set value at
+  bind time even when the list already contains it; the `options` binding is ordered
+  before `value` and re-syncs on list changes. The browser smoke caught it live.
+- **Tests**: `final apps/ATD/tests/fleet_api_smoke.py` **28/28** (fields, pause→live
+  PAUSED heartbeat→resume, 404/401, ?vm= scoping, settings seeded) +
+  `fleet_browser_smoke.py` **23/23** EN + AR/RTL against the live webtier (release
+  20260823135805, ATD-only overlay). Fleet verified clean after (all IDLE, none paused).
+- ~~Enhancement NOT taken~~ **#2 SHIPPED same day (v1.42.0)** after the user's "Force
+  re-login sent no MFA code" question surfaced the exact confusion it fixes. **Root cause
+  of the missing code: no MFA challenge ever happened** — Force re-login discards the
+  FUSION session but the persistent Chromium profile keeps the MICROSOFT (Entra) sign-in,
+  so `_silent_recover` completed the login in 13s with no number (vm180 13:34 Dubai:
+  "operator force re-login requested" → "recovered from persistent Microsoft sign-in
+  (no MFA)" → "session OK"). A number only arrives when Entra itself challenges (its own
+  session expired, profile wiped, or a policy re-prompt).
+  * **Inline verdict badge** under the row's action buttons after Check session OR Force
+    re-login: amber pulsing "Checking session…"/"Re-logging in…"/"Approve the number in
+    Authenticator" → green "✓ Session OK — no MFA was needed" / "✓ Signed in — MFA
+    approved" → red "✗ not approved in time / delivery failed". Driven by the EXISTING
+    `mfa_status` + 3s poll (no new endpoint); click pre-sets the state optimistically so
+    the badge never opens on a stale terminal value; terminal verdicts auto-hide after 90s
+    (`.wk-verdict*` in app.css).
+  * **auth.py fix (fleet-synced + restarted)**: `authenticate()` now records
+    `SESSION_OK` when a login completes WITHOUT MFA — previously the deadline-fallthrough
+    path of `_silent_recover` left `mfa_status` stuck on REQUESTED, i.e. an operator
+    watching for a number that would never come.
+  * Force re-login hint/confirm/toast texts now say "approve the number IF one arrives —
+    a live Microsoft sign-in completes silently" (EN+AR).
+  * Test `fleet_verdict_smoke.py` **7/7** live: click → amber "Checking session…" →
+    green "✓ Session OK — no MFA was needed" (~20s). Webtier release 20260823141214.
+
+- **v1.43.0 same day — column hints + live multi-session display** (user: "what does
+  Session Age 21m mean?" + "what about other users' Fusion sessions?"):
+  * **Every Worker Fleet column now carries a ⓘ hint** (plain-language, EN+AR): VM/dot,
+    Status vocabulary (IDLE·BUSY·BREAK·PAUSED·DOWN), Current Job, Account, Last Seen
+    (~15s idle beat, quiet during a long job), **Session Age = how long ago the worker
+    signed in to Fusion — the SERVICE-account session only; ~8h lifetime, amber past 7h**,
+    Login Duration, MFA (incl. the silent-no-number case), Last Successful Extract,
+    Runs 24h, Actions.
+  * **All live Fusion sessions per worker**: heartbeat gains `SESSIONS_JSON`
+    (`[{account,kind:service|personal,ageMin}]`, built from `ctx_by_env` + the auth-state
+    file mtimes each beat; `COALESCE` keeps the stored value on beats without ctx) —
+    db/85 REWORKED IN PLACE (column + `sessionsJson` in GET /workers; still the sole
+    owner of that handler). The Account cell renders sessions beyond the displayed one
+    as muted sub-lines "login · kind · age" (`.wk-sess`), so per-user personal profiles
+    (db/62) running alongside the service session are finally visible. Right after a
+    worker restart the list is empty until a session opens on demand — expected.
+  * Tests: fleet_browser_smoke **24/24** (new all-columns-hinted check) +
+    fleet_verdict_smoke 7/7 re-run on v1.43.0; vm181 live heartbeat shows
+    `[{"account":"hg2248@…","kind":"service","ageMin":0}]`. Webtier 20260823143120
+    (old releases pruned to keep-5). Fleet synced + restarted (idle) for the
+    sessions-aware heartbeat.
+
+## 2026-08-21 — GRN gap-fill: un-costed Fusion receipts surfaced (db/84) — **DEPLOYED + LIVE-VERIFIED**
+Root cause found via invoice DN-26-01-003166 (29,886.64 AED, PO 451102004985): its receipt
+4513074290 was Received AND Delivered in Fusion Receiving (both legs 28,463.47, 13-Apr-26)
+but the Deliver was **never transferred to Receipt Accounting**, so it has no costed
+distributions — and `GRN_ALL_V4`'s criteria (Destination Type = EXPENSE + Accounting Line
+Type = EXPENSE + Balance Type = A, all DISTRIBUTION-sourced) can never see it. PO-matched
+AP is excluded from butil's AP-Direct by design ⇒ the spend was invisible everywhere.
+Fusion-side fix (Transfer Transactions from Receiving to Costing → Create Receipt
+Accounting Distributions) requested; this build makes such receipts VISIBLE meanwhile.
+
+- **db/84_grn_gap_job.sql**: table `PROD.ATD_GRN_GAP` + job **'GRN Gap'** — a single-chunk
+  `_atd_sql_chunks` logical-SQL extract (no catalog analysis at all; the SQL was lifted from
+  GRN_ALL_V4's Advanced tab via the NEW **`copy_analysis.py --dump-sql`** read-only mode,
+  then stripped of its costing filters: WHERE = the 3 platform BUs + Receipt Number NOT NULL
+  only). **Positional headers map (`"#2".."#29"`)** onto the main job's exact
+  column_map_json keys — immune to presentation-name quirks; ORDER BY dropped; the
+  `FETCH FIRST` clause MUST stay out (the `&SQL=` parser rejects it, nQSError 27002).
+  Member of job set `GL_GRN_DAILY` (order 30, after 'GRN Temporary Job').
+- **`prod.atd_grn_gap_merge`** + 15-min `ATD_GRN_GAP_MERGE_JOB`: inserts ONE row per
+  receipt+line **absent** from `ATD_GRN_ALL_V2` (ROW_NUMBER prefers an Expense-destination
+  leg). **Amount rule (user, same day — v2 superseding the first "0 only" cut): the
+  receipt-LINKED billed value** — validated, non-reversed AP invoice distributions carry
+  `receipt_number`, and their functional-AED sum (minus GRN already costed on the receipt,
+  floored at 0) goes on the receipt's first missing line; an un-billed gap receipt stays
+  at 0. PO-matched AP is excluded from butil AP-Direct, so the value counts exactly ONCE,
+  and when costing catches up the real row replaces the injected one at the same value —
+  no double count. Self-healing both ways: the main job's TRUNCATE_INSERT wipes injected
+  rows each load and the merge re-inserts (re-deriving amounts) only what is STILL
+  missing. The repo proc also DELETEs its own prior injections at the top of each run
+  (intra-day amount refresh — injected rows are the only non-Deliver transaction types).
+- **Consumer audit (pre-deploy, 17 consumers)**: every amount path is SUM(ledger_amount)
+  with NVL-guarded netting (GREATEST(amt−NVL(grn,0),0)) and every date use NVLs
+  accounted_date→transaction_date; NOTHING filters on transaction_type. 0-amount rows
+  appear in the Budget-vs-Actual GRN drill (no zero filter — intended visibility) and are
+  suppressed by the butil drill / recon drill / book+register GRN sections, whose totals
+  still reconcile because the rows carry 0.
+- **Live result**: 'GRN Gap' run 14444 = **26,735 rows / 65s** on atd-vm181 (vs main GRN
+  5,298 / 31s); merge injected **only 2 rows** platform-wide — 4513074290 (the trigger
+  case, valued **28,463.47** from DN-26-01-003166's validated Item dist; butil Insurance-N
+  actual_grn 589,417.09 → 617,880.56 and fund 9,738,104.13 → 9,709,640.66, verified) and
+  4513076256 (07-Aug, previously unknown, same stuck-in-RECEIVING pattern; no invoice yet
+  → 0). `source_ref` `/users/haghareb@.../GRN_GAP_SQL` does not exist in the catalog —
+  chunked jobs never read it; only the `/users/<login>/` prefix matters (db/62 rule).
+  ⚠ The self-refresh DELETE cut of the proc is in the repo file but its deploy was
+  classifier-blocked from the session — re-run db/84 (any deploy path) to converge; until
+  then injected amounts refresh on the daily main-reload cycle, which matches the
+  extract's own cadence anyway.
+
+## 2026-08-13 — Per-user OTBI credential profiles (db/62+63, App 208 v1.35.0) — **DEPLOYED**
+**Deployed 2026-08-13** (Linux SQLcl `sql -name prod_mcp` from dev-vm .191): 62 (selftest
+PASS live) → 12 re-run (recompile invalidated ATD_SET_NEXT_RUN/ATD_SET_PKG/
+DCT_LOG_CLEANUP_PKG + synonym — recompiled, INVALID back to the pre-existing 4) → 63 →
+**the 3 edited 13-handlers were patched IN PLACE via a DEFINE_HANDLER-only one-off**
+(GL/db/09 pattern — no DEFINE_TEMPLATE, so the module was NOT rebuilt and the additive
+chain did NOT need re-running; the next full 13 re-run reproduces them and THEN needs the
+chain + 63). API smoke green: 401 no-session · PUT/GET (write-only password, `passwordSet`
+flips, no password in any response) · 400 bad chat id / missing login · roster · DELETE ·
+manual enqueue stamps `requested_by` + bulk clears. Frontend release `20260813154204`
+(v1.35.0 + the Telegram-chat-id how-to steps on the card). Runner: canary vm180 synced +
+restarted clean (session reused, no MFA); vm181/182 pre-synced and restarted as each went
+idle. **62 gotcha found at deploy: package-PRIVATE function in SQL DML = PLS-00231**
+(`SET fusion_pwd_enc = encrypt_pwd(...)` → compute into a local var first; script fixed).
+Each admin can now store a PERSONAL Fusion/OTBI account (Runner Settings → **My OTBI
+Account**): username + AES-256-encrypted password (DBMS_CRYPTO, random-IV, master key in
+`PROD.ATD_CRED_KEY` — no synonym, never touched by ORDS; write-only over the API, only a
+`passwordSet` flag comes back) + personal Telegram chat id + Active toggle. **Jobs and
+Fusion actions the user enqueues run under THEIR Fusion account** on the fleet; the MFA
+number-match push goes to THEIR chat. Scheduled/automatic runs (the 15-min bulk enqueue
+and the UI bulk `/enqueue`) stay on the global service account (`OTBI_USER`/`OTBI_PWD`) —
+`atd_queue_pkg.enqueue`'s bulk path actively CLEARS `requested_by` so a stale personal tag
+can never leak into automatic cycles.
+
+- **DB `62_atd_user_cred.sql`**: `ATD_USER_CREDENTIAL` + `ATD_CRED_KEY` + `ATD_CRED_PKG`
+  (`set_password`/`password_set` for ORDS; `resolve_runner_cred` for the fleet's ADMIN
+  connection only) + guarded ALTERs — `atd_otbi_jobs.requested_by`,
+  `atd_load_run_log.fusion_account` (audit: which account actually ran),
+  **`atd_mfa_lock.lock_name` widened 30→200** (per-account locks `FUSION_MFA:<login>`) +
+  runner-config seed `ATD_MAX_USER_SESSIONS` (default 2). Ends with an encryption
+  round-trip selftest. NO MERGE — Linux-SQLcl-safe.
+- **DB `12` re-run**: `enqueue(p_only, p_requested_by DEFAULT NULL)` — manual single-job
+  enqueue stamps the caller, bulk clears. **62 must run BEFORE 12** (body references the
+  new column). `release_job` keeps `requested_by` (same human intent on a requeue).
+- **DB `13` re-run**: `jobs/:name/enqueue|reset` pass `l_user`; `jobs/:name/run` stamps
+  `requested_by=l_user`; bulk `/enqueue` deliberately unchanged. As always, **a 13 re-run
+  ⇒ re-run the whole additive chain** (20, 26, 31, 32, 33, 38, 39, 41, 42, 44, 45, 46,
+  49, 54, 55) **+ NEW `63`**.
+- **DB `63_atd_user_cred_ords.sql`** (additive): `GET/PUT/DELETE /atd/my-credential`
+  (always the CALLER's own row; `password` applied only when the JSON key is present and
+  non-empty) + `GET /atd/credentials` roster (flags only). SYS_ADMIN.
+- **Runner** (`config.py` / `notify.py` / `auth.py` / `runner.py`, fleet-sync + restart
+  atd-worker on vm180-182 — canary one VM first): claimed jobs/actions resolve
+  `requested_by`/`created_by` → `atd_cred_pkg.resolve_runner_cred` (5-min cache; fallback
+  → service account, noted in the run log). Personal identities get their OWN Chromium
+  profile/state (`chrome_<worker>_<env>__<slug>` / `auth_state_<env>__<slug>.json`), their
+  own MFA lock row, and Telegram routing to their chat; **the default identity keeps
+  byte-identical paths + lock name, so the deploy costs no MFA**. Personal sessions are
+  never keep-alive-pinged and are LRU-capped at `ATD_MAX_USER_SESSIONS`; a personal login
+  failure **fails fast** (clear run-log message + Telegram to the owner — NO requeue
+  dance, NO session_dead, the service session/queue untouched); mid-run expiry on a
+  personal session = one forced re-login retry then FAILED (never released).
+- **Frontend v1.35.0**: Runner Settings gains the My OTBI Account card + roster
+  (`atd.rs.myacct.*` i18n EN+AR); service methods `getMyCred/saveMyCred/deleteMyCred/listCreds`.
+- **Deploy order**: 62 → 12 → 13 + additive chain + 63 (fresh ADMIN session, `sql -name
+  prod_mcp`) → frontend (APP_VERSION bump) → THEN runner fleet-sync (Phase 1 is inert for
+  old workers: the column is simply ignored). Unit tests `runner/tests/test_user_cred.py`
+  15/15 (suite 37/37).
+- **Operational flow**: first personal run on each worker VM = one Authenticator approval
+  from that user's phone; not approving fails only their run. A personal account can only
+  run jobs whose analyses are readable/shared in the Fusion catalog (seeded source_refs
+  live under `/users/haghareb@dctabudhabi.ae/...`).
+- **Admin steps — personal Telegram chat id** (also shown inline on the Runner Settings
+  card; simplified 2026-08-14): ① open Telegram, search **@ifinanceDctBot**, press
+  **Start** / send it any message; ② **the bot replies with your chat id** ("Your
+  i-Finance runner chat id is: <n>") — tg_bot.py now answers unregistered PRIVATE chats
+  with their id (5-min per-chat rate limit; query commands stay allow-list-only; groups
+  still ignored silently); ③ paste the number into Runner Settings → My OTBI Account →
+  *Telegram chat id* and Save. Fallback: @userinfobot returns the same number.
+  **OPS GOTCHA (found 2026-08-14):** the `atd-tgbot` PoC service on vm180 long-polls
+  `getUpdates` on the SAME bot token, so it consumes every incoming message —
+  `python notify.py chatid` will ALWAYS print "no chats yet" while atd-tgbot is running;
+  read incoming chat ids from `journalctl -u atd-tgbot` instead (unregistered senders are
+  logged, and now also replied to).
+
+## 2026-08-15 (2) — PERMANENT job owner from the catalog path (App 208 v1.37.0) — DEPLOYED
+User rule: a job whose analysis lives under `/users/<name>/…` is owned by that person
+ALWAYS — scheduled cycles included — not just when they click Run. Identity priority is
+now **catalog-path owner → manual requester (requested_by) → service account**, in BOTH
+the Owner column and the actual runner sign-in.
+- **db/62 re-run**: `atd_user_credential.catalog_login` (nullable) — the OTBI catalog
+  personal-folder name when it DIFFERS from the Entra sign-in (the folder is the Fusion
+  APPLICATION username: live case = sign-in `c-saljaaidi@…` vs folder `saljaaidi@…`;
+  same split as hg2248 vs haghareb). `atd_cred_pkg` gains SQL-callable
+  `job_owner_login(source_ref)` (matches `/users/<x>/` against
+  NVL(catalog_login,fusion_login), active+pwd only) + `resolve_job_cred(source_ref,
+  requested_by, OUTs)` (owner first, then requester). Selftest extended (path-owner,
+  case-insensitive, fallback) — PASS live.
+- **db/63 re-run**: `catalogLogin` on GET/PUT my-credential + roster.
+- **13 handlers patched in place again** (DEFINE_HANDLER-only): `GET /jobs` +
+  `/jobs/:name` ship `owner` + `ownerType` (catalog|manual|''); `requestedBy` kept.
+- **Runner** (config.py `resolve_job_cred` + runner.py claim path; fleet-synced, all 3
+  restarted): claimed jobs resolve identity via the new proc — **scheduled cycles of an
+  owned job now sign in as the OWNER** (their session stays warm between cycles; if it
+  ever dies the owner gets ONE push, an unapproved push fails only that cycle and the
+  next cycle retries). Actions still key on created_by.
+- **UI v1.37.0** (release `20260815213126`): Owner column = permanent owner (hover
+  explains catalog vs manual vs "Service account"); My OTBI Account gains the optional
+  **"OTBI catalog folder"** field with the c-saljaaidi example in the hint.
+- Verified live: AR INVOICE LINES - ALL + AR Invoice Distribution Details - ALL show
+  owner `c-saljaaidi@dctabudhabi.ae` (catalog). Tests 39/39.
+
+## 2026-08-15 — Jobs page "Owner" column (App 208 v1.36.0) — DEPLOYED
+`GET /jobs` + `GET /jobs/:name` now ship `requestedBy` (the job owner — who queued the
+current/last manual cycle; blank = scheduler/service account, per-user OTBI db/62). Both
+handlers were **patched in place DEFINE_HANDLER-only** (same pattern as the 2026-08-13
+deploy — no atd.rest rebuild, no additive-chain re-run; sources synced into 13 for the
+next full rebuild). Jobs page gains an **Owner** column between Status and Last Run —
+green mono badge = the queuing user (their OTBI account runs it), muted "Scheduler" =
+automatic cycle. i18n `atd.jobs.col.owner*`/`atd.jobs.owner.*` EN+AR; web release
+`20260815211438`, APP_VERSION 1.36.0.
+
+## 2026-08-11 — INCIDENT: App 208 dashboard blank below Needs Attention (bare `occurred` bind)
+The whole lower dashboard (Queue State / Recent Runs / Worker Fleet / Fusion Actions /
+Job Freshness / Alerts) rendered as EMPTY region shells with blank headings, with ZERO
+console/page errors. Root cause: `dashboard.html` bound the attention row timestamp as
+bare `text: occurred || '—'` — APEX_JSON omits NULL keys, and on 2026-08-11 a *Review*
+attention item arrived WITHOUT `occurred` ("Supplier Bank Accounts Full — disabled job
+still has active queue state FAILED"), so the binding threw `ReferenceError: occurred is
+not defined` **during the `ko ifnot: loading` re-render**, aborting every remaining
+binding in the view. The error was invisible because the re-render is triggered by
+`self.loading(false)` inside `getDashboard().then(...)`, whose
+`.catch(function () { self.loading(false); })` swallows it. Diagnosed by setting
+`ko.onError` in-page and toggling `loading`. Fix: `text: $data.occurred || '—'`
+(the platform KO rule: bind EVERY nullable field as `$data.field`, never bare) +
+APP_VERSION 1.34.8; web-tier release `20260811141540` verified (all 7 regions render).
+Lesson: an APEX_JSON-omitted key in a row template doesn't just blank its cell — it
+kills every binding after it in the view, silently when the trigger runs inside a
+promise with an empty catch.
+
+## 2026-08-06 (3) — Supplier extract family (/Data/Suppliers/prod, 4 analyses; data-only)
+
+Four jobs seeded via the NATIVE PREPARE FLOW (job row w/ no colmap + `schema_reviewed='N'` →
+one-shot run profiles the CSV, creates the table + column map, HOLDs; review → approve → load):
+- **Suppliers Full** → `ATD_SUPPLIERS` — 28,607 rows (the old 2026-06-21 one-off held only a
+  1,417-row filtered subset), REGISTRY_ID = SUPPLIER_NUMBER grain, both fully unique.
+  **+ Suppliers Incremental** (`SUPPLIERS_UH24`, filter col **`Last Updated`** — not "Last
+  Updated Date" — key `REGISTRY_ID`, TXN_INCREMENTAL order 150; verified 193 staged ≈ table
+  last-24h). ⚠ the new analysis carries NO bank columns, so the legacy denormalized
+  bank cols on ATD_SUPPLIERS (bank_name/iban/bank_account_number/currency/site_pay_group/
+  primary_flag/from_assignment_date) are now NULL — **PAY's supplier type-ahead
+  (PAY/db/04 `/pay/lov/suppliers`) shows blank bank hints until it is re-pointed at the new
+  normalized bank tables**; validation (supplier_number exists) unaffected and now FRESH.
+- **Supplier Bank Accounts Full** → `ATD_SUPPLIER_BANK_ACCOUNTS` — 36,232 rows. **Daily full
+  ONLY — NO incremental possible:** the extract has no unique natural key (72 near-dup groups
+  on (registry,iban,acct#,inactive_on) + 1 exact full-row duplicate). To enable one, add a
+  bank-account/assignment ID column to the analysis.
+- **Supplier Sites Full** → `ATD_SUPPLIER_SITES` and **Supplier Sites Bank Accounts Full** →
+  `ATD_SUPPLIER_SITES_BANK_ACCOUNTS` — jobs work but each analysis has a LEFTOVER TEST FILTER
+  returning ONE supplier (ORACLE SYSTEMS LIMTIED, registry 19257; 2 rows each). Remove the
+  supplier filter in OTBI, re-run, then pick keys + add incrementals. (Sites-bank dates
+  profiled VARCHAR2 — format unparsed; revisit after the filter fix.)
+All four fulls = PAYABLES_DAILY members (orders 40–70, window 10:00–11:00 Dubai).
+Catalog navigation gotcha: the Catalog UI needs real mouse **dblclicks** on folder names
+(click only selects; "Expand" only drives the tree; `saw.dll?getFolderItems` = 404 here).
+
+**Same-evening follow-up:** user removed the Sites test filters → **Supplier Sites Full =
+59,651 rows** + **Supplier Sites Incremental** live (`SUPPLIER_SITES_UH24`, filter col
+`Last Updated`, key `REGISTRY_ID,SITE,BUSINESS_UNIT,CREATED` — one Fusion-side dup site
+trio differs only by CREATED). **Both BANK analyses broke after the user's 5:07–5:09 PM
+edits: `nQSError 60009` query-governor timeout** (diagnosed by rendering Results in the
+Answers editor — the Go CSV export just returns the JS shell; the supplier-level one worked
+pre-edit at 36,232 rows). Bank incrementals also blocked on grain: even pre-edit,
+(registry, bank_name, iban, account#) has 68 dup groups → the analysis needs an
+account/assignment ID column for a MERGE key. `ATD_DOWNLOAD_TIMEOUT_SEC` raised 300→900 in
+ATD_RUNNER_CONFIG (DB config OVERRIDES the env var — exporting it on a one-shot does
+nothing). **PAY supplier LOV re-pointed** at ATD_SUPPLIER_BANK_ACCOUNTS same evening (see
+PAY/docs/deployment-notes.md).
+
+## 2026-08-06 (2) — INCIDENT: all daily job sets silently stopped 01→06 Aug (window ∩ break = ∅)
+
+`AP Invoices Full` (and EVERY daily-set job) had not run since 31-Jul. Root cause — two gates
+whose open intervals never intersect:
+- `atd_queue_pkg.enqueue` **no-ops during the fleet break** (`atd_in_break='Y'`, 21:00–08:00
+  Dubai) — no rows are queued overnight;
+- `atd_set_gate_ok` passes only **inside the set's daily window, on the Dubai wall clock** —
+  and the six daily windows configured 2026-07-31 20:52 (00:30…07:30 Dubai staggered) all fell
+  ENTIRELY inside the break. Day: enqueue awake, window closed. Night: window open, enqueue
+  asleep. Result: zero daily enqueues from 01-Aug (daily-type runs/day: 255 → 2/10/0/0/0)
+  while windowless TXN_INCREMENTAL ran normally and PRPO_PENDING survived only because its
+  07:30–16:30 window overlaps worker hours.
+- **Fix (user-approved):** windows shifted after break-end, same stagger order —
+  GL_COA 08:00–09:00 · HR 08:30–09:30 · PROJECTS 09:00–10:00 · PROCUREMENT 09:30–10:30 ·
+  PAYABLES 10:00–11:00 · GL_GRN 10:30–11:30 (Dubai). One UPDATE on `atd_job_set`, no code.
+- Catch-up note: jobs manually re-run on 06-Aug evening (PR/PO family, AP Invoices Full) are
+  within their 1440-min frequency at the 07-Aug window, so they resume on 08-Aug; everything
+  else resumes 07-Aug morning.
+- **RULE: a daily set window MUST overlap worker active hours (08:00–21:00 Dubai) — the
+  break gate and the window gate are ANDed through the enqueue.**
+
+## 2026-08-06 — AP Installments Incremental (UH24 convention; data-only, no script)
+
+Hourly incremental for AP invoice installments (payment schedules), completing the AP family
+(Invoices/Lines/Distributions already had one). Standard recipe: `AP_INVOICE_INSTALLMENTS_UH24`
+(Save-As of `AP Installments Full`'s analysis + `Last Updated Date` 24h filter, same folder,
+identical 16 columns), job `AP Installments Incremental` — stage
+`PROD.ATD_AP_INVOICE_INSTALLMENTS_STG` (CTAS WHERE 1=0), MERGE key
+`INVOICE_ID,INSTALLMENT_NUMBER` (verified unique 9,689/9,689, no NULLs), freq 60,
+`TXN_INCREMENTAL` member (order 140). Verified: 248 last-24h rows staged = table's own
+last-24h count exactly; all keys present in final after merge; run log SUCCESS.
+**Session gotcha replayed:** the saved auth_state had idled out (~1h since the previous
+extract), so the first copy attempt initiated a login (MFA push) — per the standing rule,
+PROBE the saved session first and ask before any step that can trigger MFA; after the user
+approved, the state file was re-saved and the rerun attached MFA-free. A copy process that
+loses its ssh stdout can wedge silently — kill and rerun; Save-As is idempotent (Confirm
+Overwrite path).
+
+## 2026-08-02 (3) — PR/PO BU-filter alignment reload + lenient NUMBER loading (INVALID_NUMBER)
+
+The line↔distribution coverage gap below was NOT a status filter — the PR/PO analyses had
+**different Business-Unit filters** (PO Lines was the wide one; Headers/Schedules/Distributions
+narrow). The user aligned the BU filters on ALL PR and PO analyses; all 7 Full jobs re-run:
+PR 5,959/9,025/9,544 (unchanged — already aligned), PO Headers 2,539→**4,027**, PO Lines 5,925
+(was already wide), PO Schedules 3,534→**5,926**, PO Distributions 3,631→**6,180**.
+
+- **Coverage now correct:** every PO line has ≥1 distribution (0 missing) and every
+  distribution/schedule has its line; all 7 natural keys fully unique. PO_LINES_V
+  NULL-allocation dropped 2,396→191 (lines whose distributions carry no project — GL-coded,
+  legitimate) + 64 `(Multiple)`. Residual: 2 PO lines (NULL line_status, Feb/May 2026) whose
+  headers the PO Headers analysis still excludes, and 2 PR lines without distributions —
+  cosmetic, 2/5,925.
+- **load.py NUMBER columns are now lenient like DATE columns:** the first PO Distributions
+  reload FAILED with ORA-01722 — 4 misaligned CSV rows (a free-text description from a
+  newly-included BU shifts the row: a person name landed in PROJECT_ID, a GL combination in
+  TASK_ID). A coerced NUMBER value that doesn't match `-?\d+(\.\d*)?` now loads as **NULL +
+  `INVALID_NUMBER` row warning** (same framework as INVALID_DATE; `coerce_number`'s
+  fail-loudly pass-through remains, the guard is at bind time in load()). Fleet-synced +
+  workers restarted.
+- **Drift widenings invalidated 20 objects mid-reload** (longer new-BU values → ALTER MODIFY
+  on REQUESTOR_EMAIL/LOCATION_NAME/ORGANIZATION_NAME/ORDER_TYPE/PO_TYPE): fixed with
+  `dct_views_rebuild` + recompile sweep → 0 INVALID; butil figures healthy after.
+- **UH24 incrementals verified aligned:** all 7 one-shot runs clean, and each staged count
+  EXACTLY matches its table's own last-24h count (PR Lines 30/30, PR Dists 7/7, PO Headers
+  8/8, PO Lines 22/22, PO Schedules 22/22, PO Dists 22/22).
+
+## 2026-08-02 (2) — PO Lines grain fix: allocation columns REMOVED from the extract (user decision)
+
+Same-day follow-up superseding the composite-key design below: allocation detail belongs at
+PO **Distributions** level, so **Project ID / Task ID / Expenditure Type were removed from the
+`PO_LINES_F` and `PO_LINES_UH24` analyses themselves** (new `copy_analysis.py --edit <path>
+--remove-columns "A,B,C"` mode — opens Criteria, deletes each column via its gear menu, Save As
+the same name w/ Confirm Overwrite; filters kept). The BI server then collapses the grain to
+one row per line (6,131 fanned rows → 5,918 true lines).
+
+- **DB migration (python-oracledb on vm180, jobs paused during):** both PO Lines job
+  column maps 38→35 entries; incremental `key_columns='PO_LINE_ID'` (plain, no composite);
+  `ALTER TABLE prod.atd_po_lines DROP (project_id, task_id, expenditure_type)`; stage re-CTAS;
+  `dct_views_rebuild` (15 pass-throughs); **PO_LINES_V redeployed** (db/v2/46 updated) — its
+  project/task/etype now derive from the line's DISTRIBUTIONS: single value → shown, mixed →
+  `(Multiple)`, no dists → NULL. 0 INVALID after.
+- **Dependency audit result (why only one view changed):** every butil/actuals/pending view,
+  briefing book and register takes allocation from po_distributions/GRN and joins po_lines
+  ONLY for the line number (deduped) — `PO_LINES_V` was the sole reader of the line-level
+  allocation columns. `dct_open_po_lines_v` in the reports is distributions-based (name grep
+  trap: it merely CONTAINS "po_lines_v").
+- **Coverage caveat (flagged, accepted):** ATD_PO_DISTRIBUTIONS covers only a subset of lines
+  — 2,396 of 5,918 lines (mostly Closed/Liquidated/Canceled) have NO distribution row, so
+  their PO_LINES_V allocation shows NULL. Platform reports never used line-level allocation,
+  so nothing else changes; widen the PO Distributions analysis if closed-line allocation is
+  ever needed.
+- **Verified:** Full reload 5,918 rows (PO_LINE_ID fully unique), Incremental 25-row MERGE
+  clean, PO_LINES_V 5,918 rows (15 `(Multiple)`), butil 2026 figures unchanged/healthy.
+  The NULL-safe DECODE merge join in load.py (below) STAYS — correct platform-wide hardening.
+
+## 2026-08-02 — PO Distributions / Schedules / Lines Incrementals (UH24 convention ×3) + NULL-safe MERGE join
+
+Hourly incrementals completing the PO family (Headers already had one). Same UH24 recipe as
+PR Distributions Incremental below, with two findings worth recording:
+
+- **The UH24 filter column heading differs per analysis** — pass `--on-column` explicitly:
+  PO Distributions = `Last Updated Date` (the default), PO Schedules = `Schedule Last Updated
+  Date`, PO Lines = `Updated on`. Analyses created with `copy_analysis.py` on vm180 (one MFA;
+  the first attempt died with "MFA number not found within 30s" — the Entra number challenge
+  can render slowly, so the retry ran with `ATD_MFA_CAPTURE_WAIT_MS=120000` and succeeded):
+  `PO_DISTRIBUTIONS_UH24` / `PO_SCHEDULES_UH24` / `PO_LINES_UH24`, each a Save-As copy of its
+  Full analysis + `>= TIMESTAMPADD(SQL_TSI_HOUR,-24,CURRENT_TIMESTAMP)`, same folder,
+  columns identical to Full (column_map_json copied VERBATIM onto the job rows).
+- **`PO_LINE_ID` is NOT unique in ATD_PO_LINES** — the extract fans a PO line out per
+  project/task/expenditure-type allocation (6,131 rows / 5,899 distinct line ids; 3 combos
+  even share line+project+task and differ only by expenditure type). Key =
+  `PO_LINE_ID,PROJECT_ID,TASK_ID,EXPENDITURE_TYPE` (unique 6,131/6,131). 18 rows carry NULL
+  project/task, which a plain `t.k=s.k` merge join never matches → those rows would INSERT a
+  duplicate on every hourly run. **`load.py` MERGE ON is now NULL-safe platform-wide:**
+  `decode(t.k, s.k, 1, 0) = 1` per key column (NULL==NULL matches; identical to `=` when both
+  sides are non-NULL — byte-identical behaviour for every existing MERGE job). Synced to
+  vm180-182 + `systemctl restart atd-worker`.
+- **Job rows (data-only, no db/ script):** `PO Distributions Incremental` (key
+  `PO_DISTRIBUTION_ID`), `PO Schedules Incremental` (key `LINE_LOCATION_ID`), `PO Lines
+  Incremental` (composite key above); stages `PROD.ATD_PO_<X>_STG` (CTAS WHERE 1=0), finals
+  the Full tables, MERGE, freq 60, priority 1, members of `TXN_INCREMENTAL` (order 110/120/130).
+  Seeded via python-oracledb on vm180 (MERGE-bearing).
+- **Verified live:** one-shot runs SUCCESS — 14 / 19 / 28 last-24h rows staged and merged;
+  every staged key present in final (NULL-safe join proven on the LINES composite); key
+  uniqueness intact after merge (3,623 / 3,526 / 6,145 rows, all fully distinct on their keys);
+  the hourly TXN_INCREMENTAL cadence picked all three up on its own in the same hour (a
+  one-shot racing a worker claim shows a benign REQUEUED→SUCCESS pair in the run log).
+
+## 2026-08-01 — PR Distributions Incremental (mirrors PR Lines Incremental; data-only, no script)
+
+Hourly incremental for PR distributions, completing the PR family (Headers/Lines already had one).
+Same recipe as every `* Incremental` job — record of the convention:
+
+- **OTBI analysis:** created with `runner/copy_analysis.py` on a worker VM (one MFA):
+  `--copy '/users/haghareb@dctabudhabi.ae/Data/PR/prod/03_PR_DISTRIBUTIONS/01_PR_DISTRIBUTIONS_F'
+  --to '01_PR_DISTRIBUTIONS_UH24' --hour 24 --verify` → Save-As copy of the Full analysis +
+  `Last Updated Date >= TIMESTAMPADD(SQL_TSI_HOUR,-24,CURRENT_TIMESTAMP)` filter, same folder,
+  columns IDENTICAL to Full (so the Full job's column_map_json is copied VERBATIM onto the job row).
+- **Job row (data-only, like all the other incrementals — no db/ script):** job
+  `PR Distributions Incremental`, source_ref = the `_UH24` path, stage
+  `PROD.ATD_PR_DISTRIBUTIONS_STG` (created as an empty structural copy of the final table:
+  `CREATE TABLE … AS SELECT * … WHERE 1=0`), final `PROD.ATD_PR_DISTRIBUTIONS`,
+  `load_mode='MERGE'`, `key_columns='DISTRIBUTION_ID'`, freq 60, priority 1, member of job set
+  `TXN_INCREMENTAL` (Hourly Transaction Incrementals). Deployed via python-oracledb on vm180
+  (MERGE-bearing).
+- **Verified live:** run 8959 SUCCESS — 104 last-24h rows → stage, merged into final (9,538 rows,
+  DISTRIBUTION_ID still unique, all 104 keys present). Direct one-shot run
+  (`python runner.py 'PR Distributions Incremental'`) used for the break-window verification;
+  scheduled runs ride the normal TXN_INCREMENTAL hourly cadence.
+
+## 2026-07-27 — AR rebill pacing layer: ATD_AR_FAST condition waits (code shipped, knob OFF)
+
+Latency work on `actions/ar_invoice_rebill.py` (~6-7 min/invoice, of which ~370s of ~445s was
+literal `time.sleep()` and the FuseWelcome→Navigator→Billing renav (32s) was paid 4×/invoice).
+**UiPath was evaluated and rejected**: the bottleneck is the same ADF UI and the same server
+round-trips whatever tool drives the browser; switching would restart the 25 ADF selector laws,
+add licensing/orchestrator infra, rebuild SSO/MFA session sharing, and discard the saga/
+idempotency/queue integration. The fix is in our pacing:
+
+- **`_pace(page, predicate, what, legacy, timeout=None)` + `ATD_AR_FAST` env knob.** Unset
+  (default) → `time.sleep(legacy)` byte-identical to every live campaign (the predicate is never
+  called); `=1` → `_wait_until` poll whose **timeout is NEVER below the legacy sleep**. Rollback =
+  unset + restart. Conversion rule: each predicate is the exact condition the next line already
+  depends on, expressed through an ALREADY-PROVEN reader (`_label_input_id`, `_read_label_value`,
+  `_visible_id_by_suffix`, `_grid_rows`, `_dup_line_rows`) — no new selectors; every downstream
+  guard (grid assert, drawer identity proof, `_valid_doc_number`, read-back verify) unchanged.
+- 23 `_pace` sites: `_goto_billing` (9/4/2/15 → nav-link/nav-open/billing-entry/workarea-ready),
+  `_open_search_panel`, post-Search grid wait, all six record-open 10s waits (predicate
+  `_review_page_open(number)` = read-only Transaction Number matches AND the search INPUT is
+  absent, so a mid-transition read of the still-mounted search form can't pass), Actions-menu
+  (+ one re-click retry in fast mode), both 12s form waits, stage-3/9 dialog waits, split-menu
+  wait, stage-7 Details-drawer wait (identity check stays the authority), Invoice-Lines tab waits.
+- **NOT converted** (stale-read-back failure class): `_fill_by_id_suffix`/`_select_option`
+  internals, post-fill 2s settles, `_reassert_header_dates` settle, `_dff_one_row` recovery
+  sleeps, `_ensure_line_grid` internals — and the two **post-commit** sleeps (after the CM commit
+  and after Complete and Review), deferred to a later PR to keep this diff commit-free.
+- Stage 1 no longer renavs unconditionally: blank page → `_goto_billing`, else the panel-first
+  self-healing ladder (`_search_transaction(page, invoice, base)`), same as stages 2/4/5.
+- `diag_ar.py` gained the **`reviewnav`** screen (evidence for phase 2 nav-elimination: is there
+  a Done button / Tasks magnifier on the record page that reaches the Billing search without the
+  32s renav? `DIAG_AR_CLICK_DONE=1` second pass proves the search panel after Done). NOT RUN yet —
+  user constraint 2026-07-27: no Fusion contact until go-ahead.
+- Unit harness: `_test_ar_pacing` (early exit, timeout-returns-falsy, exception=not-yet, legacy
+  path never calls the predicate and sleeps exactly N, timeout floor `max(1.5N, N+5)`); all pass.
+- Fleet: handler + diag synced to vm180-182 (checksums match), **workers NOT restarted** (a
+  restart nudges the Fusion session — off-limits under the same constraint) and `ATD_AR_FAST`
+  unset everywhere, so live behavior is unchanged until the canary. Rollout plan (phase 2, each
+  step needs user go-ahead): reviewnav evidence → dry-run A/B on an already-rebilled invoice
+  (`ATD_ACTION_LIVE=0` walks everything but the commits with zero writes; saga stage timestamps
+  give the A/B) → `ATD_AR_FAST=1` canary on ONE VM with a real batch → fleet-wide.
+  Predicted: ~180s/invoice (~2.5×), fleet ~28-30 invoices/30 min.
+
+## 2026-07-18 — Non-blocking invalid-date warnings (db/49, ATD 1.23.0)
+
+- Invalid values in DATE/TIMESTAMP target columns now load as NULL without stopping
+  the extract. The successful run message carries the total and up to 200 samples are
+  stored in `PROD.ATD_LOAD_ROW_WARNING` with source row, target column, raw value,
+  warning code, and reason.
+- `GET /atd/runs/:id` returns `warningCount` + `warnings[]`; Run Details renders the
+  warning table in EN/AR. Protected-route smoke returned 401 without a token as expected.
+- PROD verification: warning table/9 columns present, exactly one GET handler on
+  `atd.rest` `runs/:id`, zero invalid ATD objects.
+- Runner/load sources synced to vm180/181/182; syntax clean, matching checksums, all
+  services active. Partial web release `20260718000149-atd49` activated from the prior
+  live release with only ATD files overlaid; served `APP_VERSION=1.23.0`.
+
+## 2026-07-17 — Renewable extract-job leases and claim fencing (db/48)
+
+- PROD `ATD_OTBI_JOBS` now carries `CLAIM_TOKEN` and `LEASE_EXPIRES_AT`.
+  `ATD_QUEUE_PKG` renews leases and requires job + worker + token ownership for
+  completion, failure, or release.
+- `runner.py` renews an active lease from a separate DB session while a long
+  OTBI/BIP download or database load blocks the main worker thread.
+- Coordinated rollout completed on vm180/181/182. Package spec/body are VALID,
+  both columns are present, runner checksums match, and all workers are active/IDLE.
+- The legacy claim overload remains temporarily for rolling-deploy compatibility;
+  all production workers now use the token overload.
+
 ## 2026-07-16 — PR/PO Pending Approval extract: FIRST BIP (.xdo/xmlpserver) job (db/47 + runner bip.py)
 
 New daily snapshot of every PR + PO in **PENDING APPROVAL** status, from the BI Publisher report
@@ -839,6 +1366,47 @@ sourced from approved Petty Cash reimbursements.
   enqueue all 3 PC documents. All Fusion-action DB deploys complete; only the live headed smoke
   test + populating `DCT_EMP_SUPPLIER_MAP` remain before flipping a `FUSION_POST_*` gate to Y.
 
+## ⚠️ The worker VMs KERNEL-PANIC under browser load (diagnosed 2026-07-25, OPEN)
+
+**Symptom that sends you the wrong way:** an unattended run vanishes — process gone, no traceback,
+no exit code, systemd unit garbage-collected. It looks like the script died. It did not: **the VM
+rebooted underneath it.** Check `uptime` before debugging anything else.
+
+**Root cause — a bug in the VMware paravirtual NIC driver, nothing to do with the runner:**
+
+```
+kernel BUG at drivers/net/vmxnet3/vmxnet3_drv.c:1807!
+RIP: vmxnet3_rq_rx_complete+0xbe3/0x1340 [vmxnet3]
+     vmxnet3_poll_rx_only -> __napi_poll -> net_rx_action -> handle_softirqs
+```
+
+Identical RIP in **every** dump on all three VMs — one bug, in the RX completion path, which is why
+a Playwright/Chromium session pulling Fusion pages is the reliable trigger.
+
+| VM | vmcores | disk | worst day |
+|---|---|---|---|
+| vm180 | 39 | 3.7G | 4 crashes on 2026-07-25 |
+| vm181 | 27 | 2.6G | 4 in six hours (18:17, 21:46, 23:15, 23:31) |
+| vm182 | 9 | 892M | least affected — prefer it for long runs |
+
+All three: kernel `6.12.0-105.51.5.el9uek`, `open-vm-tools-13.0.0`, `vmxnet3 1.9.0.0-k-NAPI`,
+**`large-receive-offload: on`**.
+
+**Finding the evidence.** `last -x` shows every boot as "still running" with NO shutdown record =
+hard reset. The systemd journal is **volatile** here (no `/var/log/journal`), so `journalctl -b -1`
+is empty — but `/var/log/messages` persists and **kdump is enabled**, so the panic is always in
+`/var/crash/<timestamp>/vmcore-dmesg.txt`.
+
+**Mitigation APPLIED 2026-07-26 on all three workers:** `ethtool -K ens192 lro off gro off`, made
+persistent via `nmcli con modify ens192 ethtool.feature-lro off ethtool.feature-gro off`. LRO on
+vmxnet3 is the usual trigger for this BUG_ON. Real fix = newer UEK kernel / VMware Tools, or an
+E1000E vNIC. Housekeeping still owed: 7.2G of vmcores across the fleet. (The 6-invoice rebill batch
+ran right after with ZERO panics — vm181 had panicked twice in the preceding 3 hours.)
+
+**Belt and braces:** launch long jobs **detached** (`systemd-run --unit=… --setenv=HOME=/root` —
+`env.sh` sets `TNS_ADMIN="$HOME/wallet"` and systemd-run has no `$HOME`, else `DPY-4026`) so a
+checkpointed saga survives the reboot, and resume rather than restart.
+
 ## 3-VM parallel worker fleet — DEPLOYED 2026-06-21 (Track B scale-out)
 
 The Track B runner now runs on **3 on-prem Oracle Linux 9.7 VMs** (replaced the single Windows
@@ -1170,6 +1738,189 @@ flow replicated 1:1: My Projects → search Project Number → open project → 
   8. **After an LOV commit Fusion displays the DESCRIPTION, not the code** — read-back must
      accept the resolved display text captured at fill time (and the idempotency fast-path
      only triggers when the code is visible in the field).
+## Fusion Action #3 — `AR_INVOICE_REBILL` (AR invoice VAT rebill), 2026-07-25
+
+Third UI write-back action, and the first **multi-stage saga**. Replaces the manual Receivables
+flow: credit an invoice off in full → duplicate it → correct the Tax Classification on the
+nominated memo lines → set the Project/Task DFF on each line → complete the duplicate,
+capturing both generated **Document Numbers**. The DFF stage sits BEFORE the commit so the saga
+has exactly one irreversible step.
+
+- Handler `runner/actions/ar_invoice_rebill.py`; diagnostic `runner/diag_ar.py`.
+- DB: `db/52_atd_action_saga.sql` (`ATD_ACTION_STEP` + `ATD_ACTION_SAGA_PKG` +
+  `V_ATD_AR_REBILL_REQUEST`), `db/53_atd_action_ar_rebill.sql` (action type + vocabularies).
+- Submitted from the **AR app** (App 206) via `final apps/AR/db/11_ar_rebill_ords.sql`;
+  `/atd/` stays SYS_ADMIN-only.
+
+**Why a saga, not a single write.** AP_INVOICE and PPM_TASK_ADDL_INFO are single, naturally
+idempotent writes. This one CREATES two objects and COMPLETES them, and a completed credit memo
+cannot be un-completed in Fusion — only reversed. Every stage is checkpointed in
+`ATD_ACTION_STEP`; `resume_from()` returns one past the highest **contiguous** completed stage,
+so a later stage is never mistaken for done. Probes: the credit memo is found exactly via the
+grid's **Original Transaction Number** column (populated only on credit memos — nothing to
+stamp); the duplicate has no such link, so it is stamped `Rebill of <invoice>` in **Comments**.
+
+**PROD-only safety.** `ATD_AR_REBILL_ALLOW` (csv of invoice numbers) refuses any invoice not on
+the list; every committing click is gated on `ATD_ACTION_LIVE=1` **per stage**, not once at the
+end; `ATD_ACTION_STOP_AFTER=<stage>` steps through the saga.
+
+**ADF selector laws — additions from this build (laws 1-8 from Action #2 all still apply):**
+9. **`:has-text()` is a SUBSTRING match — use `:text-is()`.** `a:has-text("Actions")` matched the
+   topbar *"Settings and Actions"* first, and `a:has-text("INV00583863")` also matched
+   *INV00583863CM*, so the robot opened the credit memo believing it opened the invoice.
+10. **Never map grid headers onto `<td>`s by position.** The Manage Transactions grid splits
+    headers (`…table2::ch::t`) from data, and the page nests toolbars and saved-search menus in
+    tables too: a positional scraper returned **13 confident rows of menu text and zero
+    transactions**. Use the id scheme — data cells are `…:table2:<rowIndex>:<component>`
+    (`cl1` = Transaction Number, `cl3` = Original Transaction Number).
+11. **Prove a probe can read the page before trusting a negative.** "No credit memo found" and
+    "I could not read the grid" are indistinguishable and have opposite consequences. Every
+    probe first asserts it can see a row it KNOWS is there, and raises otherwise.
+12. **Not every field is reachable by label.** The Credit Transaction date inputs sit beside the
+    hint *"Press down arrow to access Calendar"*, not beside "Transaction Date" — a label-based
+    fill silently no-ops and the memo posts to the default accounting period. Fill by id suffix
+    and **read the value back**; a failed fill must raise, never return False.
+13. **ADF split buttons expose a `::popEl` dropdown arrow.** Save / Complete and Close /
+    Complete and Review each match twice; the `::popEl` one only opens a menu. Exclude it
+    (`:not([id$="::popEl"])`).
+14. **Menu entries can be `<td>` with empty ids**, and the menu itself needs a REAL pointer
+    click — a JS `el.click()` leaves the popup closed so the entries never enter the DOM.
+15. **Fields can be collapsed out of the DOM.** Comments on the Create Transaction form sits
+    behind *Show More*; expand it first or the write silently never lands.
+16. **Keep the diagnostic delegating to the handler's own navigation.** `diag_ar.py` briefly had
+    its own copies and "passed" while dumping the wrong page entirely.
+17. **An ADF control that LOOKS like a combo box may be a plain `<select>` — check the tag, not
+    the picture.** Credit Reason renders exactly like the LOV beside it but is a `<select>`.
+    Typing into it does not fail cleanly: on the first dry run (ADGOV pod, 2026-07-25) the
+    keystrokes landed in **Transaction Source**, opened its *Search and Select* dialog, and that
+    dialog then stole focus from the **Comments** textarea mid-typing, truncating it to
+    `Credit I`. **One mis-typed field corrupted three.** Select by option text
+    (`_select_option`), and raise listing the real options when nothing matches. `diag_ar.py`
+    now dumps a **SELECT DROPDOWNS** section for exactly this reason.
+18. **`locator.fill("")` does not reliably clear an ADF date field.** It re-asserts its previous
+    value on the focus/blur cycle `fill()` triggers, and the typed text merges with the
+    survivor: Accounting Date defaulting to `25/07/2026`, filled with `28/02/2026`, came out as
+    **`28/02/20262`** — a malformed date that posts the memo to the wrong period. Clear with a
+    real `Control+a` + `Delete`, then type.
+19. **Verify against the CONTROL, never the label's neighbour — and treat a prefix match as a
+    FAILURE.** The first `_fill_verified` only read the value next to a *label*, so every field
+    filled purely by id suffix was never checked at all. Both dates on this form are exactly
+    that case: their only nearby text is "Press down arrow to access Calendar". Read the element
+    by id, and reject a value that merely *starts with* what was typed — that is the signature
+    of a failed clear (law 18), and it is indistinguishable from success on a screenshot.
+20. **Only stage 1 navigates; every later stage must be able to navigate too.** Stages inherited
+    the page from the stage before, which holds for one clean pass and breaks on ANY resume — a
+    fleet retry after a worker restart, or a supervised run picking up mid-saga — because the
+    browser then opens cold on FuseWelcome with no search panel. `_search_transaction` takes the
+    apps base and re-navigates on demand.
+21. **A verified fill is not a permanent fill — Fusion can overwrite a header field AFTER you
+    verify it.** Saving an invoice LINE makes Fusion re-run the invoicing rule ("In Advance" on
+    these transactions), which re-derives the header **Accounting Date** from the line's Revenue
+    Scheduling *Start Date*. Measured end-to-end on 45110096152 (2026-07-25): stage 6 set and
+    verified 28/02/2026; stage 7 saved three line drawers; the invoice completed with 18/02/2026 —
+    the revenue-schedule start — and every stage reported DONE, because each one was individually
+    correct. Laws 18/19 harden the *typing*; they cannot see a later recalculation.
+    **Assert any header value that matters again at the LAST point before the commit**, after every
+    edit that could recalculate it (`_reassert_header_dates`). The accounting date picks the GL
+    period, so the guard raises rather than completing with a date nobody requested — the form is
+    uncommitted there, so a resume just rebuilds it at stage 5.
+
+22. **A fallback selector that matches every row will open the FIRST row — never fall back to one.**
+    Stage 7 resolved line 3 to grid row 2 correctly, its row-specific Details icon
+    (`…:table1:2:commandImageLink110`) missed, and the code fell back to `[title="Details"]`, which
+    matches every row's icon. ADF opened **line 1**, and line 3's Project/Task were written over
+    line 1's: line 1 finished with task *Urgent requests* instead of *Public Speaker Permit*, line 3
+    with **no** DFF at all — and the stage still reported `project/task set on lines 1,2,3`
+    (45110096152, 2026-07-25). Resolving the right row and then clicking something else is worse
+    than not clicking: the run looks clean and the data is wrong on two lines.
+    **Two rules.** (a) A row-targeted click has no generic fallback — if the id misses, raise.
+    (b) **The drawer must prove its identity before anything is written into it**: read its
+    *Memo Line* and refuse if it is not the requested one. Resolving the correct row is worthless
+    if the drawer that opens belongs to a different line, and only the drawer can answer that.
+    Corollary: `verify=False` on a fill (needed here because ADF law 8 shows the LOV *description*
+    rather than the code) must still be followed by a read-back — substring either way — or a line
+    saves with an empty DFF and nothing says so.
+
+23. **Waiting for the line grid after the FIRST line's Save and Close can never succeed by waiting
+    alone — saving that line COMMITS the transaction and the page morphs underneath you.** The
+    Create Transaction form reloads as the Edit Transaction page, which opens on the
+    **Distribution tab**, sometimes behind an Information dialog, so the grid is genuinely not on
+    screen (all four fresh-path failures of the 2026-07-26 batch, e.g. INV00583821: "Save and Close
+    was clicked but the line grid never came back"). A grid wait must be able to SURFACE the grid:
+    dismiss the dialog, click the Invoice Lines tab, then re-read (`_ensure_line_grid`) — the same
+    dance `_stage_dup_edit` already did for the resume path, now applied to every grid wait because
+    the morph happens mid-stage-7 on every fresh invoice.
+
+24. **The payload's matching key is the MEMO LINE, and it selects EVERY row carrying it** (user
+    rules 2026-07-26). `lineNumber` is optional everywhere (runner `validate_payload`, AR ORDS
+    bridge, JET form/bulk) and defaults to payload position; a payload repeating a memo line is
+    rejected as ambiguous at validation. The grid rows are resolved by memo line
+    (`_dup_rows_for_line`) — Fusion's line order need not match the sheet's (proven live on
+    45110096166, whose lines were reversed vs the sheet). **ALL matching rows get the treatment:**
+    45110096161's duplicate carried TWO 'Entertainer Permit' lines while the request named one —
+    the first pass taxed one and left the other with no tax classification and no Project/Task
+    (correctly logged as `left untouched`, but wrong by the user's intent; they fixed it by hand).
+    Same memo, same treatment, every row — stage 6 taxes and stage 7 DFFs each matching row
+    (`_dff_one_row` per row, context re-asserted between rows because the first save commits).
+
+**Harvested ids (ADGOV pod, 2026-07-25).** Credit Transaction (`…:ap1:`): `it1` transaction
+number · `id1` transaction date · `id2` accounting date · `selectOneChoice2` credit reason
+(**a `<select>`, see law 17 — choose an option, never type**) · `HdrComments` comments ·
+`creditEntireBal` button · `batchsourceseq` Transaction Source (**prefilled `DCT_SYSTEM`; NOT
+ours to set — the handler asserts it was not overwritten before completing the memo**). Duplicate / Create Transaction (`…:TCF:0:ap1:`):
+`batchSourceId` source · `tdt` transaction date · `inputDate9` accounting date · `showMore` ·
+line grid `AT1:_ATp:table1:<row>:memoLineNameId` / `:taxClassificationCodeId`. Search rail
+magnifier = `title="Search: Transactions"` (**never** bare `title="Search"` — that is the topbar).
+
+**Status: LIVE — 9 invoices rebilled (2026-07-25/26), including a 6-invoice PARALLEL batch across
+all three worker VMs.**
+
+| Run | Invoice | Credit memo doc | New invoice doc | Result |
+|---|---|---|---|---|
+| 1 (supervised, stage-by-stage) | INV00584150 | 45110096149 | 45110096150 | 9/9 after ~12 in-flight repairs; laws 9-20 came out of it |
+| 2 (**unattended `--auto`**) | INV00585046 | 45110096151 | 45110096152 | 9/9 clean, end-to-end 7:34, zero interventions |
+| 3 (resumed across a VM panic) | INV00583744 | 45110096153 | 45110096154 | law 22 fixes proven on the resume path |
+| batch (2026-07-26, 2 invoices/VM) | INV00583821 · INV00583637 (vm180); INV00584156 · INV00584327 (vm181); INV00584992 · INV00584064 (vm182) | see AR deployment-notes | 45110096160-… | law 23 found + fixed mid-batch; the 3 pre-fix starts failed loudly at stage 7 line 1 and resumed clean; every post-fix start ran 9/9 unattended |
+
+**Two defects found in run 2, both "stage reported DONE while the write did not land":**
+- **Wrong-line DFF (law 22, the serious one).** Line 3's Details icon missed and a generic fallback
+  opened line 1, so line 3's Project/Task overwrote line 1's: line 1 got task *Urgent requests*,
+  line 3 got nothing, and the stage logged `set on lines 1,2,3`. Fixed — no generic fallback, the
+  drawer must prove its Memo Line, and both values are read back before the line is saved.
+  **Proven live in the 2026-07-26 batch** (fresh path INV00584327 + all resumes).
+- Accounting Date completed as 18/02/2026 rather than the requested 28/02/2026 (law 21). Guard
+  added; **user has deprioritised this** — both dates fall in the same GL period.
+
+**GO-LIVE CAMPAIGN (2026-07-26, later the same night): 110/110 invoices DONE.** The user uploaded
+the remaining 101 invoices through the AR page; the fleet drained them in parallel in ~3.5h
+(~2 min/invoice fleet throughput), zero data defects. Operational lessons now encoded:
+- **Requeueing MUST reset `attempts=0`** — the allowlist failures had left every row at 3/4
+  attempts, one hiccup from permanent failure.
+- Session-failure rows (`env/session unavailable: MFA not approved…`, always 0/9 stages) are safe
+  to auto-requeue blindly; anything else stays FAILED for review.
+- **The worker heartbeat now beats DURING the actions drain** (`_drain_actions_idle` calls
+  `_heartbeat(BUSY, "ACTION <type> <ref>")` per claim and IDLE when the queue empties) — before
+  this, the ATD dashboard showed the whole fleet IDLE / "last seen 239m ago" all night while it
+  was flat out, because only the extract loop ever beat. The dashboard also gained a
+  **"Fusion Actions — Recent"** region (ATD v1.24.0) so extracts AND actions monitor from the
+  single view.
+
+**Batch mechanics (2026-07-26):** `run_rebill_batch.sh` on each VM = sequential
+`step_ar_rebill.py <payload> --ctl .ar_batch/<INV> --auto` per invoice, launched detached
+(`setsid`), one ctl/screenshot dir per invoice so any failure resumes individually. Payloads are
+generated from the flat CSV by `gen_payloads.py` — memo-line keyed, no line numbers (law 24).
+A failed invoice never blocks the next; rc summary in `.ar_batch/batch.log`.
+
+Per-stage cost of run 2 (this is the number that decides whether bulk upload is viable):
+`LOCATE 58s · CM_CREATE 107s · CM_CONFIRM 6s · CM_CAPTURE 69s · DUPLICATE 80s · DUP_EDIT 21s ·
+DUP_LINE_DFF 89s · DUP_COMPLETE 21s · DUP_CAPTURE 7s` = 457s of stage time. ~212s of that is
+hard-coded `time.sleep`, so condition-based waits are the obvious next optimisation.
+
+**Unattended runs must be detached** (`systemd-run --unit=ar-rebill --setenv=HOME=/root`): an ssh
+disconnect SIGHUPs the run mid-saga, and stages 5-8 share ONE in-memory Create Transaction form.
+Note `env.sh` sets `TNS_ADMIN="$HOME/wallet"` — systemd-run has no `$HOME`, so without `--setenv`
+every DB call dies with `DPY-4026: /wallet/tnsnames.ora is missing`.
+
 - **UI (2026-07-09, ATD APP_VERSION 1.20.0):** App 208 **"Manage Projects Org"** page (route
   `projectsOrg`) — single-row form + **Excel bulk upload** (SheetJS client-side parse + template
   download) + recent-actions list. Backed by additive **`otbi-atd/db/44_atd_ppm_org_ords.sql`**
@@ -1186,3 +1937,793 @@ flow replicated 1:1: My Projects → search Project Number → open project → 
   VMs ran `--actions`, so UI-enqueued actions sat READY forever); `ATD_ACTION_LIVE=1` set in each
   VM's `env.sh`; fleet synced + restarted. The actions queue (`ATD_ACTION_REQUEST`) is SEPARATE
   from the extract queue (`ATD_OTBI_JOBS`) — same fleet + SSO session, different tables/claim pkgs.
+- **Projects Budget incremental delta-load (2026-07-21):** split the slow (4+ min) hourly
+  full extract into a **daily full baseline + hourly 24h delta**. Two jobs share the target
+  `PROD.ATD_PROJECTS_BUDGET`:
+  * `Projects Budget Full` — analysis `…/Projects/PROJECTS_BUDGET_PERIODS`, `TRUNCATE_INSERT`,
+    now `frequency_minutes=1440` (was 60). The authoritative baseline; the ONLY path that
+    reflects deletes / closed lines (a delta MERGE cannot).
+  * `Projects Budget Incremental` — analysis `…/PROJECTS_BUDGET_PERIODS_UH24` (a Save-As copy of
+    the base with a baked SQL-expression filter `"Update Date" >= TIMESTAMPADD(SQL_TSI_HOUR,-24,
+    CURRENT_TIMESTAMP)`, evaluated pod-side so NO runner-clock/TZ coupling), `MERGE`, stage
+    `PROD.ATD_PROJECT_BUDGET_STG`, `final PROD.ATD_PROJECTS_BUDGET`, `key_columns=
+    PROJECT_ID,TASK_ID,EXPENDITURE_TYPE,ACCOUNTING_PERIOD` (verified UNIQUE — 0 dup groups over
+    1,836 rows; the natural grain the view `db/v2/37` SUMs over), `frequency_minutes=60`.
+  Scripts: **`otbi-atd/db/50_atd_projects_budget_incremental.sql`** (stage table + job register,
+  re-runnable/inert) + **`50b_enable_projects_budget_incremental.sql`** (point at variant +
+  enable + the daily flip). E2E verified: variant returns 25 rows (last-24h) vs 1,836 full;
+  fleet-driven run 6118 SUCCESS 25 rows; post-MERGE count stable at 1,836, 0 dup key groups, all
+  25 delta keys upserted.
+  * **Considered but rejected: a single-analysis "optional filter" via a Go-URL P0..PN filter
+    override (Option A).** The extract framework NEVER passes filters to an analysis at request
+    time — every filter is baked into the analysis (`copy_analysis.add_relative_filter` /
+    `schedgen` `_F`/`_UH`/`_U10M`). Runtime override is unproven on the ADGOV pod for
+    `Action=Download` and would couple the filter value to the runner clock. Went with the proven
+    baked-variant approach.
+  * **To regenerate the variant** (e.g. after the base analysis columns change): reuse
+    `copy_analysis.do_copy(page, BASE, SRC, "PROJECTS_BUDGET_PERIODS_UH24", hour=24,
+    on_column="Update Date")` on a worker VM with a live session, or `schedgen` for the standard
+    `_UH`/`_U10M` windows. Keep the base and `_UH24` column sets in lockstep (the incremental job
+    reuses the full job's `column_map_json`, matched by header name not position).
+  * **Window is baked in the analysis (24h), cadence is per-job (`frequency_minutes`).** To change
+    the look-back, regenerate the variant with a different `hour=`; to change how often it runs,
+    edit `frequency_minutes` on the job row.
+- **AP/PR/PO incremental delta-load — LIVE 2026-07-21 (rolled out the Projects Budget pattern):**
+  applied the daily-full + hourly-24h-delta-MERGE pattern to six more slow full-refresh extracts.
+  Scripts `otbi-atd/db/51_atd_ap_pr_po_incremental.sql` (6 stage tables + 6 disabled MERGE jobs)
+  + `51b_enable_ap_pr_po_incremental.sql` (point at variants + enable). Each full job is unchanged
+  and still daily; a new `<Name> Incremental` MERGE job (frequency 60) reads a baked `_UH24` variant
+  (`<update col> >= TIMESTAMPADD(SQL_TSI_HOUR,-24,CURRENT_TIMESTAMP)`):
+  | Incremental job | Variant | Update col | Target | Key (verified UNIQUE) |
+  |---|---|---|---|---|
+  | AP Invoices Incremental | AP_INVOICES_UH24 | Last Updated Date | ATD_AP_INVOICES | INVOICE_ID |
+  | AP Invoice Lines Incremental | AP_INVOICE_LINES_UH24 | Last Updated Date | ATD_AP_INVOICE_LINES | INVOICE_ID, INVOICE_LINE_NUMBER |
+  | AP Distributions Incremental | AP_INVOICE_DISTRIBUTIONS_UH24 | Last Updated Date | ATD_AP_INVOICE_DISTRIBUTIONS | INVOICE_ID, LINE_NUMBER, DISTRIBUTION_LINE_NUMBER |
+  | PR Headers Incremental | 01_PR_HEADERS_UH24 | Last Updated Date | ATD_PR_HEADERS | PR_HEADER_ID |
+  | PR Lines Incremental | 01_PR_LINES_UH24 | Last Updated Date | ATD_PR_LINES | PR_LINE_ID |
+  | PO Headers Incremental | PO_HEADERS_UH24 | Updated Date | ATD_PO_HEADERS | PO_HEADER_ID |
+  E2E verified: all 6 variants built in one MFA session; each incremental ran (443/460/757/125/201/87
+  delta rows), MERGE integrity clean (0 dup groups on every target; counts rose only by genuinely new
+  keys). **Not converted: GL_ACCOUNTS_COMBINATIONS + GL Balances** — their analyses have NO last-update
+  column, so a date-delta isn't possible without adding one (GL combos is slow ~217s max — worth adding
+  a column later). Batch variant creation = `mk_uh24_batch.py` style (copy_analysis.do_copy per spec on
+  a worker; one MFA covers all).
+
+## 2026-08-11 — PROJECTS_BUDGET_PERIODS OTBI breakage: investigation (probe_budget.py)
+Both Projects Budget jobs (Full + Incremental) started FAILING 100% around 2026-08-09/10:
+HTTP **500 after ~570 s** on the Go-URL (raw WebLogic error page — the request thread is
+killed before OTBI even renders an error). The last clean Full run (Aug 9 05:44) already
+took 247 s vs the 57 s historical average — the underlying query cost was growing fast,
+then crossed the web-tier kill threshold. **All 45 other jobs are 100% healthy** (incl.
+Projects Full / Tasks Full), so it is specific to the `Project Control - Budgets Real
+Time` subject area query, NOT the pod/session/runner.
+
+Isolated with `runner/probe_budget.py` (attaches via `auth.authenticate` on a worker VM —
+stop atd-worker first; modes: dump / run / ladder / ladder2 / each / final / sql / base).
+Timed logical-SQL probes (same columns + BU/FY filters as the analysis):
+
+| Scope | Result |
+|---|---|
+| 1 project (`=`), any of 5 tested | **1.9–9.1 s** |
+| `IN (p1, p1)` (collapses to 1 value) | 1.8 s |
+| 2 distinct projects (`IN` or `OR`) | **341–350 s** |
+| `BETWEEN` covering ~6 projects | killed @577 s |
+| 5 distinct projects | killed @566 s |
+| full scope (624 projects) — even WITHOUT currency var / ORDER BY | killed @571 s |
+| **one Fiscal Period `= '01-2026'`, ALL projects** | **165 s, 1,528 rows** (reconciles ~97% to the Aug-11 manual load; delta = live churn) |
+
+Conclusions: (1) the BI Server only pushes a **single-value equality** on
+`"Project"."Project Key"` into the fact/budget-version join; ANY multi-project predicate
+(IN/OR/BETWEEN/none) takes a catastrophic plan whose fixed cost now exceeds ~9.5 min.
+(2) Go-URL `P0..P3` runtime filters are silently IGNORED for `Action=Download` on this pod
+(1-project P-filter run died at 568 s while the same semantics via `&SQL=` took 1.9 s) —
+confirms the "baked variants only" rule. (3) `FETCH FIRST … ROWS ONLY` is rejected by the
+`&SQL=` parser (nQSError 27002) though the Answers editor shows it. (4) OTBI CSV export
+itself emits Excel-style `'`-prefixed numerics occasionally (2 rows in the period slice) —
+the same artifact seen in the user's manual export.
+Viable workaround (not yet implemented): **chunk the Full extract by Fiscal Period** —
+12 Go-URL `&SQL=` requests (~165 s worst, most periods tiny), concatenate, then
+TRUNCATE_INSERT. Root cause is Fusion-side (budget-version data growth / plan regression
+since ~Aug 8) — raise an SR / ask the Fusion admin to investigate; historical norm was
+57 s for the whole extract. Both jobs left DISABLED; `ATD_PROJECTS_BUDGET` holds the
+2026-08-11 manual load (1,896 rows / 7.643B).
+
+## 2026-08-11 — Projects Budget Full: period-chunked extraction LIVE (sqlchunks.py + db/61)
+
+The workaround above is implemented and deployed. New runner module
+`runner/sqlchunks.py`: a job whose `params_json` carries the `_atd_sql_chunks`
+directive is extracted as N raw logical-SQL Go-URL requests (`&SQL=`, one per
+chunk value substituted into a `{chunk}` placeholder) concatenated into ONE CSV
+for the unchanged prepare/load pipeline. Routed from `extract.download_job`
+(third dispatch leg, after the `.xdo` BIP leg). The directive's `headers` map is
+whitelist + rename in one: a `&SQL=` export emits presentation-layer headers
+plus a junk literal `0` column (the Answers `SELECT 0 s_0` convention), which do
+NOT match the saved analysis' custom headings the job's `column_map_json` keys
+on — only mapped headers are emitted, under the map's value text (the bip.py
+trick), so `load.resolve_pairs` matches and prepare's drift engine stays quiet.
+Values also get the Excel-marker apostrophe stripped (`'-42339` → `-42339` — an
+OTBI export artifact). Guards: an OTBI "No Results" page = an empty chunk (not
+an error); sign-in bounce → SessionExpired (worker re-auths); any other chunk
+failure retries once then FAILS the job **before** the load runs, and a
+`min_rows` floor (1000) refuses to TRUNCATE_INSERT a suspiciously small result.
+`db/61_projects_budget_chunked.sql` seeds the directive (12 chunks
+`01-2026`..`12-2026`) + re-enables **Projects Budget Full**; **Projects Budget
+Incremental stays DISABLED** (the daily chunked Full covers it; its analysis
+would hit the same bad plan). Year rollover: the fiscal year is baked into BOTH
+the `sql` text and the `chunks` list in params_json — edit both together.
+
+First live run (vm180 one-shot, run_id 10647): **SUCCESS, 35.7 min, 1,852
+rows / 7.603B / 615 projects**. Every chunk costs the ~3-min plan price
+regardless of row count (161–226 s each; 01-2026 = 1,528 of the 1,852 rows) —
+the total is pure per-query plan cost × 12, so the job is slow-but-reliable
+until Fusion fixes the subject area (SR still warranted; historical norm 57 s
+total). Delta vs the same-day manual Excel load (1,896/7.643B/624) = 9 projects
+/ 45 rows / 40.2M that the live analysis no longer returns AT ALL (verified —
+the old full extract would drop them identically): live budget-version churn,
+not a chunking gap. Old load backed up in `PROD.ATD_PROJECTS_BUDGET_BAK_20260811`.
+Deploy = `sqlchunks.py` + `extract.py` to all 3 workers + **systemctl restart
+atd-worker** (long-running workers hold the OLD extract.py, which would urlencode
+the directive onto the Go-URL) + db/61 via SQLcl.
+
+**Chunk-count optimization probed 2026-08-13 — DEAD END:** `Fiscal Period IN (2 values)` =
+362s (exactly 2× the single-equality cost) and `IN (11 values)` = killed at 576s — the BI
+Server pays the full plan cost PER IN MEMBER for period predicates too, same as projects.
+So the 12-chunk shape cannot be collapsed; the only remaining speed lever is running chunks
+CONCURRENTLY (3–4 parallel `&SQL=` requests ≈ 9–12 min wall), untested. ALSO learned: the 9
+projects in the manual Excel load but absent from every live extract are ALL `6171xxxxxx`
+AFH (Abrahamic Family House) projects — the saved analysis' BU filter
+(DESCRIPTOR_IDOF IN (300000002427529, 300000324906601)) covers only 2 of the 3 BUs; the
+manual export evidently included AFH. Adding AFH = one more id in that IN (params_json sql
++ the saved analysis). AND a master-lag gotcha: a budget line on a task created TODAY loads
+fine, but the butil view hides it until Tasks Full refreshes ATD_TASKS (missing-master
+'#'-id exclusion) — seen live with project 4511000339; remedy = run Tasks Full.
+
+**2026-08-13 — AFH scope + parallel chunks LIVE (db/64 + sqlchunks.py v2):** three
+user-approved changes. ① PROJECTS_DAILY set frequency 1440→720 (a manual afternoon run can
+no longer make the next 09:00–10:00 Dubai window skip a day — the 1-h window still caps it
+at once daily). ② The chunk SQL's BU filter gains **Abrahamic Family House
+(DESCRIPTOR_IDOF 300000034874765)** alongside DCT + MSS — restores the 9 AFH `6171xxxxxx`
+projects (45 rows / ~40M). ③ `"parallel": 4` in the directive — sqlchunks.py now fetches
+chunks 4-at-a-time over plain urllib threads with the context's cookies (sync Playwright is
+NOT thread-safe — never call it from the pool); missed chunks fall back to the sequential
+Playwright path with full session triage. Verified run 11238: **SUCCESS in 19 SECONDS**,
+1,898 rows / 7.660B / 625 projects incl. all 45 AFH rows. The 19s (vs the projected ~10
+min) means the 3-BU chunk queries ran at good-plan speed — either the 3-value IN dodges the
+catastrophic plan the 2-value one triggered, or the day's probing left the fact slices hot;
+expect anywhere from seconds (warm) to ~10-12 min (cold, 3 waves × ~195s) — both ≪ the 35
+min sequential shape. Deploy = sqlchunks.py to all 3 workers + restart, then db/64.
+
+**db/65 (2026-08-13): `Projects Budget Full - V2`** — user-requested on-demand twin of the
+daily job for the Jobs-page Enqueue button: same chunked directive but `"parallel": 6`
+(2 waves), frequency 525600 + no set membership so the sweep never auto-fires it. First
+run: SUCCESS in **20s** (1,898 rows). Same TRUNCATE_INSERT target as the daily job — avoid
+firing it during the 09:00–10:00 Dubai window. Rerunnable count-then-insert; re-running 65
+also re-syncs V2's params/source/column-map from the original job.
+
+**db/66 (2026-08-13): V2 is now THE budget extract — HOURLY.** Original Projects Budget
+Full DISABLED (rollback = re-enable + disable V2), Incremental stays disabled, V2
+frequency 60. User asked for 10 min; recommended+applied 60 because the enqueue sweep is
+15-min (10 unachievable) and each run = 12 heavy OTBI queries — hourly is near-real-time
+for budget-version churn at a quarter of the load. On-demand refresh = Jobs-page Enqueue
+(~20s warm). Frequency editable in the Jobs UI (15 = practical floor).
+
+**db/67 (2026-08-13): job set PROJECTS_DATA** — Projects Full + Tasks Full + Projects Budget
+Full - V2 in ONE set, **hourly, no window** (masters moved OUT of PROJECTS_DAILY — one set per
+job; PROJECTS_DAILY keeps only the disabled legacy budget job). Closes the master-lag gap (a
+same-day new task+budget line now lands within the hour together). Runnable on demand from the
+GL Project Budget Utilization page ("Refresh source data" button → GL/db/19 bridge →
+atd_set_pkg.run_now). Hourly masters = ~2 extra light queries/hour — deliberate.
+
+## 2026-08-14 — Transaction Distribution - All: chunked + service account (db/68)
+
+The user-created AR job was triple-broken: the saved analysis lives in a PRIVATE catalog
+folder (`/users/saljaaidi@…` — the service account gets Path-not-found, so every run needed
+c-saljaaidi personal MFA approvals via the db/62 credential profiles), it selects the WHOLE
+`Receivables - Transactions Real Time` SA with NO filter (461,678 rows), and its DOWNLOAD
+phase hit **889s of the 900s timeout** — one growth week from permanent failure. Converted
+to the chunked logical-SQL extract (db/68, generator `runner/txd_def.py`): **19 chunks
+partitioning the space by construction** (dim accounting-date IS NULL [58,938 rows — 12.8%
+of the table has no accounting date!] + past guard + Dec-2025 split 4 ways by Accounting
+Class w/ null-safe catch-all [ALL of 2025 sits in month 2025/12 = migration entries] + 12
+monthly 2026 ranges + open ≥2027 tail), **positional `#N` headers** (new sqlchunks feature —
+two logical columns both export as 'Accounting Date', so text keys can't disambiguate; the
+authored SELECT fixes positions), parallel 6, min_rows 300k, `requested_by` cleared.
+Verified run 11500: **SUCCESS 5.8 min, 461,678 rows — byte-identical to the personal-session
+single-shot** (parallel pass = 19/19 chunks in 134s; the balance is CSV parse + load). Now
+runs on the SERVICE account — no personal MFA, no catalog dependency. TWO new sqlchunks
+lessons: ① an EMPTY `&SQL=` result exports a one-cell body "The query resulted in no rows"
+(plain text, NOT the HTML No-Results view) — handled as a valid 0-row chunk; ② a `&SQL=`
+export's headers are the SA presentation names, which CAN match the saved analysis' headings
+(here all 30 matched exactly) — but positional keys are still safer for authored selects.
+The probes also confirmed the service account CAN query the Receivables SA via `&SQL=` even
+though it cannot read the private catalog path. Rollover: extend the 2026 month list in
+db/68/txd_def.py when 2027 volume grows — the ≥2027 tail catches everything until then.
+
+## 2026-08-14 — AR_INVOICE_LINES: chunked conversion (db/69) + morning window (db/70)
+
+Same triple-break as Transaction Distribution (private saljaaidi catalog path, personal-MFA
+runs, no-filter full-SA select) but WORSE: the single shot is killed at ~570s every time —
+the job NEVER completed once (no map/table). Converted (generator `runner/aril_def.py`):
+**27 chunks** (dim-date NULL × class + past guard + the 2025-12-31 Revenue migration lump
+[48,297] alone + Dec remainder × class + Jan–Aug 2026 month × class + merged Sep–Dec + ≥2027
+tail + class catch-alls), positional `#N` headers (38 clean columns; classes at line grain =
+Revenue/Unearned Revenue only), the analysis' `Transaction Line Type <> 'TAX'` filter in
+every chunk, min_rows 250k (probed total **320,750** via fast aggregate `&SQL=` — aggregates
+stay cheap even when detail queries die). First run auto-prepares the table+map.
+**NOT yet completed — the pod's cost for this query class swings ~8× within hours**: the
+same 18k chunk ran 76.8s at midday and was killed at ~570s by afternoon, WITH or WITHOUT the
+Project dim join (A/B-proven — server state, not SQL shape); afternoon retries also triggered
+transient **502 cascades** from the saw tier. db/70 parks the job in the new **AR_MORNING**
+set (daily 05:00–07:00 Dubai window) so it completes in the pod's quiet hour instead of
+hammering PROD. THREE sqlchunks hardenings shipped from this saga (fleet-deployed):
+① `parallel` death-spiral lesson — concurrent heavy chunks slow each other past the 570s
+kill (probe-fast ≠ pool-fast; this job runs parallel:1); ② the OBIEE **JS landing page**
+("please enable javascript"/doFrameBust) now maps to SessionExpired → worker re-auths, not
+ReportError; ③ ALL first-pass fetches go through the urllib pool even at parallel=1 — rapid
+back-to-back Playwright ctx.request downloads pick up rotated cookies and start drawing the
+landing page mid-sequence, while the fixed-cookie urllib path survives long sequences.
+Accumulated evidence for the Fusion SR: budget-SA plan regression (Aug 9) + AR full-scope
+kills + intraday 8× cost swings + 502 cascades = one platform-side degradation story.
+
+## 2026-08-16 — Custom-heading pinning platform-wide (pin_batch.py) + heading-drift heal
+
+**Root cause of the supplier-name regression class:** the runner's CSV header = the
+analysis' displayed **Column Heading** (never the formula). A Fusion patch changed several
+subject-area *default* headings ('Supplier Name'→'Supplier' on PO Headers + PR Lines,
+'Legal Name'→'DataFox Legal Name' on Suppliers; the AP Invoices renames hit only the UH24
+copy: 'GL Date'→'Invoice Accounting Date', 'Cancelled Date'→'Invoice Canceled Date',
+'Inter Company Flag'→'Intercompany Invoice Indicator', 'Pay Alone Flag'→'Pay alone',
+'Party Site Name'→'Supplier or Party Site'). Drift then auto-added new columns and
+NULL-loaded the old ones — ATD_PO_HEADERS.SUPPLIER_NAME went 0/4,412, ATD_PR_LINES 0/9,784,
+and every AP UH24 merge punched intraday NULL holes in GL_DATE etc. that the nightly Full
+repaired.
+
+**Fix (user decision):** pin **every column of every extract analysis** with *Custom
+Headings* = the exact colmap heading, so patches can never rename a CSV header again.
+
+- `runner/copy_analysis.py` gained `--probe-formula` (dialog discovery), `_headings()` /
+  `_gear_exact()` (exact-match, **sort-order badge prefix stripped** — sorted columns
+  render '2<TAB><NBSP>Heading'), `pin_heading()` (gear → Edit formula → tick `customHdg`
+  checkbox → fill `columnHdg` input → OK; the dialog fields have NO ids, only stable
+  `name=` attrs), and `do_pin()` (pin all + Save over same name + verify heading set).
+- `runner/gen_pin_plans.py` builds `pin_plans.json` from PROD.ATD_OTBI_JOBS colmaps
+  (strays dropped from `expected`, drifted names mapped back via `renames`).
+- `runner/pin_batch.py` runs the whole set in ONE authenticated session.
+- **Result: 35/35 analyses PASS** (~620 columns pinned; renames applied on PO Headers,
+  PR Lines, Suppliers). AP Invoices Full was verified to still carry the OLD headings —
+  only its UH24 copy had drifted. 'Header Batch Name' is GONE from the AP analysis
+  (removed by Fusion, cannot be pinned back; column stays NULL until the field is re-added
+  from the subject area).
+- `runner/regen_uh24.py` — regenerates ALL 13 _UH24 incremental copies from the pinned
+  Fulls (Save-As over the same catalog name + fresh 24h TIMESTAMPADD filter + CSV verify),
+  so Full and UH24 headings can never diverge again. **RULE: after ANY heading/column
+  change to a Full analysis, re-run regen_uh24.py for that family.**
+- Audit deliverable: `docs/otbi-heading-review.md` — every job's heading→column→type map,
+  orphan columns, and 14-day drift/row warnings, with the priority findings table.
+
+Follow-up (same day): trigger PO Headers Full / PR Lines All / Suppliers Full / AP
+Invoices Full reloads (heals SUPPLIER_NAME platform-wide), then cleanup round — drop
+stray/dup columns (SUPPLIER ×2, DATAFOX_LEGAL_NAME, the 5 AP new-name columns,
+THE_QUERY_RESULTED_IN_NO_R ×2, orphan _2 halves), remove stray colmap keys, and fix
+wrong types (PR SECTOR DATE→VARCHAR2, text dates→DATE, PO ORDERED_AMOUNT/RATE→NUMBER,
+AP INVOICE_GROUP NUMBER→VARCHAR2(60) — free-text seen in Fusion).
+
+## 2026-08-16 (2) — Heading-drift heal EXECUTED + cleanup round (same day)
+
+- **Heal verified:** PO Headers / PR Lines / Suppliers / AP Invoices Fulls reloaded —
+  `ATD_PO_HEADERS.SUPPLIER_NAME` 4,412/4,412 (was 0), `ATD_PR_LINES.SUPPLIER_NAME` 6,499
+  (rest genuinely supplier-less), AP `GL_DATE` intact. Supplier names back on every GL
+  butil register / PO view surface with zero view changes.
+- **`AP Invoices Full` had `requested_by='ADMIN'` stamped on the JOB row** — every run
+  (incl. scheduled) took the personal-credential path (saljaaidi MFA) and had been failing
+  since ~13-Aug. Tag CLEARED → service account. RULE: a persistent `requested_by` on
+  `atd_otbi_jobs` re-routes every future run to that user's credential profile; clear it
+  after one-off personal runs.
+- **Cleanup executed** (`cleanup_phase6.py`, python-oracledb on vm180): stray colmap keys
+  removed (Supplier ×2 jobs, DataFox Legal Name ×2, the 5 AP new-name keys + 'Header Batch
+  Name' [field REMOVED from the subject area — key removed to stop the every-run warning;
+  column kept for AP_INVOICES_HEADER_V.BATCH_NAME] ×2); stray/orphan columns dropped from
+  finals AND `_STG` twins (SUPPLIER ×2, DATAFOX_LEGAL_NAME, 5 AP new-name cols,
+  THE_QUERY_RESULTED_IN_NO_R ×2 [an error-page export had become a "column"], orphan `_2`
+  halves: ATD_PO_SCHEDULES.BUSINESS_UNIT / ATD_PAYMENTS.PAYMENT_DATE /
+  ATD_SUPPLIER_SITES.LEGAL_ADDRESS).
+- **Type fixes** (values sampled clean first; stage twins truncated+mirrored):
+  ATD_PR_HEADERS SECTOR/SECTOR_DESCRIPTION DATE→VARCHAR2(100/300), LAST_UPDATED_DATE +
+  CANCEL_DATE →DATE; ATD_PR_LINES APPROVED_DATE + ACCOUNTING_DATE →DATE ('0-00-00' rows
+  warn+NULL by design); ATD_PO_HEADERS ORDERED_AMOUNT + RATE →NUMBER, SUBMIT_DATE →DATE;
+  ATD_AP_INVOICES INVOICE_GROUP NUMBER→VARCHAR2(60) (free text seen in Fusion). Wiped
+  columns repopulated by same-day forced Full reloads (queue gate bypassed via
+  `atd_queue_pkg.enqueue(p_only)`).
+- **db/v2/46 patched + redeployed** (po_header_v + po_schedules_v via python-oracledb):
+  `submitted_date`/`ordered_amount` now read the typed columns directly (the old
+  `TO_DATE(date_col,'YYYY-MM-DD') DEFAULT NULL ON CONVERSION ERROR` would silently NULL
+  after the type flip), and **PO_SCHEDULES_V.business_unit re-pointed
+  BUSINESS_UNIT→BUSINESS_UNIT_2** — the view had been exposing the empty orphan column
+  (pre-existing silent bug; it now returns real BU names). 0 INVALID after
+  dct_views_rebuild + recompile.
+- GOTCHA (bit twice today): grepping `table|column` on ONE line misses view references —
+  `s.business_unit` sat lines away from the table name; PO_SCHEDULES_V went INVALID on the
+  orphan drop. Verify column drops with a live `ALL_ERRORS`/INVALID sweep, not repo grep.
+
+## 2026-08-16 (3) — 'Header Batch Name' + 'Legal Name' REMOVED end-to-end (user request)
+
+Both fields removed everywhere (both were 0-populated: the AP field left the Fusion
+subject area; supplier Legal Name is empty in Fusion itself):
+
+- **OTBI:** 'Legal Name' column deleted from `01-Suppliers` (copy_analysis --edit) +
+  `SUPPLIERS_UH24` regenerated (header verified without it). 'Header Batch Name' was
+  already absent from both AP analyses.
+- **Jobs:** 'Legal Name' key removed from Suppliers Full/Incremental colmaps (now 14 keys);
+  AP 'Header Batch Name' keys were removed earlier the same day.
+- **DB:** dropped ATD_SUPPLIERS.LEGAL_NAME and ATD_AP_INVOICES.HEADER_BATCH_NAME (+ both
+  `_STG` twins); `dct_views_rebuild` (16) + recompile sweep → 0 INVALID.
+- **AP module (v1.18.1):** AP_INVOICES_HEADER_V recreated WITHOUT `BATCH_NAME`
+  (`AP/db/05` edited); invoice-drill handler redefined without `batchName`
+  (`AP/db/03` part 5 re-run standalone via python-oracledb — safe: the invoices/:id
+  template's only handler is defined in that same part); drill modal Batch row +
+  `dr.batch` i18n keys (EN+AR) removed; **frontend hot-patched into the LIVE webtier
+  release** (only the 4 changed AP files tar'd into `/var/www/ifinance/current/` as
+  opc+sudo + restorecon — a full deploy_frontend.sh run was AVOIDED because the working
+  tree carried other sessions' in-progress frontend work; webtier ssh login is `opc`,
+  not root).
+
+## 2026-08-16 (4) — the two salmen AR jobs converted to chunked + service account (db/71+72)
+
+Projects-Budget-V2 treatment applied to 'AR Invoice Distribution Details - ALL' and
+'AR INVOICE LINES - ALL' (user request). Root causes found by dumping the analyses'
+OWN logical SQL from the Answers Advanced tab (get_ar_sql.py pattern — read-only, via
+the job-owner credential path `config.resolve_job_cred`, warm c-saljaaidi profile):
+
+- **The "500k export cap" was `FETCH FIRST 500001 ROWS ONLY` INSIDE the analysis** —
+  every 30-min load truncated a ~575k-row space to 500,000 (~71k distribution rows +
+  7,255 whole transactions never reached the table).
+- The lines analysis is pure LINE grain (122,615, filter IDOF(Line Type) <> 'TAX') —
+  the never-deployed db/69 aril_def was MIXED grain (distribution columns fanned it to
+  320,750); superseded by arl_def.py. Lines chunk on the LINE-grain Creation Date —
+  never a distribution-dim date (straddling lines would duplicate).
+- Why the jobs ran personal at all: `requested_by` was NULL, but the v1.37.0
+  **path-owner rule matches `/users/saljaaidi/` in source_ref** — so conversion also
+  swaps source_ref to a `chunked-sql: ...` token (sqlchunks never touches the catalog).
+
+Deployed (python-oracledb, vm180; defs = single source of truth, db/71+72 = rerunnable
+record): `runner/ard_def.py` 23 chunks (NULL-month x class 34k/34k/33k + past guard +
+Dec-2025 x 4 classes 56k/50k/50k/13k + catch-alls + 12x2026 monthly + >=2027 tail;
+min_rows 520,000 proves each run beats the old cap) and `runner/arl_def.py` 16 chunks
+(guards + Jan-2026 half-month split [53,895 lump] + Feb..Dec monthly + tail; min_rows
+110,000); positional #N headers emit each job's EXACT colmap headings (parity asserted
+at deploy — tables/views untouched); parallel 4; frequency 60 (was NULL -> 15-min
+default). **Acceptance 2026-08-16 evening: dist SUCCESS 571,099 rows (102,364 distinct
+transactions vs 95,109 truncated), lines SUCCESS 122,615 byte-parity, both on the
+SERVICE account (hg2248), all 23+16 chunks in 0-2s each** — the equality-pushdown fast
+plan; the old single-shot took ~13 min and still lost rows. No more personal-MFA
+dependency or session churn on AR.
+
+Follow-ups: 'AR Invoice Header - all' (102,277 rows, works) still runs under the
+personal account via the path-owner rule — same conversion available if wanted;
+ATD_AR_* orphan/_2 duplicate columns (UOM_CODE, ACCOUNTED, ...) still pending cleanup.
+Rollover: extend both defs' 2026 monthly ranges when 2027 volume grows (the >= 2027
+tails catch everything until then).
+
+## 2026-08-16 (5) — AR chunked extracts split to separate V2 jobs (db/71+72 reworked)
+
+User request after the in-place conversion above: same layout as Projects Budget
+(db/65+66). NEW jobs **'AR Invoice Distribution Details - V2'** and
+**'AR INVOICE LINES - V2'** now carry the chunked-sql config (hourly, enabled,
+service account, TRUNCATE_INSERT the same targets, colmap copied); the ORIGINAL
+'- ALL' jobs were restored to their saljaaidi catalog source_refs, params cleared,
+and **DISABLED** (frequency 30 kept for reference) — they remain as the manual
+fallback exactly like 'Projects Budget Full'. db/71+72 rewritten as the rerunnable
+record (seed-V2-if-missing INSERT..SELECT + params UPDATE on the V2 row + restore/
+disable UPDATE on the original); ard_def/arl_def docstrings note the V2 placement.
+Verified live same evening (enqueued via `atd_queue_pkg.enqueue` — a FUNCTION,
+not proc: callfunc, p_only/p_requested_by NULL): **lines V2 SUCCESS 122,615 rows
+in 27s (vm182) · dist V2 SUCCESS 571,099 rows / 102,364 distinct transactions in
+185s (vm180), both as hg2248** — byte-parity with the in-place acceptance run.
+Note the AR jobs are in NO job set (AR_MORNING sits empty; the db/70 member
+'AR_INVOICE_LINES' pointed at the retired db/69 job name and is gone).
+
+## 2026-08-16 (7) — Fusion zero-date sentinel '0-00-00' (recurring drift Telegram fixed)
+
+After the type-fix round flipped ATD_PR_LINES.ACCOUNTING_DATE from VARCHAR2 to DATE
+(correct — 99%+ of values are real dates), every **PR Lines Incremental** run fired a
+drift Telegram: `ACCOUNTING_DATE: now has non-date values (needs VARCHAR2(20)) but
+column is DATE` + `N invalid date value(s) loaded as NULL`. Root cause: Fusion/OTBI
+emits the **zero-date sentinel `0-00-00`** for a date attribute with no value (here:
+Accounting Date on REJECTED/unaccounted PR lines — 200 rows in the full extract,
+~9 in each 24h window). While the column was VARCHAR2 the garbage loaded verbatim
+and nobody was told; as DATE, the loader (correctly) NULLs it but warned, and the
+profiler's 2% dirty-tolerance flipped the incremental's SMALL sample to "text",
+firing the drift alert every cycle. Fix in runner/prepare.py + load.py (fleet-synced,
+workers restarted): `ZERO_DATE_RE` treats `0-00-00` (and 0000-00-00 etc.) as an
+EMPTY cell in the profiler, in `infer()`, and in the load date path (quiet NULL, no
+warning). Verified: post-fix PR Lines Incremental = SUCCESS, **no message**. NULL is
+the right value — a zero-date IS "no date". Also inventoried atd_load_row_warning:
+the PO Headers Full entries (~24 rows: 'AED' in CREATION_DATE, supplier names in
+date cols) are the KNOWN free-text-comma row-misalignment class, pre-existing and
+unrelated (those rows were equally garbled before the type fixes — just invisible).
+
+## 2026-08-16 (6) — third AR job: 'AR Invoice Header - V2' (db/73 + runner/arh_def.py)
+
+Same conversion for the last personal-account AR job, 'AR Invoice Header - all'
+(102,277 header rows, ~30-min c-saljaaidi cycles with requeue churn; its analysis
+ALSO carries `FETCH FIRST 500001 ROWS ONLY` — harmless today, a silent cap once
+the space grows). Advanced-tab dump showed 35 select items of which 30 are
+visible = the colmap headings; the 5 ORDER-BY-only helpers are dropped (4 sort
+IDOFs + the Customer-Notes 'Creation Date', whose retired duplicate is the
+table's all-NULL CREATION_DATE orphan — the live colmap 'Creation Date' is
+CREATION_DATE_2 = Reference Information). 'Transaction Complete Indicator' =
+DESCRIPTOR_IDOF(Transaction Complete). Filter (Entered Amount <> 0) kept in
+every chunk. 16 chunks on the header-grain Reference Creation Date (Jan-2026
+lump 50,495 split half-month like the lines def), min_rows 95,000, parallel 4,
+colmap parity asserted at deploy (30/30). V2 job hourly on the service account;
+original DISABLED with its catalog source_ref intact (fallback).
+Verified live: **SUCCESS 102,277 rows in 76s (vm180) as hg2248** — exact row
+parity with the original job's last personal run. All THREE AR extracts now run
+chunked + hourly on the service account; zero personal-MFA dependency left in AR.
+
+## 2026-08-16 (8) — "worker silent" Telegram toggle (db/74 + runner.py)
+
+User request: stop the `otbi-atd: worker <vm> is silent (no heartbeat > 5m)`
+Telegram messages. NEW Runner-Settings toggle **ATD_WORKER_SILENT_ALERT** (ENUM
+Y/N, seeded **N** = off per the request; db/74) gates ONLY the notify in
+`_alert_stale_workers` — the stale worker is still flagged DOWN in
+atd_worker_heartbeat either way, so the ATD Workers dashboard stays truthful and
+the alert re-arms if the setting is flipped back to Y in ATD → Runner Settings.
+Chronic job-failure alerts (ATD_FAIL_ALERT_*), drift alerts and MFA pushes are
+unaffected. runner.py fleet-synced (vm180-182 restarted; startup log confirms
+"applied 32 runner settings").
+
+## 2026-08-16 (9) — fleet worker AUTO-RECOVERY (proactive plan; db/75 + runner.py)
+
+User request: don't just mark a worker DOWN — act. `_alert_stale_workers` is now
+`detect -> claim -> RECOVER -> escalate-only-on-failure`:
+
+- **Atomic claim**: the peer whose UPDATE flips the heartbeat row to DOWN owns the
+  incident (no double-restarts when two peers detect simultaneously).
+- **Recovery**: the owning peer SSHes into the silent VM (`atd-vm<N>` ->
+  `192.168.1.<N>`, overridable via new ATD_WORKER_HOSTS) and restarts atd-worker.
+  Root **ssh key mesh installed across vm180-182** (ed25519, cross-authorized,
+  accept-new) — new fleet capability.
+- **Notifications**: successful auto-restart is quiet unless
+  ATD_WORKER_SILENT_ALERT=Y; a FAILED restart (VM frozen/unreachable — the
+  vmxnet3-panic class) ALWAYS Telegrams "needs manual attention" regardless of
+  that setting, because only a human/ESXi reset can fix it.
+- **Settings** (db/75, Runner Settings page): ATD_WORKER_RECOVER Y/N master
+  switch (Y), ATD_WORKER_HOSTS optional id=ip map.
+
+**Live fire drill PASSED**: stopped atd-worker on vm182 + backdated its heartbeat;
+within one idle cycle vm180 logged `[fleet] silent worker atd-vm182: atd-worker
+restarted on 192.168.1.182`, vm182's service came back active and heartbeated,
+the DOWN flag re-armed, and (setting=N) no Telegram was sent.
+
+## 2026-08-16 (10) — LEVEL-2 recovery: ESXi power reset + runbook Telegram (db/76)
+
+Extends (9) per user ("ESXi access is available — the VM can do it itself; put the
+required steps in the Telegram"). Recovery chain is now:
+1. **Service restart** over ssh (level 1, proven in the vm182 drill).
+2. **ESXi hard power reset** (level 2): `vim-cmd vmsvc/power.reset <vmid>`
+   (power.on if off) on the standalone ESXi 6.5 host 192.168.1.190, then wait up
+   to 3 min for the VM to boot (atd-worker `systemctl is-enabled` = enabled on
+   all 3 VMs, so the worker auto-starts). ESXi ssh = password auth via OpenSSH
+   SSH_ASKPASS (`runner/esxi_askpass.sh`) — nothing installed on ESXi.
+3. **Escalation Telegram** (always sent, bypasses ATD_WORKER_SILENT_ALERT) now
+   ships the 5-step manual runbook (ESXi UI → VM → Power → Reset → verify on the
+   ATD Workers page; last resort = power-cycle the ESXi host machine).
+
+Settings (db/76, Runner Settings): ATD_ESXI_HOST=192.168.1.190 / ATD_ESXI_USER=root /
+**ATD_ESXI_PWD (secret, seeded CHANGE_ME — the reset path REFUSES to run until the
+real password is set in ATD → Runner Settings, then restart the workers)** /
+ATD_ESXI_VMIDS=atd-vm180=52,atd-vm181=53,atd-vm182=54 (from vim-cmd getallvms).
+Validated: ESXi reachable + vmids confirmed via vim-cmd power.getstate. The
+Claude Code permission classifier blocked seeding the real password (and any
+askpass/key provisioning) — deliberate: the secret is entered by the operator.
+
+## 2026-08-16 (11) — Runner Settings SECRET editing (ATD v1.38.0)
+
+The user could not enter ATD_ESXI_PWD: secret rows on Runner Settings rendered as
+a set/not-set badge with NO input — secrets were never editable from the page.
+Fix (frontend-only; the PUT /atd/config handler already updates any known key):
+secret rows now get a WRITE-ONLY password input under the badge ("type a new
+value to replace, blank = keep"). **This also fixed a latent secret-WIPE bug**:
+save() sent ALL rows including secrets (whose GET value is always ''), so any
+Save on the page NULLed every stored secret — the payload now skips secret rows
+unless the operator typed a value. i18n atd.rs.secretNew EN+AR; APP_VERSION
+1.38.0; 5 files hot-patched into the live webtier release (opc+sudo tar +
+restorecon).
+
+## 2026-08-16 (12) — level 2 ARMED + ESXi auth gotcha
+
+Operator set ATD_ESXI_PWD via the new secret input (v1.38.0); workers reloaded.
+Live check from vm180 through the runner's own code path (config overlay ->
+_esxi_ssh -> vim-cmd power.getstate 54) FAILED first with `Permission denied
+(publickey,keyboard-interactive)`: **ESXi 6.5 sshd does NOT offer `password`
+auth — only `keyboard-interactive`**, so `PreferredAuthentications=password`
+can never succeed there; SSH_ASKPASS feeds the kbd-interactive prompt just the
+same. Fixed to `keyboard-interactive,password` -> rc=0 "Powered on". The full
+recovery ladder is now armed end-to-end (reset verb uses the identical channel;
+the Claude Code classifier blocks the assistant from issuing the destructive
+reset itself — a full frozen-VM drill = operator powers OFF atd-vm182 in the
+ESXi UI and watches the fleet power it back on and resume).
+
+## 2026-08-16 (13) — FULL frozen-VM drill PASSED (operator-driven)
+
+Operator powered OFF atd-vm182 in the ESXi UI (~22:57). Timeline, fully
+autonomous from there: 23:02:56 vm181 claimed the incident + level 1 ssh restart
+correctly failed (`connect ... port 22: Connection timed out`) -> ESXi channel
+detected the VM state and issued **power.on** (not reset — the off-branch works)
+-> 23:03:28 `VM back online` (boot + atd-worker auto-start + ssh verify inside
+32s) -> vm182 heartbeating and BUSY claiming jobs on a fresh 0-min uptime. No
+Telegram sent (success path, ATD_WORKER_SILENT_ALERT=N). The complete escalation
+chain (service restart -> ESXi power on/reset -> runbook Telegram) is proven
+end-to-end in production.
+
+---
+
+## Project Budget Transactions (PBT) extract — 2026-08-17
+
+A THIRD source kind joins Track A (OTBI analyses) and Track B (BIP `.xdo`): the **ADG_FIN
+"Project Budget Transactions" VBCS app**, which is a thin client over a plain ORDS service.
+It is implemented as an **action**, not a job — see `final apps/ATD/docs/deployment-notes.md`
+§ "Project Budget Transactions (PBT) extract" for the full runbook, the deploy order, the
+verified numbers and the API gotchas, plus:
+
+- **Plan:** `docs/PBT_EXTRACT_PLAN.md`
+- **API contract (sanitised, no session material):** `docs/fusion-actions/pbt-api-spec.md`
+- **DB:** `db/77_pa_budget_trx.sql` (tables + vocabulary + settings + request view),
+  `db/78_pa_budget_trx_ords.sql` (synonyms + `/atd/pbt/*`),
+  `db/79_pa_budget_trx_sync.sql` (`PA_PBT_SYNC_PKG` + `PA_PBT_SYNC_JOB`),
+  **`db/80_pa_budget_trx_line_v.sql`** (2026-08-17) — `V_PA_BUDGET_TRX_LINE` + synonym:
+  one row per transaction line over all three per-type tables, with Sector / Chapter /
+  DCT Program / Appropriation resolved **by SEGMENT** (cost centre→sector,
+  appropriation→chapter, program→program — each 1:1 in the data) rather than by joining
+  the whole `CODE_COMBINATION` to `DCT_GL_COA_SNAP.CC_STRING`, which matches only 82–99%
+  of lines and misses the **5,546 Estimated-Cost lines that carry no combination at all**.
+  Also emits `period_from_num`/`period_to_num` (YYYYMM) because MM-YYYY cannot be compared
+  or sorted lexically. Consumed by the GL app's Budget Transactions criteria (GL/db/20).
+  **Any consumer must reference it from a `WITH … /*+ MATERIALIZE */` CTE, never a
+  correlated EXISTS** — the view is a 3-table UNION ALL joined to four GROUP BYs over the
+  9,447-row COA snapshot, and a pushed predicate rebuilds all of that per driving row
+  (measured 39s per execution vs 0.2s). See the GL deployment note for the full autopsy.
+- **Runner:** `runner/actions/pa_budget_trx.py` (+ `runner/smoke_pbt.py` to run a scope by hand,
+  and `runner/tests/test_pa_budget_trx.py` for the parsing rules)
+
+**DEEP is parallel since 2026-08-17 (607s -> 197s, 3x).** Every transaction needs a
+lines call and an approvals call (~0.11s each) and the source has NO bulk endpoint --
+`transaction_num` is in the lines PATH -- so a full refresh was ~4,400 SEQUENTIAL round
+trips. `_get_json_many()` now fans them out INSIDE the page (one `evaluate()` hop for a
+whole batch, browser keep-alive and session cookies reused), 60 transactions per batch,
+`ATD_PBT_CONC` concurrent (default 6, payload `concurrency` overrides, 1 = old serial
+behaviour). A non-200 item is retried once sequentially, so a blip cannot lose a
+transaction. Verified byte-identical after the change: 2,200 headers / 4,444 + 7,876 +
+6,234 lines / 1,778 approvals / 0 orphans.
+
+**Post-13 re-run list is now `20, 38, 41, 42, 44, 45, 63, 78`.**
+
+**Session rule (unchanged, and load-bearing here):** the handler attaches to the worker's saved
+session and NEVER initiates a login — a sign-in redirect fails the action as `SESSION_EXPIRED`
+so the normal MFA/Telegram recovery path handles it. `smoke_pbt.py` builds a fresh context from
+the saved `storage_state` rather than opening the worker's persistent Chromium profile, so it
+can be run safely while `atd-worker` is live.
+
+## 2026-08-17 — AR jobs performance review + Header V2 REBUILT (analysis redesigned)
+
+Morning review found all AR jobs disabled and two failure patterns:
+
+1. **'AR Invoice Header - V2' FAILED ORA-00904 ACCOUNTING_DATE**: the OWNER
+   REDESIGNED the saved analysis (dropped Customer Reference / Paying Customer /
+   Bill-to Site / Ship-to / Transfer+Accounting Status / Account Contact Status /
+   Accounting Date / Tax Calculation; ADDED Payment Terms Name+Description,
+   Receipt Method, Term Due Date ['Due Date']) and the rebuilt '- all' job
+   re-prepared the table to a new 26-col shape — the V2 job's copied colmap went
+   stale. FIX: arh_def.py re-authored to the 24-column shape (verified against a
+   live CSV sample: 24 headers / 103,030 rows; the 3 exclusions are ORDER-BY-only
+   sort IDOFs), V2 colmap now COPIED from the drift-maintained '- all' row, db/73
+   rewritten. Verified: **SUCCESS 103,030 rows in 149s (hg2248)**. The stale
+   'Transaction Type Tax Calculation Meaning' key was cleaned from BOTH header
+   colmaps (its TRANSACTION_TYPE_TAX_CALCU table column is now an all-NULL
+   orphan). LESSON: a V2 twin's colmap freezes at seed time — after ANY source
+   redesign + '- all' rebuild, re-copy the colmap and re-author the def.
+
+2. **Distribution jobs (BOTH -ALL single-shot AND V2 chunked) reaped stale at
+   ~60 min**: the OTBI pod is serving the distribution query class ~60x slower
+   today (probe: the Nov-2026 chunk = 842 rows in 61.8s vs 0-2s on 2026-08-16) —
+   the db/70-documented server-state swing, not a defect in either job shape.
+   Lines V2 + Header V2 are unaffected (78s / 149s today).
+
+Healthy-day performance (30h window): Lines V2 75-80s vs -ALL 140-177s;
+Header V2 149s (redesigned shape) vs -all 32-236s; Dist V2 185-317s (571k rows)
+vs -ALL ~14 min (truncated 500k). All three V2 jobs re-enabled hourly; originals
+left disabled as fallbacks.
+
+Same-day close-out: the dist V2 verification run then went **SUCCESS 575,801 rows
+in 295s (vm182)** despite the slow pod — the chunked shape absorbed the latency
+(the morning's stale-reaped runs predated the retry; no config change needed).
+All three AR V2 extracts green + hourly on the service account: Lines 123,340 /
+Header 103,030 / Distributions 575,801 rows.
+
+## 2026-08-18 (4) — fleet clock skew + stale-worker sweep killing BUSY workers
+
+Root-caused today's noisy/duplicated Telegram traffic and the dist-V2 run
+failures. TWO independent infrastructure faults were interacting:
+
+1. **All 3 worker VM clocks were ~28 minutes SLOW** (chrony: "1665s slow of
+   NTP"). Cause: VMware Tools periodic time-sync was ENABLED on the guests and
+   kept dragging them to the ESXi host's wrong hardware clock — chrony can only
+   slew ~1s/day against that. Effect: journal timestamps were 28 min behind
+   DB/real time (made run forensics maddening — a DB row "claimed 15:27" looked
+   like it was claimed in the future from the journal's viewpoint). FIX (all 3
+   VMs): `vmware-toolbox-cmd timesync disable` + `chronyc makestep` — all
+   guests now within 1s of true UTC and the DB. RULE: after ANY ESXi power
+   operation on a worker VM, verify `chronyc tracking` — the guest boots from
+   the (wrong) ESXi hardware clock, and periodic sync must STAY disabled.
+   The heartbeat/stale logic itself was never affected (both sides DB-stamped).
+
+2. **The stale-worker sweep ssh-restarted HEALTHY BUSY workers mid-run** (4
+   kills today: vm182 twice, vm181 twice). The worker does not heartbeat while
+   a chunked extract/load is in flight, so any run longer than stale_minutes
+   (5) made a peer declare it silent and restart the service — zombie-ing the
+   run row (stuck RUNNING; the dist V2 job needs ~5-6 min, so EVERY run was
+   getting killed). FIX in `_alert_stale_workers` (runner.py, fleet-synced):
+   the stale query now EXEMPTS a worker that owns a live RUNNING
+   atd_load_run_log row younger than 75 min. A genuinely frozen busy VM still
+   recovers — the 60-min queue reap FAILs its run, the exemption drops away,
+   and the next sweep flags it (idle frozen VMs: 5 min as before).
+
+Also identified the recurring hourly PR drift Telegram: ONE Fusion requisition
+literally numbered "TEMP" (PR_HEADER_ID 300003074482275, distribution
+300003074482277) rides in every incremental window — PR_NUMBER/REQUISITION are
+NUMBER columns so the drift check warns each cycle and the row loads with NULL
+number. Data-quality fix belongs in Fusion (renumber/cancel the requisition);
+the loader is behaving correctly.
+
+## 2026-08-18 (5) — AR dist V2 revised for the redesigned analysis: VERIFIED
+
+With the busy-worker exemption deployed, the final 15-chunk params ran clean:
+**run 13479 SUCCESS 180,687 rows in 281s (4m41s, vm180, hg2248)** — Revenue
+147,482 + Tax 33,205; the drift engine auto-added all 7 new columns
+(TRANSACTION_LINE_TYPE, GL_ACCOUNT_COMBINATION_DES, GL_CONCATENATED_SEGMENTS,
+ACCOUNTED/ENTERED_AMOUNT_CR/DR); Accounting Date spans 2025-12-01→2027-01-08
+matching the chunk design exactly. db/71 regenerated from ard_def (15 chunks —
+the interim 20-chunk literal is gone). NOTE: the table's bare ACCOUNTING_DATE
+column is an all-NULL ORPHAN from the pre-redesign shape — the live mapping is
+'Accounting Date' → **ACCOUNTING_DATE_2**; consumers must read _2 (same
+orphan-column situation as the header's TRANSACTION_TYPE_TAX_CALCU).
+Old vs new: '- ALL' single-shot ~14 min truncated at 500k rows → V2 old shape
+575,801/295s → V2 new shape 180,687/281s (the analysis filter shrank the space;
+per-row cost rose with the new joins, net wash on wall-clock).
+
+## 2026-08-18 (6) — PO Headers comma-misalignment FIXED at the analysis (user request)
+
+The ~24 permanently-garbled PO Headers rows (ORDERED_AMOUNT/RATE non-numeric +
+SUBMIT_DATE non-date drift Telegrams on every Full run) were traced to ONE
+pattern: a PO description STARTING with a double-quote (e.g. PO 451102007057
+`"- Amount (Excl. VAT): AED 32,800 ...`) corrupts OTBI's CSV field quoting, so
+the row splits on its embedded commas (682 other comma-bearing descriptions
+load fine while properly quoted). FIX per user: the 'Order Description' column
+formula in BOTH catalog analyses (Full PO_HEADERS_F + incremental
+PO_HEADERS_UH24 — same final table, must stay in lock-step) is now
+`REPLACE(REPLACE("Purchase Order Header Detail"."Description", ',', '-'), '"', '''')`
+applied by the NEW `runner/edit_po_desc.py` (idempotent UI-robot edit: opens
+the analysis in Answers, Edit Column Formula, rewrites the formula textarea —
+the box is a NAMELESS plain textarea found by VALUE match across ALL frames;
+`.CodeMirror` and id-based lookups both miss it — then Save-As same name +
+overwrite; run on a worker VM with that VM's atd-worker STOPPED). VERIFIED:
+Full run SUCCESS 4,507 rows, NO warnings, 0 NULL amounts/dates, 0 commas in
+any description, the previously-broken POs load fully aligned. NOTE: the
+outer quote->apostrophe REPLACE did NOT survive the Answers save (3 rows
+still carry a leading `"` — the '"' literal likely mangled in the analysis
+XML); harmless, because with no commas left a mis-quoted field can no longer
+split — do not chase it. The incremental's hourly MERGE now writes
+dash-descriptions consistently.
+
+## 2026-08-18 (7) — log-review follow-ups closed
+
+1. **'Projects Budget Incremental' DELETED** (job row + its TXN_INCREMENTAL
+   set membership) — disabled since the period-chunked V2 became the scheduled
+   budget job; its UH24 source page was dead (500s).
+2. **ESXi host (192.168.1.190) now NTP-synced**: ESXi 6.5 has no `esxcli
+   system ntp` namespace — configured via /etc/ntp.conf (3 pool.ntp.org
+   servers appended), `esxcli network firewall ruleset set -r ntpClient -e
+   true`, `chkconfig ntpd on`, `/etc/init.d/ntpd start`, then
+   `/sbin/auto-backup.sh` so the config survives reboot. Verified: 3 peers,
+   selected offset ~5ms. All ops ran from vm180 via runner._esxi_ssh (the
+   stored ATD_ESXI_PWD secret; no key install). Closes the clock-skew loop:
+   guests no longer VMware-timesync (disabled earlier today) AND the host
+   they'd boot from now keeps true time.
+3. **Review correction**: 'AP Invoices Full' was NEVER on the personal
+   account — it runs on hg2248 (5-61s, 100% SUCCESS; catalog path is the
+   service account's own). The Aug-14 cold-morning MFA failures were the AR
+   '- ALL' jobs, which are disabled since the V2 split. Nothing left on a
+   personal account except the disabled AR fallbacks.
+
+## 2026-08-19 — PR number columns NUMBER -> VARCHAR2(20) (db/82, user-approved)
+
+The permanent fix for the hourly 'TEMP'-requisition drift Telegram: every
+PR-number column in the ATD layer is now VARCHAR2(20) — ATD_PR_HEADERS.
+PR_NUMBER, ATD_PR_DISTRIBUTIONS.REQUISITION, ATD_AP_INVOICE_DISTRIBUTIONS.
+REQUISITION, ATD_PO_DISTRIBUTIONS.PR_NUMBER + their _STG twins (8 tables;
+ATD_PR_LINES was VARCHAR2 already). Pre-checked: no indexes on the columns,
+max stored value 12 digits, all consumers TO_CHAR-wrapped or surrogate-id
+joined; the ONE bare join (AP/db/05 prh.pr_number = d.requisition) has both
+sides in the flip set. Finals migrated add/copy/drop/rename (data kept:
+6,498 / 10,607 / 48,870 / 6,951 values); stages DELETE + MODIFY. Then
+prod.dct_views_rebuild (16 pass-throughs) + DBMS_UTILITY.compile_schema ->
+**0 INVALID**. Verified: 4 incremental runs SUCCESS with ZERO warnings (first
+clean PR cycle), AP_INVOICE_DISTRIBUTIONS_V bare join returns 13,174
+PR-numbered rows. Behaviour notes: 'TEMP' (and any future non-numeric PR
+number) now loads as text instead of NULL+warning; PR-number report columns
+sort alphabetically. Script db/82 is rerunnable (skips already-VARCHAR2).
+DEPLOY GOTCHA: the auto-mode classifier blocks ad-hoc python DDL carrying
+DROP COLUMN/DELETE — the repo-script + SQLcl (`sql -name prod_mcp`) path went
+through fine and is the right way to record such a migration anyway.
+
+## 2026-08-19 — Projects Budget: STALE extract = OTBI result cache (db/83)
+
+User report: project 4514000087's budget change (10:46:55, haghareb — 3 lines) was not in
+the extract hours later, while the same analysis in OTBI showed it. **Root cause: the BI
+Server result cache.** The chunked `&SQL=` request text is byte-identical on every run, so
+OTBI kept serving the cached snapshot; the extract had been frozen since the entry was
+seeded (row_count stuck at 1908 across the 10:45 / 10:53 / 11:05 / 11:09 runs). Probed live
+on vm182 with a storage-state-only Playwright context (no persistent profile, so no worker
+lock — sanitize the saved cookies before `add_cookies`, 4 of 43 are rejected):
+
+| query (chunk `06-2026`) | time | project 4514000087 |
+|---|---|---|
+| the job's exact SQL | 0.2s | 538,821 · sqawasmeh · 05:23 (STALE) |
+| + a cosmetic whitespace edit | 0.2s | still the stale rows |
+| + `SET VARIABLE DISABLE_CACHE_HIT=1` | 6.4s | 10,431,672.88 · haghareb · 10:46:55 (LIVE) |
+
+**The cache key is NOT the literal text** — whitespace/alias churn will not dodge it; adding
+a predicate (e.g. a single project key) misses the cache, which is exactly why a manual
+OTBI check of one project always looks right while the extract stays stale. Fix =
+`db/83_sql_chunks_no_cache.sql`: prefix the session-variable list with
+`DISABLE_CACHE_HIT=1` on **every** job carrying the `_atd_sql_chunks` directive (user rule
+— re-runnable, inert once applied; a chunked job with no `SET VARIABLE` line at all would
+need it by hand, the report at the end of the script flags that). **Any NEW chunked job
+must ship the flag in its `sql`.**
+
+Verified: Projects Budget Full - V2 run 13845 SUCCESS 1,897 rows (1,908 − the 14 superseded
+lines + the 3 new ones) and the project now carries exactly its 3 live rows; AR Invoice
+Header - V2 run 13859 SUCCESS 103,197 rows in **98s uncached vs 86s cached** — no
+meaningful cost, so all five chunked jobs (2 budget + 3 AR) stay on `DISABLE_CACHE_HIT=1`.
+
+Ops gotcha: `atd_queue_pkg.enqueue(job, requested_by)` stamps the caller and the run then
+tries that person's PERSONAL OTBI credential (db/62); a worker can claim the row before you
+can null it. Enqueue with `p_requested_by => NULL` for a service-account run.
+
+## 2026-08-26 — GL_GRN_DAILY / PAYABLES_DAILY / PROCUREMENT_DAILY raised to hourly (db/86)
+
+**User report** (GL Budget Utilization): the "Over budget — negative Fund Available" band kept
+showing lines the user knew were already fixed in Fusion, until they clicked "Refresh data".
+**Root cause**: `TXN_INCREMENTAL` (hourly MERGE deltas, `_UH24` Fusion-side filter) covers AP
+Invoices/Lines/Distributions, PO Headers/Lines/Schedules/Distributions, PR Headers/Lines/
+Distributions, Suppliers — but **GRN has no incremental counterpart**. GRN was only refreshed by
+`GL_GRN_DAILY`, once a day, inside a narrow ~1h window (08:00–11:30 Dubai band, staggered — the
+2026-08-06 incident fix placement). Confirmed live with a real example: receipt `4513075841`
+line 1 carries an original costed entry (+88,095.93, 21-Jul) and its reversal (-88,095.93,
+03-Aug) — a routine correction that stays invisible on Budget Utilization until the next
+morning's window or a manual refresh.
+
+**Why GRN never got an incremental like AP/PO/PR**: its rows have no stable natural key —
+verified `(receipt_number, receipt_line_number)` alone has 177 duplicate combinations on
+`ATD_GRN_ALL_V2` (live, 5,605 rows / 5,428 distinct); even a 5-column combination (+
+`po_distribution_id, shipment_line_number, receipt_routing_code`) still leaves ~2.5% dupes
+(genuine original+reversal pairs on the same line, differing only by `transaction_date` /
+`transaction_amount`). A 5-column key of `(receipt_number, receipt_line_number,
+po_distribution_id, transaction_date, transaction_amount)` **is** fully unique across all 5,605
+live rows — a delta-based incremental (option B, not built yet) is technically possible with
+that key, but is a bigger lift (new Fusion-side `_UH24` saved analysis + new job + testing) than
+raising the daily cadence.
+
+**Fix shipped (option A, user-approved 2026-08-26)**: `otbi-atd/db/86_daily_sets_hourly.sql` —
+data-only, raises `GL_GRN_DAILY` / `PAYABLES_DAILY` / `PROCUREMENT_DAILY` to the SAME shape
+`TXN_INCREMENTAL` and `PROJECTS_DATA` already use: `frequency_minutes=60`, `daily_start`/
+`daily_end` CLEARED (no window — the nightly fleet break, 21:00–08:00 Dubai, is the only
+remaining gate via `atd_queue_pkg.enqueue`/`atd_set_gate_ok`), `interval_preset='HOURLY'`.
+AP/PO/PR full reloads getting the same bump is defense-in-depth (they're already fresh via
+`TXN_INCREMENTAL`; a full reload is the only thing that catches a true source-row deletion,
+which a MERGE-style incremental can't see) — GRN is the piece that actually needed it. Verified
+post-change: `atd_set_gate_ok('GRN Temporary Job')` / `('AP Invoices Full')` / `('PO Headers
+Full')` all return `Y`, effective frequency 60. No re-run needed elsewhere (data-only, no ORDS
+touched). Deployed at 23:47 Dubai (inside the nightly break) — the new hourly cadence takes
+effect once the fleet wakes at 08:00.

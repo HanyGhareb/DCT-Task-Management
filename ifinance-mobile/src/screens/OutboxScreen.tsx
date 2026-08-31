@@ -45,7 +45,6 @@ export function OutboxScreen() {
       <FlashList<QueueItem>
         data={items}
         keyExtractor={(i: QueueItem) => i.id}
-        estimatedItemSize={96}
         contentContainerStyle={{ padding: spacing.lg }}
         ListEmptyComponent={
           <EmptyState icon="cloud-done-outline" title={t('outbox.empty')} subtitle={t('outbox.emptySub')} />

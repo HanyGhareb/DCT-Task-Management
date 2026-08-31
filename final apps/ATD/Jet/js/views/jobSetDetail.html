@@ -130,7 +130,7 @@
           <tr>
             <td data-bind="text: $data.runId"></td>
             <td class="mono" data-bind="text: $data.jobName"></td>
-            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td><span data-bind="css: $vm.statusClass($data.status), text: $vm.statusText($data)"></span></td>
             <td data-bind="text: $data.rowCount"></td>
             <td class="muted" style="font-size:.85em" data-bind="text: $data.started || '—'"></td>
             <td class="muted" style="font-size:.85em" data-bind="text: $data.finished || '—'"></td>

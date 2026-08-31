@@ -1,0 +1,571 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $vm.t('ps.title')"></div>
+      <div class="page-subtitle" data-bind="text: $vm.t('ps.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: canSetup -->
+      <button class="btn btn-primary" data-bind="click: edNew, text: $vm.t('ps.newElement')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ko if: error() --><div class="dw-err" data-bind="text: error"></div><!-- /ko -->
+  <!-- ko if: loading --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading -->
+
+  <!-- ── Payrolls ─────────────────────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.payrolls')"></div>
+    </div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('ps.code')"></th>
+        <th data-bind="text: $vm.t('ps.name')"></th>
+        <th data-bind="text: $vm.t('ps.company')"></th>
+        <th data-bind="text: $vm.t('ps.frequency')"></th>
+        <th data-bind="text: $vm.t('ps.currency')"></th>
+        <th data-bind="text: $vm.t('ps.proration')"></th>
+        <th data-bind="text: $vm.t('ps.periods')"></th>
+        <th data-bind="text: $vm.t('ps.runs')"></th>
+        <th data-bind="text: $vm.t('ps.active')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: payrolls">
+        <tr style="cursor:pointer" data-bind="click: function(){ if ($vm.canSetup()) $vm.pdEdit($data); }">
+          <td data-bind="text: code"></td>
+          <td data-bind="text: nameEn"></td>
+          <td data-bind="text: company"></td>
+          <td data-bind="text: frequency"></td>
+          <td data-bind="text: currency"></td>
+          <td data-bind="text: prorationBasis + ($data.prorationDivisor ? ' / ' + $data.prorationDivisor : '')"></td>
+          <td data-bind="text: periodCount"></td>
+          <td data-bind="text: runCount"></td>
+          <td><span class="badge" data-bind="text: isActive"></span></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- ── Elements ─────────────────────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.elements')"></div>
+    </div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('ps.code')"></th>
+        <th data-bind="text: $vm.t('ps.name')"></th>
+        <th data-bind="text: $vm.t('ps.class')"></th>
+        <th data-bind="text: $vm.t('ps.rule')"></th>
+        <th data-bind="text: $vm.t('ps.base')"></th>
+        <th data-bind="text: $vm.t('ps.percent')"></th>
+        <th data-bind="text: $vm.t('ps.rateTable')"></th>
+        <th data-bind="text: $vm.t('ps.priority')"></th>
+        <th data-bind="text: $vm.t('ps.prorate')"></th>
+        <th data-bind="text: $vm.t('ps.eligibility')"></th>
+        <th data-bind="text: $vm.t('ps.active')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: elements">
+        <tr style="cursor:pointer" data-bind="click: function(){ if ($vm.canSetup()) $vm.edEdit($data); }">
+          <td data-bind="text: code"></td>
+          <td data-bind="text: nameEn"></td>
+          <td data-bind="text: elementClass"></td>
+          <td data-bind="text: calcRule"></td>
+          <td data-bind="text: $data.calcBase || '—'"></td>
+          <td data-bind="text: $data.percent == null ? '—' : $data.percent + '%'"></td>
+          <td data-bind="text: $data.rateTable || '—'"></td>
+          <td data-bind="text: priority"></td>
+          <td data-bind="text: prorate"></td>
+          <td>
+            <!-- ko if: (links || []).length === 0 --><span data-bind="text: $vm.t('ps.allEligible')"></span><!-- /ko -->
+            <!-- ko foreach: links -->
+            <span class="badge" data-bind="text: linkType + ': ' + linkValue,
+                  style: { opacity: isActive === 'Y' ? 1 : 0.45 }"></span>
+            <!-- /ko -->
+          </td>
+          <td><span class="badge" data-bind="text: isActive"></span></td>
+        </tr>
+      </tbody>
+    </table></div>
+    <div class="pr-note" data-bind="text: $vm.t('ps.formulaNote')"></div>
+  </div>
+
+  <!-- ── Rate tables ──────────────────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.rateTables')"></div>
+    </div>
+    <!-- ko foreach: rateTables -->
+    <div class="section-heading-row" style="margin-top:6px">
+      <div class="section-heading ap-rh" style="font-size:13px"
+           data-bind="text: code + ' — ' + nameEn + ' (' + keyType + ')'"></div>
+      <div class="region-actions">
+        <!-- ko if: $vm.canSetup -->
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ $vm.rdEdit($data); }, text: $vm.t('ps.manageRows')"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('ps.keyValue')"></th>
+        <th data-bind="text: $vm.t('ps.eeRate')"></th>
+        <th data-bind="text: $vm.t('ps.erRate')"></th>
+        <th data-bind="text: $vm.t('ps.active')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: rows">
+        <tr>
+          <td data-bind="text: keyValue"></td>
+          <td data-bind="text: $data.eeRate == null ? '—' : $data.eeRate + '%'"></td>
+          <td data-bind="text: $data.erRate == null ? $vm.t('ps.erPending') : $data.erRate + '%'"></td>
+          <td><span class="badge" data-bind="text: isActive"></span></td>
+        </tr>
+      </tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ── Invoice groups ───────────────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.invoiceGroups')"></div>
+      <div class="region-actions">
+        <!-- ko if: canSetup -->
+        <button class="btn btn-secondary btn-sm" data-bind="click: gdNew, text: $vm.t('ps.newGroup')"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('ps.company')"></th>
+        <th data-bind="text: $vm.t('ps.code')"></th>
+        <th data-bind="text: $vm.t('ps.shortCode')"></th>
+        <th data-bind="text: $vm.t('ps.name')"></th>
+        <th data-bind="text: $vm.t('ps.costCenters')"></th>
+        <th data-bind="text: $vm.t('ps.overrides')"></th>
+        <th data-bind="text: $vm.t('ps.default')"></th>
+        <th data-bind="text: $vm.t('ps.active')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: invoiceGroups">
+        <tr style="cursor:pointer" data-bind="click: function(){ if ($vm.canSetup()) $vm.gdEdit($data); }">
+          <td data-bind="text: company"></td>
+          <td data-bind="text: code"></td>
+          <td data-bind="text: $data.shortCode || '—'"></td>
+          <td data-bind="text: nameEn"></td>
+          <td data-bind="text: (ccs || []).length"></td>
+          <td data-bind="text: (($data.includeCount || 0) + ($data.excludeCount || 0)) || '—'"></td>
+          <td data-bind="text: isDefault"></td>
+          <td><span class="badge" data-bind="text: isActive"></span></td>
+        </tr>
+      </tbody>
+    </table></div>
+    <div class="pr-note" data-bind="text: $vm.t('ps.groupNote')"></div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Payroll drawer ───────────────────────────────────────────────── -->
+  <div class="dw-scrim" data-bind="css: { show: pdOpen }, click: pdClose"></div>
+  <aside class="dw-drawer" data-bind="css: { show: pdOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('ps.payroll')"></div>
+        <div class="dw-title" data-bind="text: pdTitle() + ' · ' + pd.company()"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-secondary btn-sm" data-bind="click: pdClose, text: $vm.t('dr.cancel')"></button>
+        <button class="btn btn-primary btn-sm" data-bind="click: pdSave, enable: !pdBusy(), text: $vm.t('dr.save')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: pdError() --><div class="dw-err" data-bind="text: pdError"></div><!-- /ko -->
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.nameEn')"></label>
+          <input class="form-control" data-bind="value: pd.nameEn">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.nameAr')"></label>
+          <input class="form-control" dir="rtl" data-bind="value: pd.nameAr">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.prorationBasis')"></label>
+          <select class="form-control" data-bind="value: pd.prorationBasis,
+                  options: lk('PAY_PRORATION_BASIS'), optionsValue: 'code', optionsText: 'name'"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.divisor')"></label>
+          <input class="form-control" type="number" data-bind="value: pd.prorationDivisor">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.pensionBase')"></label>
+          <select class="form-control" data-bind="value: pd.pensionBase,
+                  options: lk('PAY_CALC_BASE'), optionsValue: 'code', optionsText: 'name'"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.active')"></label>
+          <select class="form-control" data-bind="value: pd.isActive">
+            <option value="Y">Y</option><option value="N">N</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.cutoffDay')"></label>
+          <input class="form-control" type="number" data-bind="value: pd.cutoffDay">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.payDay')"></label>
+          <input class="form-control" type="number" data-bind="value: pd.payDay">
+        </div>
+      </div>
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.genPeriods')"></div>
+        <div class="region-actions">
+          <input class="form-control" type="number" style="max-width:110px" data-bind="value: pd.genYear">
+          <button class="btn btn-secondary btn-sm" data-bind="click: pdGenPeriods, enable: !pdBusy(), text: $vm.t('ps.generate')"></button>
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('ps.genHint')"></div>
+    </div>
+  </aside>
+
+  <!-- ── Element drawer ───────────────────────────────────────────────── -->
+  <div class="dw-scrim" data-bind="css: { show: edOpen }, click: edClose"></div>
+  <aside class="dw-drawer" data-bind="css: { show: edOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('ps.element')"></div>
+        <div class="dw-title" data-bind="text: edTitle"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-secondary btn-sm" data-bind="click: edClose, text: $vm.t('dr.cancel')"></button>
+        <button class="btn btn-primary btn-sm" data-bind="click: edSave, enable: !edBusy(), text: $vm.t('dr.save')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: edError() --><div class="dw-err" data-bind="text: edError"></div><!-- /ko -->
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <!-- ko if: edIsNew -->
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('ps.code')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: ed.code">
+        </div>
+        <!-- /ko -->
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('ps.nameEn')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: ed.nameEn">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.nameAr')"></label>
+          <input class="form-control" dir="rtl" data-bind="value: ed.nameAr">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.class')"></label>
+          <select class="form-control" data-bind="value: ed.elementClass,
+                  options: lk('PAY_ELEMENT_CLASS'), optionsValue: 'code', optionsText: 'name'"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.rule')"></label>
+          <select class="form-control" data-bind="value: ed.calcRule,
+                  options: lk('PAY_CALC_RULE'), optionsValue: 'code', optionsText: 'name'"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.base')"></label>
+          <select class="form-control" data-bind="value: ed.calcBase">
+            <option value=""></option>
+            <!-- ko foreach: lk('PAY_CALC_BASE') --><option data-bind="value: code, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.percent')"></label>
+          <input class="form-control" type="number" step="0.01" data-bind="value: ed.percent">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.rateTable')"></label>
+          <select class="form-control" data-bind="value: ed.rateTableId">
+            <option value=""></option>
+            <!-- ko foreach: rateTables --><option data-bind="value: rateTableId, text: code"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.priority')"></label>
+          <input class="form-control" type="number" data-bind="value: ed.priority">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.prorate')"></label>
+          <select class="form-control" data-bind="value: ed.prorate">
+            <option value="Y">Y</option><option value="N">N</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.active')"></label>
+          <select class="form-control" data-bind="value: ed.isActive">
+            <option value="Y">Y</option><option value="N">N</option>
+          </select>
+        </div>
+      </div>
+      <!-- ko ifnot: edIsNew -->
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.eligibility')"></div>
+      </div>
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('ps.linkType')"></th>
+          <th data-bind="text: $vm.t('ps.linkValue')"></th>
+          <th data-bind="text: $vm.t('ps.active')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: ed.links">
+          <tr>
+            <td data-bind="text: linkType"></td>
+            <td data-bind="text: linkValue"></td>
+            <td data-bind="text: isActive"></td>
+            <td><button class="btn btn-secondary btn-sm"
+                        data-bind="click: function(){ $vm.edToggleLink($data); },
+                                   text: isActive === 'Y' ? $vm.t('ps.disable') : $vm.t('ps.enable')"></button></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="dw-form" style="grid-template-columns:1fr 1fr auto;align-items:end;margin-top:8px">
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.linkType')"></label>
+          <select class="form-control" data-bind="value: ed.linkType,
+                  options: lk('PAY_LINK_TYPE'), optionsValue: 'code', optionsText: 'name'"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.linkValue')"></label>
+          <input class="form-control" data-bind="value: ed.linkValue">
+        </div>
+        <div class="form-group">
+          <button class="btn btn-secondary" data-bind="click: edAddLink, enable: !edBusy(), text: $vm.t('ps.addLink')"></button>
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('ps.linkHint')"></div>
+      <!-- /ko -->
+    </div>
+  </aside>
+
+  <!-- ── Rate rows drawer ─────────────────────────────────────────────── -->
+  <div class="dw-scrim" data-bind="css: { show: rdOpen }, click: rdClose"></div>
+  <aside class="dw-drawer" data-bind="css: { show: rdOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('ps.rateTable')"></div>
+        <div class="dw-title" data-bind="text: rdTable() ? rdTable().code : ''"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-secondary btn-sm" data-bind="click: rdClose, text: $vm.t('dr.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: rdError() --><div class="dw-err" data-bind="text: rdError"></div><!-- /ko -->
+      <!-- ko if: rdTable -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('ps.keyValue')"></th>
+          <th data-bind="text: $vm.t('ps.eeRate')"></th>
+          <th data-bind="text: $vm.t('ps.erRate')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: rdTable().rows">
+          <tr>
+            <td data-bind="text: keyValue"></td>
+            <td data-bind="text: $data.eeRate == null ? '—' : $data.eeRate + '%'"></td>
+            <td data-bind="text: $data.erRate == null ? $vm.t('ps.erPending') : $data.erRate + '%'"></td>
+            <td><button class="btn btn-secondary btn-sm"
+                        data-bind="click: function(){ $vm.rdUpdate($data); }, text: $vm.t('dr.edit')"></button></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="dw-form" style="grid-template-columns:1fr 1fr 1fr auto;align-items:end;margin-top:8px">
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.keyValue')"></label>
+          <input class="form-control" data-bind="value: rd.keyValue" placeholder="AE">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.eeRate')"></label>
+          <input class="form-control" type="number" step="0.1" data-bind="value: rd.eeRate">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.erRate')"></label>
+          <input class="form-control" type="number" step="0.1" data-bind="value: rd.erRate">
+        </div>
+        <div class="form-group">
+          <button class="btn btn-secondary" data-bind="click: rdAdd, enable: !rdBusy(), text: $vm.t('ps.addRow')"></button>
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('ps.erHint')"></div>
+      <!-- /ko -->
+    </div>
+  </aside>
+
+  <!-- ── Invoice group drawer ─────────────────────────────────────────── -->
+  <div class="dw-scrim" data-bind="css: { show: gdOpen }, click: gdClose"></div>
+  <aside class="dw-drawer" data-bind="css: { show: gdOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('ps.invoiceGroup')"></div>
+        <div class="dw-title" data-bind="text: (gdIsNew() ? $vm.t('ps.newGroup') : (gd.shortCode() || gd.code())) + ' · ' + gd.company()"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-secondary btn-sm" data-bind="click: gdClose, text: $vm.t('dr.cancel')"></button>
+        <button class="btn btn-primary btn-sm" data-bind="click: gdSave, enable: !gdBusy(), text: $vm.t('dr.save')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: gdError() --><div class="dw-err" data-bind="text: gdError"></div><!-- /ko -->
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <!-- ko if: gdIsNew -->
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.company')"></label>
+          <select class="form-control" data-bind="value: gd.companyId, event: { change: gdCompanyChanged },
+                  options: companies, optionsValue: 'companyId', optionsText: 'company'"></select>
+        </div>
+        <!-- /ko -->
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('ps.code')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" type="number" data-bind="value: gd.code">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('ps.shortCode')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: gd.shortCode">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('ps.nameEn')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: gd.nameEn">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.nameAr')"></label>
+          <input class="form-control" dir="rtl" data-bind="value: gd.nameAr">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.default')"></label>
+          <select class="form-control" data-bind="value: gd.isDefault">
+            <option value="Y">Y</option><option value="N">N</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('ps.active')"></label>
+          <select class="form-control" data-bind="value: gd.isActive">
+            <option value="Y">Y</option><option value="N">N</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.costCenters') + ' (' + gdSelCount() + ')'"></div>
+        <div class="region-actions" style="align-items:center;gap:6px">
+          <div style="pointer-events:none"><input type="checkbox" data-bind="checked: gdOnlySelected"></div>
+          <span style="font-size:12px;cursor:pointer;user-select:none"
+                data-bind="text: $vm.t('ps.onlySelected'),
+                           click: function(){ gdOnlySelected(!gdOnlySelected()); }"></span>
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('ps.ccPickHint')"></div>
+      <!-- ko if: gdOnlySelected() && gdCcsView().length === 0 -->
+      <div class="dw-hint" data-bind="text: $vm.t('ps.noneSelected')"></div>
+      <!-- /ko -->
+      <div class="data-table-wrap" style="max-height:260px;overflow:auto"><table class="data-table">
+        <thead><tr>
+          <th></th>
+          <th data-bind="text: $vm.t('ps.costCenter')"></th>
+          <th data-bind="text: $vm.t('ps.sector')"></th>
+          <th data-bind="text: $vm.t('pr.kEmps')"></th>
+          <th data-bind="text: $vm.t('ps.mappedTo')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: gdCcsView">
+          <tr>
+            <td><div style="pointer-events:none">
+              <input type="checkbox" data-bind="checked: selected, attr: { disabled: foreign }">
+            </div></td>
+            <td data-bind="text: cc, click: function(){ if (!foreign) selected(!selected()); }, style: { cursor: foreign ? 'default' : 'pointer' }"></td>
+            <td data-bind="text: sector || '—'"></td>
+            <td data-bind="text: employees"></td>
+            <td data-bind="text: groupShort || '—'"></td>
+          </tr>
+        </tbody>
+      </table></div>
+
+      <!-- ko ifnot: gdIsNew -->
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh">
+          <span data-bind="text: $vm.t('ps.members')"></span>
+          <span style="font-weight:400;font-size:12px" data-bind="text: '(' + gdMembers().length + ')'"></span>
+        </div>
+      </div>
+      <!-- ko if: gdMembersLoading --><list-skeleton params="rows: 3"></list-skeleton><!-- /ko -->
+      <!-- ko ifnot: gdMembersLoading -->
+      <div class="data-table-wrap" style="max-height:280px;overflow:auto"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('pr.empNo')"></th>
+          <th data-bind="text: $vm.t('pr.name')"></th>
+          <th data-bind="text: $vm.t('ps.costCenter')"></th>
+          <th data-bind="text: $vm.t('ps.source')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: gdMembers">
+          <tr>
+            <td data-bind="text: employeeNumber"></td>
+            <td data-bind="text: name"></td>
+            <td data-bind="text: cc || '—'"></td>
+            <td><span class="badge" data-bind="text: source"></span></td>
+            <td>
+              <!-- ko if: source !== 'DEFAULT' -->
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function(){ $vm.gdRemoveMember($data); }, enable: !$vm.gdBusy(),
+                                 text: $vm.t('ps.remove')"></button>
+              <!-- /ko -->
+              <!-- ko if: source === 'DEFAULT' -->
+              <span class="dw-hint" style="margin:0" data-bind="text: $vm.t('ps.defaultMember')"></span>
+              <!-- /ko -->
+            </td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- /ko -->
+
+      <!-- ko if: gdExcluded().length -->
+      <div class="section-heading-row" style="margin-top:10px">
+        <div class="section-heading ap-rh" style="font-size:13px" data-bind="text: $vm.t('ps.excludedEmps')"></div>
+      </div>
+      <div class="data-table-wrap"><table class="data-table">
+        <tbody data-bind="foreach: gdExcluded">
+          <tr>
+            <td data-bind="text: employeeNumber"></td>
+            <td data-bind="text: name"></td>
+            <td><button class="btn btn-secondary btn-sm"
+                        data-bind="click: function(){ $vm.gdRestore($data); }, enable: !$vm.gdBusy(),
+                                   text: $vm.t('ps.restore')"></button></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- /ko -->
+
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.addEmployee')"></div>
+      </div>
+      <div class="form-group">
+        <input class="form-control" type="search"
+               data-bind="value: gdSearch, valueUpdate: 'input', attr: { placeholder: $vm.t('ps.searchEmployee') }">
+      </div>
+      <!-- ko if: gdCands().length -->
+      <div class="data-table-wrap" style="max-height:220px;overflow:auto"><table class="data-table">
+        <tbody data-bind="foreach: gdCands">
+          <tr>
+            <td data-bind="text: employeeNumber"></td>
+            <td data-bind="text: name"></td>
+            <td data-bind="text: cc || '—'"></td>
+            <td><button class="btn btn-secondary btn-sm"
+                        data-bind="click: function(){ $vm.gdAddEmp($data); }, enable: !$vm.gdBusy(),
+                                   text: $vm.t('ps.add')"></button></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <div class="dw-hint" data-bind="text: $vm.t('ps.groupNote')"></div>
+    </div>
+  </aside>
+
+</div>

@@ -1,0 +1,308 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $vm.t('pr.title')"></div>
+      <div class="page-subtitle" data-bind="text: $vm.t('pr.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: run -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: exportCsv, text: $vm.t('pr.exportCsv')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ── Criteria ──────────────────────────────────────────────────────── -->
+  <div class="ap-chips">
+    <select class="form-control" style="max-width:300px" data-bind="value: selPayroll">
+      <!-- ko foreach: payrolls -->
+      <option data-bind="value: payrollId, text: code + ' — ' + company"></option>
+      <!-- /ko -->
+    </select>
+    <select class="form-control" style="max-width:200px" data-bind="value: selPeriod">
+      <!-- ko foreach: periods -->
+      <option data-bind="value: period,
+                         text: period + ($data.runStatus ? ' · ' + $data.runStatus : '')"></option>
+      <!-- /ko -->
+    </select>
+    <button class="btn btn-primary" data-bind="click: openRun, enable: canRun() && !busy(),
+            text: (periodRow() && periodRow().runId) ? $vm.t('pr.openRun') : $vm.t('pr.createRun')"></button>
+    <!-- ko if: selPeriod -->
+    <a href="#" data-bind="css: chgChipClass(), click: function(){ goChanges(); return false; },
+       text: $vm.t('chg.chipLabel') + ': ' + chgChipText(),
+       attr: { title: $vm.t('chg.chipHint') }"></a>
+    <!-- /ko -->
+    <!-- ko if: error() --><span class="dw-err" style="margin:0" data-bind="text: error"></span><!-- /ko -->
+  </div>
+
+  <!-- ko if: run -->
+  <!-- ── Run card: status + stage buttons ─────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: run().payroll + ' · ' + run().period"></span>
+        <span data-bind="css: statusClass(run().status), text: $vm.t('pr.st.' + run().status)"></span>
+      </div>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ doAction('LOAD'); },      enable: can('LOAD') && !busy(),      text: $vm.t('pr.load')"></button>
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ doAction('VALIDATE'); },  enable: can('VALIDATE') && !busy(),  text: $vm.t('pr.validate')"></button>
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ doAction('CALCULATE'); }, enable: can('CALCULATE') && !busy(), text: $vm.t('pr.calculate')"></button>
+        <button class="btn btn-primary btn-sm"   data-bind="click: function(){ doAction('REVIEW'); },    enable: can('REVIEW') && !busy(),    text: $vm.t('pr.review')"></button>
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ doAction('REOPEN'); },    enable: can('REOPEN') && !busy(),    text: $vm.t('pr.reopen')"></button>
+      </div>
+    </div>
+
+    <!-- KPI band -->
+    <div class="pr-kpis">
+      <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('pr.kEmps')"></div><div class="pr-k-v" data-bind="text: num(run().empCount)"></div></div>
+      <div class="pr-k" data-bind="css: { 'pr-k--warn': (run().exceptionCount || 0) > 0 }">
+        <div class="pr-k-l" data-bind="text: $vm.t('pr.kExceptions')"></div><div class="pr-k-v" data-bind="text: num(run().exceptionCount || 0)"></div></div>
+      <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('pr.kGross')"></div><div class="pr-k-v" data-bind="text: money(run().gross)"></div></div>
+      <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('pr.kDeductions')"></div><div class="pr-k-v" data-bind="text: money(run().deductions)"></div></div>
+      <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('pr.kNet')"></div><div class="pr-k-v" data-bind="text: money(run().net)"></div></div>
+      <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('pr.kEmployerCost')"></div><div class="pr-k-v" data-bind="text: money(run().employerCost)"></div></div>
+      <div class="pr-k pr-k--charge"><div class="pr-k-l" data-bind="text: $vm.t('pr.kCharges')"></div><div class="pr-k-v" data-bind="text: money(run().totalCharges)"></div></div>
+    </div>
+
+    <!-- Stage trail -->
+    <div class="pr-trail">
+      <span data-bind="visible: run().loadedAt,     text: $vm.t('pr.load') + ': ' + run().loadedAt + ' · ' + run().loadedBy"></span>
+      <span data-bind="visible: run().validatedAt,  text: $vm.t('pr.validate') + ': ' + run().validatedAt + ' · ' + run().validatedBy"></span>
+      <span data-bind="visible: run().calculatedAt, text: $vm.t('pr.calculate') + ': ' + run().calculatedAt + ' · ' + run().calculatedBy"></span>
+      <span data-bind="visible: run().reviewedAt,   text: $vm.t('pr.review') + ': ' + run().reviewedAt + ' · ' + run().reviewedBy"></span>
+    </div>
+  </div>
+
+  <!-- ── Groups + company charges ──────────────────────────────────────── -->
+  <div class="pr-2col">
+    <div class="card ap-region">
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('pr.groups')"></div>
+      </div>
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('pr.group')"></th>
+          <th data-bind="text: $vm.t('pr.shortCode')"></th>
+          <th data-bind="text: $vm.t('pr.kEmps')"></th>
+          <th data-bind="text: $vm.t('pr.kGross')"></th>
+          <th data-bind="text: $vm.t('pr.kNet')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: run().groups">
+          <tr>
+            <td data-bind="text: $data.group == null ? '—' : $data.group"></td>
+            <td data-bind="text: $data.shortCode || '—'"></td>
+            <td data-bind="text: $vm.num($data.empCount)"></td>
+            <td data-bind="text: $vm.money($data.gross)"></td>
+            <td data-bind="text: $vm.money($data.net)"></td>
+          </tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card ap-region">
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('pr.charges')"></div>
+      </div>
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('pr.group')"></th>
+          <th data-bind="text: $vm.t('pr.chargeType')"></th>
+          <th data-bind="text: $vm.t('pr.description')"></th>
+          <th data-bind="text: $vm.t('pr.amount')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: run().charges">
+          <tr>
+            <td data-bind="text: $data.shortCode || ($data.group == null ? '—' : $data.group)"></td>
+            <td data-bind="text: $data.chargeType"></td>
+            <td data-bind="text: $data.description"></td>
+            <td data-bind="text: $vm.money($data.amount)"></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="pr-note" data-bind="text: $vm.t('pr.chargeNote')"></div>
+    </div>
+  </div>
+
+  <!-- ── Exceptions ────────────────────────────────────────────────────── -->
+  <!-- ko if: (run().exceptions || []).length -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('pr.exceptions')"></div>
+    </div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('pr.empNo')"></th>
+        <th data-bind="text: $vm.t('pr.name')"></th>
+        <th data-bind="text: $vm.t('pr.status')"></th>
+        <th data-bind="text: $vm.t('pr.flags')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: run().exceptions">
+        <tr>
+          <td data-bind="text: $data.employeeNumber"></td>
+          <td data-bind="text: $data.name"></td>
+          <td data-bind="text: $data.status"></td>
+          <td data-bind="text: $data.flags"></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Variance vs prior period ─────────────────────────────────────── -->
+  <!-- ko if: run().variance && run().variance.hasPrior -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: $vm.t('pr.variance')"></span>
+        <span style="font-weight:400;font-size:12px;color:var(--text-2)"
+              data-bind="text: $vm.t('pr.varNew') + ' ' + $vm.num(run().variance.newCount)
+                       + ' · ' + $vm.t('pr.varLeft') + ' ' + $vm.num(run().variance.leftCount)
+                       + ' · ' + $vm.t('pr.varChanged') + ' ' + $vm.num(run().variance.changedCount)
+                       + ' · Δ ' + $vm.money(run().variance.netDelta)"></span>
+      </div>
+    </div>
+    <div class="data-table-wrap" style="max-height:340px;overflow:auto"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('pr.empNo')"></th>
+        <th data-bind="text: $vm.t('pr.name')"></th>
+        <th data-bind="text: $vm.t('pr.varKind')"></th>
+        <th data-bind="text: $vm.t('pr.priorNet')"></th>
+        <th data-bind="text: $vm.t('pr.curNet')"></th>
+        <th data-bind="text: $vm.t('pr.delta')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: run().variance.items">
+        <tr>
+          <td data-bind="text: $data.employeeNumber"></td>
+          <td data-bind="text: $data.name"></td>
+          <td data-bind="text: $data.kind"></td>
+          <td data-bind="text: $vm.money($data.priorNet)"></td>
+          <td data-bind="text: $vm.money($data.curNet)"></td>
+          <td data-bind="text: $vm.money($data.delta)"></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Results register ─────────────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: $vm.t('pr.register')"></span>
+        <span style="font-weight:400;font-size:12px;color:var(--text-2)"
+              data-bind="text: $vm.num(total()) + ' ' + $vm.t('pr.rows')"></span>
+      </div>
+      <div class="region-actions">
+        <input class="form-control" style="max-width:240px" type="search"
+               data-bind="value: search, valueUpdate: 'input', attr: { placeholder: $vm.t('pr.search') }">
+        <select class="form-control" style="max-width:160px" data-bind="value: fStatus">
+          <option value="" data-bind="text: $vm.t('pr.allStates')"></option>
+          <option value="OK">OK</option>
+          <option value="EXCEPTION" data-bind="text: $vm.t('pr.exceptions')"></option>
+        </select>
+        <select class="form-control" style="max-width:190px" data-bind="value: fGrp">
+          <option value="" data-bind="text: $vm.t('pr.allGroups')"></option>
+          <!-- ko foreach: run().groups -->
+          <option data-bind="value: $data.group,
+                             text: ($data.shortCode || '—') + ' (' + ($data.group == null ? '—' : $data.group) + ')'"></option>
+          <!-- /ko -->
+        </select>
+      </div>
+    </div>
+    <!-- ko if: empsLoading --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+    <!-- ko ifnot: empsLoading -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('pr.empNo')"></th>
+        <th data-bind="text: $vm.t('pr.name')"></th>
+        <th data-bind="text: $vm.t('pr.sector')"></th>
+        <th data-bind="text: $vm.t('pr.department')"></th>
+        <th data-bind="text: $vm.t('pr.grade')"></th>
+        <th data-bind="text: $vm.t('pr.costCenter')"></th>
+        <th data-bind="text: $vm.t('pr.group')"></th>
+        <th data-bind="text: $vm.t('pr.factor')"></th>
+        <th data-bind="text: $vm.t('pr.kGross')"></th>
+        <th data-bind="text: $vm.t('pr.kDeductions')"></th>
+        <th data-bind="text: $vm.t('pr.kNet')"></th>
+        <th data-bind="text: $vm.t('pr.status')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: emps">
+        <tr style="cursor:pointer" data-bind="click: function(){ $vm.openLines($data); }">
+          <td data-bind="text: $data.employeeNumber"></td>
+          <td data-bind="text: $data.name"></td>
+          <td data-bind="text: $data.sector || '—'"></td>
+          <td data-bind="text: $data.department || '—'"></td>
+          <td data-bind="text: $data.gradeCode || '—'"></td>
+          <td data-bind="text: $data.costCenter || '—'"></td>
+          <td data-bind="text: $data.groupShort || ($data.group == null ? '—' : $data.group)"></td>
+          <td data-bind="text: $data.factor == null ? '—' : Number($data.factor).toFixed(2)"></td>
+          <td data-bind="text: $vm.money($data.gross)"></td>
+          <td data-bind="text: $vm.money($data.deductions)"></td>
+          <td data-bind="text: $vm.money($data.net)"></td>
+          <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+        </tr>
+      </tbody>
+    </table></div>
+    <!-- /ko -->
+    <list-pager params="total: total, limit: limit, offset: offset, onChange: onPage"></list-pager>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Lines drawer ─────────────────────────────────────────────────── -->
+  <div class="dw-scrim" data-bind="css: { show: dwOpen }, click: closeDw"></div>
+  <aside class="dw-drawer" data-bind="css: { show: dwOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('pr.lines')"></div>
+        <div class="dw-title" data-bind="text: dwEmp() ? (dwEmp().employeeNumber + ' — ' + dwEmp().name) : ''"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeDw, text: $vm.t('dr.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: dwEmp -->
+      <div class="pr-trail" style="margin-bottom:10px"
+           data-bind="text: $vm.t('pr.factor') + ': ' + (dwEmp().factor == null ? '—' : Number(dwEmp().factor).toFixed(4))
+                    + ' · ' + $vm.t('pr.kNet') + ': ' + money(dwEmp().net)
+                    + ' · ' + $vm.t('pr.group') + ': ' + (dwEmp().groupShort || dwEmp().group || '—')"></div>
+      <!-- ko if: canMoveGroup -->
+      <div class="dw-form" style="grid-template-columns:1fr auto;align-items:end;margin-bottom:12px">
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('pr.moveGroup')"></label>
+          <select class="form-control" data-bind="value: dwGrpSel">
+            <!-- ko foreach: run().groupLov -->
+            <option data-bind="value: $data.code, text: $data.shortCode + ' (' + $data.code + ') — ' + $data.name"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <button class="btn btn-secondary" data-bind="click: applyGroup, enable: !dwGrpBusy(), text: $vm.t('pr.applyGroup')"></button>
+        </div>
+      </div>
+      <div class="dw-hint" style="margin-bottom:10px" data-bind="text: $vm.t('pr.moveHint')"></div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('pr.element')"></th>
+          <th data-bind="text: $vm.t('pr.class')"></th>
+          <th data-bind="text: $vm.t('pr.base')"></th>
+          <th data-bind="text: $vm.t('pr.rate')"></th>
+          <th data-bind="text: $vm.t('pr.amount')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: dwLines">
+          <tr>
+            <td data-bind="text: $data.element"></td>
+            <td data-bind="text: $data.elementClass"></td>
+            <td data-bind="text: $data.base == null ? '—' : $vm.money($data.base)"></td>
+            <td data-bind="text: $data.rate == null ? '—' : $data.rate"></td>
+            <td data-bind="text: $vm.money($data.amount)"></td>
+          </tr>
+        </tbody>
+      </table></div>
+    </div>
+  </aside>
+
+</div>

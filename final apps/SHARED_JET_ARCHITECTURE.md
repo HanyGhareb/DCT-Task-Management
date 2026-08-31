@@ -306,3 +306,9 @@ for a null id. Consumers: AP (register invoice/PO/PR numbers, chart-drill
 drawer, invoice window incl. header poRefs/prRefs) and GL (Budget Utilization
 drill drawers via `drillLink(row,col)`). The pod host lives ONLY in this module.
 
+Inside the shared `<interactive-report>` grid (2026-07-19): pass an optional
+`cellLink(row, colKey) → href|null` function ON THE ENVELOPE — matching cells
+render as new-tab `.ir-link` anchors (base columns only). IR cells also carry
+`data-key="<colKey>"` so apps can attach delegated hover/click handlers to the
+grid (e.g. AP's GL-combination popover).
+
