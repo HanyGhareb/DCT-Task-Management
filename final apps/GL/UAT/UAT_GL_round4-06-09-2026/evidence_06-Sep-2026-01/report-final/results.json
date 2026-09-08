@@ -1,0 +1,592 @@
+[
+  {
+    "name": "X 0 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0",
+      "actual": "0"
+    }
+  },
+  {
+    "name": "X -0.1 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0",
+      "actual": "-0"
+    }
+  },
+  {
+    "name": "X 2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "3",
+      "actual": "3"
+    }
+  },
+  {
+    "name": "X -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-2",
+      "actual": "-2"
+    }
+  },
+  {
+    "name": "X 2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "2,500",
+      "actual": "2,500"
+    }
+  },
+  {
+    "name": "X -2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-2,500",
+      "actual": "-2,500"
+    }
+  },
+  {
+    "name": "X 1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,250,000",
+      "actual": "1,250,000"
+    }
+  },
+  {
+    "name": "X -1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-1,250,000",
+      "actual": "-1,250,000"
+    }
+  },
+  {
+    "name": "X 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "12,345,678",
+      "actual": "12,345,678"
+    }
+  },
+  {
+    "name": "X 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,000,000,000",
+      "actual": "1,000,000,000"
+    }
+  },
+  {
+    "name": "X 1005000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,005,000,000",
+      "actual": "1,005,000,000"
+    }
+  },
+  {
+    "name": "K 0 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0K",
+      "actual": "0K"
+    }
+  },
+  {
+    "name": "K -0.1 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0K",
+      "actual": "-0K"
+    }
+  },
+  {
+    "name": "K 2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0K",
+      "actual": "0K"
+    }
+  },
+  {
+    "name": "K -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0K",
+      "actual": "-0K"
+    }
+  },
+  {
+    "name": "K 2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "3K",
+      "actual": "3K"
+    }
+  },
+  {
+    "name": "K -2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-3K",
+      "actual": "-3K"
+    }
+  },
+  {
+    "name": "K 1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,250K",
+      "actual": "1,250K"
+    }
+  },
+  {
+    "name": "K -1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-1,250K",
+      "actual": "-1,250K"
+    }
+  },
+  {
+    "name": "K 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "12,346K",
+      "actual": "12,346K"
+    }
+  },
+  {
+    "name": "K 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,000,000K",
+      "actual": "1,000,000K"
+    }
+  },
+  {
+    "name": "K 1005000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,005,000K",
+      "actual": "1,005,000K"
+    }
+  },
+  {
+    "name": "M 0 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.0M",
+      "actual": "0.0M"
+    }
+  },
+  {
+    "name": "M -0.1 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.0M",
+      "actual": "-0.0M"
+    }
+  },
+  {
+    "name": "M 2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.0M",
+      "actual": "0.0M"
+    }
+  },
+  {
+    "name": "M -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.0M",
+      "actual": "-0.0M"
+    }
+  },
+  {
+    "name": "M 2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.0M",
+      "actual": "0.0M"
+    }
+  },
+  {
+    "name": "M -2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.0M",
+      "actual": "-0.0M"
+    }
+  },
+  {
+    "name": "M 1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1.3M",
+      "actual": "1.3M"
+    }
+  },
+  {
+    "name": "M -1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-1.3M",
+      "actual": "-1.3M"
+    }
+  },
+  {
+    "name": "M 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "12.3M",
+      "actual": "12.3M"
+    }
+  },
+  {
+    "name": "M 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,000.0M",
+      "actual": "1,000.0M"
+    }
+  },
+  {
+    "name": "M 1005000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,005.0M",
+      "actual": "1,005.0M"
+    }
+  },
+  {
+    "name": "B 0 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.00B",
+      "actual": "0.00B"
+    }
+  },
+  {
+    "name": "B -0.1 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.00B",
+      "actual": "-0.00B"
+    }
+  },
+  {
+    "name": "B 2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.00B",
+      "actual": "0.00B"
+    }
+  },
+  {
+    "name": "B -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.00B",
+      "actual": "-0.00B"
+    }
+  },
+  {
+    "name": "B 2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.00B",
+      "actual": "0.00B"
+    }
+  },
+  {
+    "name": "B -2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.00B",
+      "actual": "-0.00B"
+    }
+  },
+  {
+    "name": "B 1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.00B",
+      "actual": "0.00B"
+    }
+  },
+  {
+    "name": "B -1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.00B",
+      "actual": "-0.00B"
+    }
+  },
+  {
+    "name": "B 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.01B",
+      "actual": "0.01B"
+    }
+  },
+  {
+    "name": "B 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1.00B",
+      "actual": "1.00B"
+    }
+  },
+  {
+    "name": "B 1005000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1.01B",
+      "actual": "1.01B"
+    }
+  },
+  {
+    "name": "auto 0 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0",
+      "actual": "0"
+    }
+  },
+  {
+    "name": "auto -0.1 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0",
+      "actual": "-0"
+    }
+  },
+  {
+    "name": "auto 2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "3",
+      "actual": "3"
+    }
+  },
+  {
+    "name": "auto -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-3",
+      "actual": "-3"
+    }
+  },
+  {
+    "name": "auto 2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "3K",
+      "actual": "3K"
+    }
+  },
+  {
+    "name": "auto -2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-3K",
+      "actual": "-3K"
+    }
+  },
+  {
+    "name": "auto 1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1.3M",
+      "actual": "1.3M"
+    }
+  },
+  {
+    "name": "auto -1250000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-1.3M",
+      "actual": "-1.3M"
+    }
+  },
+  {
+    "name": "auto 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "12.3M",
+      "actual": "12.3M"
+    }
+  },
+  {
+    "name": "auto 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1.00B",
+      "actual": "1.00B"
+    }
+  },
+  {
+    "name": "auto 1005000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1.00B",
+      "actual": "1.00B"
+    }
+  },
+  {
+    "name": "en tiles long names do not overlap footer",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "en tiles pagination preserves all tiles",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en tiles pagination preserves all rows",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en tiles pagination preserves all bands",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en tiles page numbers reflect actual page count",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en rows long names do not overlap footer",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "en rows pagination preserves all tiles",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en rows pagination preserves all rows",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en rows pagination preserves all bands",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en rows page numbers reflect actual page count",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en map long names do not overlap footer",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "en map pagination preserves all tiles",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en map pagination preserves all rows",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en map pagination preserves all bands",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en map page numbers reflect actual page count",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar tiles long names do not overlap footer",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "ar tiles pagination preserves all tiles",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar tiles pagination preserves all rows",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar tiles pagination preserves all bands",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar tiles page numbers reflect actual page count",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar rows long names do not overlap footer",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "ar rows pagination preserves all tiles",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar rows pagination preserves all rows",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar rows pagination preserves all bands",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar rows page numbers reflect actual page count",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar map long names do not overlap footer",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "ar map pagination preserves all tiles",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar map pagination preserves all rows",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar map pagination preserves all bands",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "ar map page numbers reflect actual page count",
+    "passed": true,
+    "detail": null
+  }
+]

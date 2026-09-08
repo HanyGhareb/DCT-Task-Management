@@ -99,7 +99,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_db_health_pkg AS
           u.user_id,'WARNING','Database object health warning',
           'PROD has '||l_invalid||' invalid object(s), '||l_indexes||
           ' unusable index(es), and '||l_parts||' unusable index partition(s).',
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
     END IF;
 

@@ -1,0 +1,15 @@
+[Unit]
+Description=Clean overdue allowlisted GL browser tests on VM191
+ConditionHost=dev-vm
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dct-vm-maintenance --apply browser-tests
+User=root
+TimeoutStartSec=120
+Nice=10
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/run/lock
+StandardOutput=journal
+StandardError=journal

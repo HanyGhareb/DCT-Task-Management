@@ -14,6 +14,6 @@ define([], function () {
     authBase: ADB + '/dct',          // Admin ORDS module — login / session
 
     // shared api.js: where to send the browser when the session dies
-    adminPortalUrl: '/Admin/Jet/index.html',
+    adminPortalUrl: '/dct/index.html',
   };
 });

@@ -157,7 +157,8 @@ def main():
 
     # BU dataset for the test year should surface the CF row
     st, d = req("GET", f"/gl/dof/butil?year={TEST_YEAR}&period=03-{TEST_YEAR}", tok)
-    cf_rows = [r for r in d.get("rows", []) if r.get("hasCf") == "Y"]
+    # DETAIL rows only -- the dataset also carries CHTOTAL/GRAND total rows (v1.54.0)
+    cf_rows = [r for r in d.get("rows", []) if r.get("hasCf") == "Y" and r.get("rowType", "DETAIL") == "DETAIL"]
     check("butil test year surfaces CF-only appropriation",
           st == 200 and len(cf_rows) == 1
           and cf_rows[0]["initCfYtd"] == 1000 and cf_rows[0]["revCfYtd"] == 1200,

@@ -1,0 +1,21 @@
+[Unit]
+Description=DCT VM scheduled maintenance
+Documentation=file:///usr/local/share/dct-vm-maintenance/vm_maintenance.sh
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dct-vm-maintenance --apply --older-than 30 all
+User=root
+Group=root
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/crash /run/lock
+StandardOutput=journal
+StandardError=journal
+

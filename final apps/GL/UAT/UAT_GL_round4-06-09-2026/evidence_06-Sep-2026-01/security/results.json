@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Account without report permission can read dashboard",
+    "passed": true,
+    "detail": 200
+  },
+  {
+    "name": "Print denied without report privilege",
+    "passed": false,
+    "detail": 200
+  },
+  {
+    "name": "Allowed temporary account can queue report",
+    "passed": true,
+    "detail": 200
+  },
+  {
+    "name": "Denied account blocked from report",
+    "passed": false,
+    "detail": 404
+  },
+  {
+    "name": "Another privileged user cannot access report",
+    "passed": true,
+    "detail": 404
+  },
+  {
+    "name": "Denied account blocked from report/file",
+    "passed": false,
+    "detail": 404
+  },
+  {
+    "name": "Another privileged user cannot access report/file",
+    "passed": true,
+    "detail": 404
+  },
+  {
+    "name": "Owner report completes",
+    "passed": true,
+    "detail": "SUCCESS"
+  },
+  {
+    "name": "Owner can download own PDF",
+    "passed": true,
+    "detail": 200
+  },
+  {
+    "name": "Temporary accounts and sessions removed",
+    "passed": true,
+    "detail": null
+  }
+]

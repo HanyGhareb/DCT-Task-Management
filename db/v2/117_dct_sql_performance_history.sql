@@ -221,7 +221,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_sql_perf_history_pkg AS
       ) LOOP
         prod.dct_notify.send(u.user_id,'WARNING','Background job duration anomaly',
           l_count||' scheduled job(s) materially exceeded their own 30-day duration baseline.',
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
     END IF;
     MERGE INTO prod.dct_job_perf_state s USING(SELECT 1 state_id FROM dual)x ON(s.state_id=x.state_id)

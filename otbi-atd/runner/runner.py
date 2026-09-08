@@ -56,6 +56,7 @@ from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 import config
+import db_recovery
 import auth
 import extract
 import checks
@@ -1002,6 +1003,12 @@ def _run_worker(conn, load, forever):
             while True:
                 # Break window: pause ALL work (claim nothing; in-flight jobs already
                 # claimed will have finished). Resumes automatically at break-end.
+                if forever:
+                    recovered = db_recovery.ensure_connection(conn, config.connect)
+                    if recovered is not conn:
+                        conn = recovered
+                        run_one = _make_run_one_oracledb(conn, load)
+                        print(f'[worker {host}] database reconnected; browser sessions retained', flush=True)
                 in_break = _in_break(conn)
                 # Operator pause (Worker Fleet Pause button): claim nothing until
                 # resumed; the job already in flight finished before we got here.
@@ -1010,8 +1017,21 @@ def _run_worker(conn, load, forever):
                 # healthy session drains the queue (we re-auth on the idle path below).
                 hold_claim = bool(session_dead)
                 claim_token = uuid.uuid4().hex
-                name = None if (in_break or hold_claim or paused) else conn.cursor().callfunc(
-                    "prod.atd_queue_pkg.claim_next", str, [host, claim_token, lease])
+                try:
+                    name = None if (in_break or hold_claim or paused) else conn.cursor().callfunc(
+                        "prod.atd_queue_pkg.claim_next", str, [host, claim_token, lease])
+                except Exception as error:
+                    if not forever or not db_recovery.disconnected(error):
+                        raise
+                    # Claim may already be committed. Never replay this token or
+                    # execute an unknown job; existing leases/reaper recover it.
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    conn = None
+                    print(f'[worker {host}] queue claim interrupted; deferring unknown claim to lease recovery', flush=True)
+                    continue
                 if not name:
                     if forever:
                         # idle (or paused for the Break window): keep liveness fresh,

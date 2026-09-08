@@ -121,7 +121,22 @@ f_raw AS (
   JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
   LEFT JOIN proj pj ON pj.project_id = d.project_id
   LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
-  WHERE d.po_number IS NULL
+  WHERE (d.po_number IS NULL
+         -- TRV rule (2026-09-02, user): a PO-matched "Tax rate variance"
+         -- distribution is a REAL project cost the GRN leg never carries --
+         -- the receipt is valued at PO price and the tax-rate delta exists
+         -- only AP-side -- so it joins the AP actual. Other PO-matched types
+         -- (Accrual / Item) stay excluded: the GRN accrual already counts
+         -- them and admitting them here would double-count.
+         -- Widened 2026-09-02 (user): the sibling PO-matched variance types
+         -- count too, but ONLY when the distribution's charge account IS the
+         -- line's expense account (the expenditure type's 6-digit prefix).
+         -- Live 2026 data: IPV posts on the expense account (counts);
+         -- Conversion-rate posts to 360620 FX and Retainage to 230210
+         -- liability (excluded by the account test, not by name).
+         OR (d.distribution_type IN ('Tax rate variance','Invoice price variance',
+                                     'Conversion rate variance','Retainage')
+             AND cid.account_code = REGEXP_SUBSTR(d.expenditure_type, '^[0-9]{6}')))
     AND NVL(d.reversal_indicator,'N') <> 'Y'
     AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
          OR d.accounting_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)

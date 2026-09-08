@@ -1,0 +1,266 @@
+[
+  [
+    "Summary unchecked on load",
+    true
+  ],
+  [
+    "tiles Budget ring hidden when unchecked",
+    true
+  ],
+  [
+    "tiles Budget ring shown when checked",
+    true
+  ],
+  [
+    "tiles Budget ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "tiles Actual ring hidden when unchecked",
+    true
+  ],
+  [
+    "tiles Actual ring shown when checked",
+    true
+  ],
+  [
+    "tiles Actual ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "tiles Encumbrance ring hidden when unchecked",
+    true
+  ],
+  [
+    "tiles Encumbrance ring shown when checked",
+    true
+  ],
+  [
+    "tiles Encumbrance ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "tiles Fund graph hidden when unchecked",
+    true
+  ],
+  [
+    "tiles Fund graph shown when checked",
+    true
+  ],
+  [
+    "tiles Fund graph closes immediately on uncheck",
+    true
+  ],
+  [
+    "tiles Sector hidden when unchecked",
+    true
+  ],
+  [
+    "tiles Sector shown when checked",
+    true
+  ],
+  [
+    "tiles Sector closes immediately on uncheck",
+    true
+  ],
+  [
+    "tiles Department hidden when unchecked",
+    true
+  ],
+  [
+    "tiles Department shown when checked",
+    true
+  ],
+  [
+    "tiles Department closes immediately on uncheck",
+    true
+  ],
+  [
+    "tiles sector selection still works",
+    true
+  ],
+  [
+    "tiles department selection still works",
+    true
+  ],
+  [
+    "rows Budget ring hidden when unchecked",
+    true
+  ],
+  [
+    "rows Budget ring shown when checked",
+    true
+  ],
+  [
+    "rows Budget ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "rows Actual ring hidden when unchecked",
+    true
+  ],
+  [
+    "rows Actual ring shown when checked",
+    true
+  ],
+  [
+    "rows Actual ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "rows Encumbrance ring hidden when unchecked",
+    true
+  ],
+  [
+    "rows Encumbrance ring shown when checked",
+    true
+  ],
+  [
+    "rows Encumbrance ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "rows Fund graph hidden when unchecked",
+    true
+  ],
+  [
+    "rows Fund graph shown when checked",
+    true
+  ],
+  [
+    "rows Fund graph closes immediately on uncheck",
+    true
+  ],
+  [
+    "rows Sector hidden when unchecked",
+    true
+  ],
+  [
+    "rows Sector shown when checked",
+    true
+  ],
+  [
+    "rows Sector closes immediately on uncheck",
+    true
+  ],
+  [
+    "rows Department hidden when unchecked",
+    true
+  ],
+  [
+    "rows Department shown when checked",
+    true
+  ],
+  [
+    "rows Department closes immediately on uncheck",
+    true
+  ],
+  [
+    "rows sector selection still works",
+    true
+  ],
+  [
+    "rows department selection still works",
+    true
+  ],
+  [
+    "map Budget ring hidden when unchecked",
+    true
+  ],
+  [
+    "map Budget ring shown when checked",
+    true
+  ],
+  [
+    "map Budget ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "map Actual ring hidden when unchecked",
+    true
+  ],
+  [
+    "map Actual ring shown when checked",
+    true
+  ],
+  [
+    "map Actual ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "map Encumbrance ring hidden when unchecked",
+    true
+  ],
+  [
+    "map Encumbrance ring shown when checked",
+    true
+  ],
+  [
+    "map Encumbrance ring closes immediately on uncheck",
+    true
+  ],
+  [
+    "map Fund graph hidden when unchecked",
+    true
+  ],
+  [
+    "map Fund graph shown when checked",
+    true
+  ],
+  [
+    "map Fund graph closes immediately on uncheck",
+    true
+  ],
+  [
+    "map Sector hidden when unchecked",
+    true
+  ],
+  [
+    "map Sector shown when checked",
+    true
+  ],
+  [
+    "map Sector closes immediately on uncheck",
+    true
+  ],
+  [
+    "map Department hidden when unchecked",
+    true
+  ],
+  [
+    "map Department shown when checked",
+    true
+  ],
+  [
+    "map Department closes immediately on uncheck",
+    true
+  ],
+  [
+    "map sector selection still works",
+    true
+  ],
+  [
+    "map department selection still works",
+    true
+  ],
+  [
+    "Arabic sector hidden unchecked",
+    true
+  ],
+  [
+    "Arabic sector shown checked",
+    true
+  ],
+  [
+    "Arabic department hidden unchecked",
+    true
+  ],
+  [
+    "Arabic department shown checked",
+    true
+  ],
+  [
+    "No JavaScript errors",
+    true
+  ]
+]

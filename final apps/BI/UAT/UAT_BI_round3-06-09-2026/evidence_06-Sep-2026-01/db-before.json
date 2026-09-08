@@ -1,0 +1,27 @@
+{"results":[{"columns":[{"name":"LINE","type":"NUMBER"},{"name":"TEXT","type":"VARCHAR2"}],"items":
+[
+{"line":1,"text":"PROCEDURE      dct_rpt_maint IS\n"}
+,{"line":2,"text":"  l_retain NUMBER := TO_NUMBER(NVL(prod.dct_rpt_pkg.cfg('OUTPUT_RETAIN_DAYS','90'),'90'));\n"}
+,{"line":3,"text":"BEGIN\n"}
+,{"line":4,"text":"  prod.dct_rpt_pkg.reclaim_stuck;\n"}
+,{"line":5,"text":"  IF l_retain > 0 THEN\n"}
+,{"line":6,"text":"    DELETE FROM prod.dct_rpt_output\n"}
+,{"line":7,"text":"     WHERE created_at < SYSTIMESTAMP - NUMTODSINTERVAL(l_retain, 'DAY');\n"}
+,{"line":8,"text":"    COMMIT;\n"}
+,{"line":9,"text":"  END IF;\n"}
+,{"line":10,"text":"END dct_rpt_maint;\n"}
+]}]}
+10 rows selected. 
+
+{"results":[{"columns":[{"name":"OWNER","type":"VARCHAR2"},{"name":"JOB_NAME","type":"VARCHAR2"},{"name":"ENABLED","type":"VARCHAR2"},{"name":"STATE","type":"VARCHAR2"},{"name":"JOB_ACTION","type":"VARCHAR2"}],"items":
+[
+{"owner":"ADMIN","job_name":"DCT_RPT_MAINT_JOB","enabled":"TRUE","state":"SCHEDULED","job_action":"BEGIN prod.dct_rpt_maint; END;"}
+,{"owner":"PROD","job_name":"DCT_RPT_MAINT_JOB","enabled":"TRUE","state":"SCHEDULED","job_action":"PROD.DCT_RPT_MAINT"}
+]}]}
+{"results":[{"columns":[{"name":"OWNER","type":"VARCHAR2"},{"name":"JOB_NAME","type":"VARCHAR2"}],"items":
+[
+]}]}no rows selected
+{"results":[{"columns":[{"name":"EXPIRED","type":"NUMBER"}],"items":
+[
+{"expired":0}
+]}]}

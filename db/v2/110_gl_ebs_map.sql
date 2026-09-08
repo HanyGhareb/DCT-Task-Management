@@ -324,7 +324,14 @@ LEFT JOIN acc ac ON ac.account_code = am.fusion_value
 LEFT JOIN apr ap ON ap.appropriation_code = pm.fusion_value
 LEFT JOIN chap ch ON ch.appropriation_code = pm.fusion_value
 LEFT JOIN ccd cc ON cc.cost_center_code = b.cost_center_code
-WHERE b.account_code <> '452201';
+WHERE b.account_code <> '452201'
+  -- PLATFORM RULE 2026-09-06 (user): the funding side is never budget. EBS
+  -- 351xxx 'Treasury Contribution towards Chapter-N' map onto Fusion 3270xx and
+  -- carry the chapter budget MIRRORED (budget_ytd == the expense budget every
+  -- year 2017-2025) plus the matching NEGATIVE actual (funds received). Dropped
+  -- on the MAPPED Fusion account -- twin of GL_BALANCES_CC (db/v2/32); unmapped
+  -- rows stay so the coverage annex still sees them. Read-layer, reversible.
+  AND NVL(am.fusion_value, 'x') NOT LIKE '3270%';
 
 PROMPT === 110.5b APPROPRIATION identity seed (user rule 2026-07-30) ===
 -- The EBS Future2 code IS the Fusion Appropriation code (user-confirmed:

@@ -392,6 +392,16 @@ define(
     // Called by login viewModel via window._jetApp.onLogin(user)
     self.onLogin = function (user) {
       self.currentUser(user);
+      // Deep-link round-trip: a module app's login bounce hands over the
+      // intended destination as ?return=<same-origin relative path>. Honour
+      // ONLY a plain relative path (blocks //host open redirects and /ords).
+      try {
+        var ret = new URLSearchParams(window.location.search).get('return');
+        if (ret && /^\/(?!\/)/.test(ret) && ret.indexOf('/ords') !== 0) {
+          window.location.replace(ret);
+          return;
+        }
+      } catch (e) {}
       self._initAnnouncements();
       // land on the role's configured page — but never block login on a
       // slow /boot (800ms cap, then default to dashboard)

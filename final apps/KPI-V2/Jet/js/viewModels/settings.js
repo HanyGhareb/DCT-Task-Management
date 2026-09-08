@@ -544,7 +544,7 @@ function (ko, api, i18n, toast) {
       { code: 'KPI_EXPORT_REGISTERS',    verb: 'EXPORT' }
     ];
     self.openAdminSec = function (route) {
-      window.open('/Admin/Jet/index.html#' + route, '_blank');
+      window.open('/dct/index.html#' + route, '_blank');
     };
 
     // ── boot ────────────────────────────────────────────────────────

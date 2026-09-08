@@ -73,33 +73,7 @@ SHOW ERRORS PROCEDURE prod.dct_rpt_sched_sync
 -- ---------------------------------------------------------------------------
 -- maintenance: reclaim stuck RUNNING runs + purge expired output BLOBs.
 -- ---------------------------------------------------------------------------
-CREATE OR REPLACE PROCEDURE prod.dct_rpt_maint IS
-  l_retain NUMBER := TO_NUMBER(NVL(prod.dct_rpt_pkg.cfg('OUTPUT_RETAIN_DAYS','90'),'90'));
-BEGIN
-  prod.dct_rpt_pkg.reclaim_stuck;
-  IF l_retain > 0 THEN
-    DELETE FROM prod.dct_rpt_output
-     WHERE created_at < SYSTIMESTAMP - NUMTODSINTERVAL(l_retain, 'DAY');
-    COMMIT;
-  END IF;
-END dct_rpt_maint;
-/
-SHOW ERRORS PROCEDURE prod.dct_rpt_maint
-
--- install the maintenance job (every 15 minutes)
-BEGIN
-  BEGIN DBMS_SCHEDULER.DROP_JOB('DCT_RPT_MAINT_JOB', force => TRUE);
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-  DBMS_SCHEDULER.CREATE_JOB(
-    job_name        => 'DCT_RPT_MAINT_JOB',
-    job_type        => 'PLSQL_BLOCK',
-    job_action      => 'BEGIN prod.dct_rpt_maint; END;',
-    start_date      => SYSTIMESTAMP AT TIME ZONE 'Asia/Dubai',
-    repeat_interval => 'FREQ=MINUTELY;INTERVAL=15',
-    enabled         => TRUE,
-    comments        => 'i-Finance reporting maintenance (reclaim stuck + purge output)');
-END;
-/
+@@43_rpt_output_maintenance.sql
 
 -- ADMIN synonyms (for the ORDS sync handler / manual EXEC)
 CREATE OR REPLACE SYNONYM dct_rpt_sched_sync   FOR prod.dct_rpt_sched_sync;

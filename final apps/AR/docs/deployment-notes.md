@@ -25,6 +25,7 @@
 | `04_ar_views.sql`, `05_ar_ords.sql` | ✅ | Views + `ar.rest` module at `/ar/` |
 | `06_ar_patch_gemini.sql` | ⛔ **SUPERSEDED — do not re-run** | Replaced by the provider registry (07); its setting rows were deleted |
 | `11_ar_rebill_ords.sql` | ✅ 2026-07-25 | **ADDITIVE** AR Invoice Rebill bridge onto the ATD Fusion write-back queue — `POST rebill/requests` (bulk enqueue ≤500, per-row result) · `GET rebill/requests` · `GET rebill/requests/:id` (+9-stage timeline) · `GET rebill/lovs`. All AR_ADMIN/SYS_ADMIN. Depends on `otbi-atd/db/19`, `52`, `53`. |
+| `12_ar_trx_ords.sql` | ✅ 2026-09-02 | **ADDITIVE** AR Transactions dashboard — `prod.dct_ar_trx_pkg` facet engine (AP/db/02 pattern) + 7 GET routes `trx/filters` · `trx/summary` · `trx/list` · `trx/lines` · `trx/list/export` · `trx/lines/export` · `trx/detail/:id` over `prod.ar_transaction_aging_v` + `prod.ar_transaction_details_v`. Any valid session. **The AR post-05 re-run list is now 10, 11, 12.** |
 | `07_ar_ai_providers.sql` | ✅ 2026-06-13 | `DCT_AR_AI_PROVIDERS` registry (api_format, base_url, write-only api_key, `AR_API_FORMAT` lookup); `AI_PROVIDER` setting = selected provider_code |
 
 Platform SQLcl rules apply (see `final apps/Admin/docs/deployment-notes.md` §2).
@@ -53,6 +54,50 @@ AR-specific DB/AI notes:
 4. Reference numbers: test events EVT-TEST-0001 (Power Slap 16 — expected 303,888 gross / 4 findings / 47,500 loss), EVT-2026-0001, EVT-2026-0002.
 
 ## 5. Deployment history
+
+### 2026-09-02 — AR Transactions Dashboard (AP-dashboard pattern), APP_VERSION 4.11.0, webtier 20260902122830 (AR-only overlay release — copied the live release + overlaid AR/Jet only, so parallel sessions' in-progress apps never shipped; pruned by NAME)
+
+New nav group **AR Transactions → Transactions Dashboard** (`arTrxDashboard`): executive
+analytics over the two Fusion-loaded AR transaction views, modeled on the AP dashboard
+(App 212). DB/ORDS = `db/12_ar_trx_ords.sql` (**ADDITIVE** — templates are new patterns
+only; deployed + API-verified same day; **post-05 re-run list now 10, 11, 12**):
+
+- `prod.dct_ar_trx_pkg` — the ONE facet engine (`filtered_ids` id-set + MULTISET
+  INTERSECT, AP/db/02 lesson: never correlated EXISTS across the un-indexed views).
+  Helpers: `ddate` (the views store every date as a `'DD/MM/YYYY'` **string** — 0 bad
+  rows live), `stat` (OPEN / SETTLED / CREDIT from the remaining balance) and `bucket`
+  (aging codes CUR/L1M/M1_3/M3_6/M6P mapped from the view's `aging_category` literals).
+- 20 facet params (header: dates/due dates/customer/type/source/bu/complete/settlement/
+  aging/terms/search · line: customer type/project/cc/account/memo line/GL dates — ONE
+  combined details-view scan, ANDed on the row so line drills reconcile).
+- 7 GET routes: `trx/filters` (LOVs + counts) · `trx/summary` (KPIs + 8 chart datasets;
+  **aging buckets keep negative credit balances so Σaging = the Outstanding KPI**, the
+  AP aging rule) · `trx/list` + `trx/lines` (paged registers w/ totals + sort) · both
+  `/export` CSVs (10k cap) · `trx/detail/:id` (header + lines; 404 before json_header).
+- Frontend: `views/arTrxDashboard.html` + `viewModels/arTrxDashboard.js` +
+  `services/arTrxService.js`; AP-style facet rail / KPI band (8 tiles) / 8 Chart.js
+  charts (aging ramp, settlement doughnut, monthly trend, top customers by outstanding,
+  by type/source/BU, revenue by cost center) / two-level register (Transactions | Lines)
+  w/ column chooser (`/dct/prefs` key `ar.trxdash.cols`) + CSV/XLSX export + sort /
+  transaction drill window (master + summary card + revenue lines) / chart drill drawer
+  (`.dw-*`, Esc restores then closes, CSV w/ reconciling invoiced+remaining footer) /
+  ⓘ hint popovers / print report. **Build-bar loader**: `.arld-*` overlay (spinner +
+  segmented Filters/Analytics/Register progress bar + %) while the three page loads
+  assemble. Chart palette reads the LIVE `--brand` var (THEME_BRAND_COLOR override), so
+  charts always match the module brand. Dashboard CSS block appended to `css/app.css`
+  (KPI tiles namespaced `.tkpi-*` — the Event-P&L page already owns `.kpi-row`).
+- Browser smoke `tests/trx_dashboard_browser_smoke.py` — **28/28** incl. AR/RTL pass
+  (language restored to EN — the shell persists the choice server-side).
+
+Gotchas found:
+- `TO_NUMBER(:id DEFAULT -1 ON CONVERSION ERROR)` in handler PL/SQL = **uncatchable 555**
+  (ORA-43907: `-1` is a unary-minus *expression*, not a literal). `DEFAULT NULL` is fine.
+- The aging view's date min/max must go through `ddate()` — a raw `MIN(transaction_date)`
+  compares `DD/MM/YYYY` strings lexically and returns nonsense.
+- `AR_TRANSACTION_DETAILS_V` column names are misspelled at source: `COST_CENTER_DISCRIPTION`,
+  `ACCOUNT_DISCRIPTION`, `TRANSACTION_LINE_DESCRIPTI` (truncated) — keep them verbatim.
+- Not every transaction has detail lines (ADG Open Balances / manual sources) — the drill
+  window states this instead of showing an empty table.
 
 ### 2026-07-27 — bulk upload reads REAL Excel dates; tolerant date normaliser (AR 4.10.2, webtier 20260727163519)
 

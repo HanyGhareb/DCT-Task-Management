@@ -222,9 +222,17 @@ ap_per_dist AS (
          SUM(NVL(d.distribution_amount_functi, d.distribution_amount) * i.paid_ratio) AS paid_aed
   FROM prod.ap_invoice_distributions d
   JOIN ap_inv i   ON i.invoice_id = d.invoice_id
-  JOIN pod_key pk ON pk.po_number    = d.po_number
-                 AND pk.po_line      = d.po_line
-                 AND pk.po_dist_line = d.po_distribution_line
+  -- LINE-GRAIN PO RULE (2026-09-06): the invoice line carries a corrected PO
+  -- match; the accounted distributions keep the original. Line wins.
+  LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                    MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                    MAX(po_distribution) AS po_distribution
+             FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+             GROUP BY invoice_id, invoice_line_number) lp
+         ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
+  JOIN pod_key pk ON pk.po_number    = COALESCE(lp.po_number, d.po_number)
+                 AND pk.po_line      = COALESCE(lp.po_line_number, d.po_line)
+                 AND pk.po_dist_line = COALESCE(lp.po_distribution, d.po_distribution_line)
   WHERE NVL(d.reversal_indicator,'N') <> 'Y'
     AND i.cancelled_date IS NULL
     AND NVL(i.validation_status,'x') <> 'Canceled'

@@ -1,0 +1,167 @@
+<title>Ring Period Hint Studies</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#F2F5F3;--surface:#FFFFFF;--ink:#1B2A27;--muted:#5F6E6A;--line:#D8E0DC;--accent:#3F6F5F;--accent-soft:#E4EEE9;--font:'Public Sans',system-ui,sans-serif;--serif:'Fraunces',Georgia,serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0F1614;--surface:#182120;--ink:#E6EDEA;--muted:#98A6A1;--line:#2A3634;--accent:#7CC3A8;--accent-soft:#1E2D28}}
+:root[data-theme="dark"]{--bg:#0F1614;--surface:#182120;--ink:#E6EDEA;--muted:#98A6A1;--line:#2A3634;--accent:#7CC3A8;--accent-soft:#1E2D28}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+.page{max-width:1240px;margin:0 auto;padding:28px 24px 80px}
+.masthead{border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:22px}
+.masthead h1{font-family:var(--serif);font-weight:500;font-size:30px;margin:0 0 6px;letter-spacing:-.01em;text-wrap:balance}
+.masthead p{margin:0;color:var(--muted);max-width:76ch}
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
+.option{margin:0 0 50px}
+.option-head{display:grid;grid-template-columns:auto 1fr;gap:16px 20px;align-items:start;margin-bottom:14px}
+.option-letter{font-family:var(--serif);font-size:44px;font-weight:500;line-height:1;color:var(--accent)}
+.option-head h2{margin:0 0 4px;font-size:20px;font-weight:700}
+.option-head p{margin:0;color:var(--muted);max-width:80ch}
+.option-head ul{margin:8px 0 0;padding-inline-start:18px;color:var(--muted);max-width:80ch}
+.frame-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 12px 30px rgba(15,30,25,.08)}
+.frame{min-width:1120px}
+/* mock band — explicit light colours */
+.mock{--m-bg:#F4F6F5;--m-card:#fff;--m-ink:#1B2A27;--m-muted:#66746F;--m-line:#DCE3DF;--m-brand:#3F6F5F;--m-brand-dark:#2C5044;--m-brand-soft:#E7EFEB;--m-track:rgba(27,42,39,.09);--bud:#3A6EA5;--act:#59468F;--enc:#9A6B1F;--fund:#2E7D5B;--bad:#B3261E;
+  background:var(--m-bg);color:var(--m-ink);padding:22px 22px 600px;font-family:var(--font);font-variant-numeric:tabular-nums;position:relative}
+.note{font-size:11.8px;color:var(--m-muted);margin:0 0 10px}
+.band{display:grid;grid-template-columns:54px 1fr;background:var(--m-card);border:1px solid var(--m-line);border-radius:12px;overflow:visible;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.lab{background:var(--m-brand-soft);border-inline-end:1px solid var(--m-line);display:grid;place-items:center;padding:10px 0;border-radius:12px 0 0 12px}
+.lab span,.lab small{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap}
+.lab span{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--m-brand-dark)}
+.lab small{font-size:10.5px;color:var(--m-muted);margin-top:6px}
+.body{padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr) 1.15fr;gap:14px;align-items:center}
+.ring{display:flex;align-items:center;gap:12px;position:relative;padding:6px 8px;margin:-6px -8px;border-radius:12px}
+.ring.hov{background:var(--m-card);box-shadow:0 8px 24px -10px rgba(27,42,39,.32);transform:translateY(-2px)}
+.rw{position:relative;width:92px;height:92px;flex:none}
+.rw svg{width:92px;height:92px;transform:rotate(-90deg)}
+.rw circle{fill:none;stroke-width:8}
+.rw .tr{stroke:var(--m-track)} .rw .arc{stroke:var(--c);stroke-linecap:round}
+.rin{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700}
+.k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--m-muted);margin-bottom:2px}
+.num{font-family:var(--serif);font-weight:600;font-size:24px;line-height:1.1;color:var(--c)}
+.pct{font-size:11.5px;color:var(--m-muted);margin-top:2px}.pct b{color:var(--m-ink);font-weight:600}
+.r-bud{--c:var(--bud)} .r-act{--c:var(--act)} .r-enc{--c:var(--enc)}
+.fund{--c:#1F5E43;border-radius:12px;padding:12px 14px;min-height:98px;display:flex;flex-direction:column;justify-content:center;gap:2px;background:#E4F1EA;border:1px solid #BFDCCB}
+.fund .k{color:var(--fund)} .fund .num{font-size:28px} .fund .pct{color:var(--m-brand)}
+.ico{font-size:12px;color:var(--c);position:absolute;top:6px;inset-inline-end:8px;opacity:.85}
+/* ---- popover shared ---- */
+.pop{position:absolute;z-index:5;top:calc(100% + 12px);inset-inline-start:0;width:440px;border-radius:12px;padding:12px 14px 12px;font-size:12px;line-height:1.4}
+.pop:before{content:'';position:absolute;bottom:100%;inset-inline-start:44px;border:8px solid transparent}
+.pop h4{margin:0 0 2px;font-size:12.5px;font-weight:700;display:flex;justify-content:space-between;gap:10px}
+.pop .sub{font-size:11px;opacity:.8;margin-bottom:9px}
+.rows{display:grid;grid-template-columns:34px 1fr 74px;gap:5px 10px;align-items:center}
+.rows .m{font-size:11px;font-weight:600;opacity:.85}
+.rows .v{text-align:end;font-weight:600;font-size:11.5px}
+.rows .v small{display:block;font-weight:500;font-size:10px;opacity:.75}
+.bar{height:10px;border-radius:3px;position:relative;overflow:hidden}
+.bar i{position:absolute;top:0;bottom:0;inset-inline-start:0;border-radius:3px}
+.pop .foot{margin-top:9px;font-size:10.5px;opacity:.8;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+/* M1 dark */
+.pop.dark{background:var(--m-brand-dark);color:#fff;box-shadow:0 14px 34px rgba(20,40,32,.35)}
+.pop.dark:before{border-bottom-color:var(--m-brand-dark)}
+.pop.dark h4 b{color:#E8CF7A}
+.pop.dark .bar{background:rgba(255,255,255,.14)}
+.pop.dark .bar i{background:rgba(255,255,255,.45)}
+.pop.dark .rows .cur .bar i{background:#C9A1FF}
+.pop.dark .rows .cur .m,.pop.dark .rows .cur .v{color:#E8CF7A}
+.pop.dark .ref{position:absolute;top:-3px;bottom:-3px;width:2px;background:#E8CF7A}
+/* M2 light */
+.pop.light{background:#fff;color:var(--m-ink);border:1px solid var(--m-line);box-shadow:0 14px 34px rgba(20,40,32,.18)}
+.pop.light:before{border-bottom-color:#fff}
+.pop.light .bar{background:var(--m-track)}
+.pop.light .bar .prev{background:#CFC6E6}
+.pop.light .bar .mov{background:var(--act)}
+.pop.light .rows .v{color:var(--act)}
+.pop.light .rows .v small{color:var(--m-muted)}
+.pop.light .lg{display:flex;gap:12px;font-size:10.5px;color:var(--m-muted);margin-top:8px}
+.pop.light .lg i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-inline-end:5px;vertical-align:0}
+/* M3 rail */
+.rail{display:flex;gap:2px;align-items:flex-end;height:22px;margin-top:6px;width:150px}
+.rail i{flex:1;background:#CFC6E6;border-radius:2px 2px 0 0;min-height:2px}
+.rail i.cur{background:var(--act)}
+.rail-lab{font-size:10px;color:var(--m-muted);margin-top:2px;display:flex;justify-content:space-between;width:150px}
+.pop.rail-pop{width:520px;background:#fff;color:var(--m-ink);border:1px solid var(--m-line);box-shadow:0 14px 34px rgba(20,40,32,.18)}
+.pop.rail-pop:before{border-bottom-color:#fff}
+.pop.rail-pop .rows{grid-template-columns:34px 1fr 70px 70px 60px}
+.pop.rail-pop .rows .h{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--m-muted);font-weight:700;text-align:end}
+.pop.rail-pop .bar{background:var(--m-track)}
+.pop.rail-pop .bar i{background:var(--act)}
+.pop.rail-pop .rows .cur .m{color:var(--act)}
+.pop.rail-pop .ref{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--bud)}
+.pop.rail-pop .rows .v.dim{color:var(--m-muted);font-weight:500}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+<div class="page">
+  <header class="masthead">
+    <div class="eyebrow">GL · Budget Status · advisory (not implemented)</div>
+    <h1>Balance-by-period hint on the chapter rings</h1>
+    <p>Three ways to show a ring's balance by accounting period (YTD, Jan → Sep 2026) as a horizontal bar chart when the reader hovers Budget, Actual, Encumbrance or Fund available. All three use the real Chapter 2 (Opex) totals of the live cube, every business unit. The Actual ring is shown hovered.</p>
+  </header>
+  <section class="option" id="M1">
+    <div class="option-head"><div class="option-letter">1</div><div>
+      <h2>YTD ladder — one bar per period, on the budget scale</h2>
+      <p>The same dark popover family the Financial Performance KPIs use. Each bar is the YTD balance of that period drawn against <b>that period's YTD budget</b> (the track), so the ladder reads as "how much of the budget was consumed by month-end"; the gold rule is the current period, its figure in gold. Ends with the period-over-period movement.</p>
+      <ul><li>Cheapest to read: length = % of budget, the eye walks down the months.</li><li>Works identically for the four measures (Fund's ladder shrinks instead of growing).</li></ul>
+    </div></div>
+    <div class="frame-wrap"><div class="frame"><div class="mock" id="mock1"></div></div></div>
+  </section>
+  <section class="option" id="M2">
+    <div class="option-head"><div class="option-letter">2</div><div>
+      <h2>Monthly movement — what each month added</h2>
+      <p>A light card. Each bar is split into the balance <b>brought forward</b> (pale) and the <b>month's movement</b> (strong): the strong part is the month's spend (YTD − prior YTD), so the run-rate is visible at a glance and a flat month (Sep: +0.1M) stands out. Right column: movement, YTD beneath.</p>
+      <ul><li>Best for the "what happened this month" question executives ask first.</li><li>One scale for the whole ladder (the current YTD = full width).</li></ul>
+    </div></div>
+    <div class="frame-wrap"><div class="frame"><div class="mock" id="mock2"></div></div></div>
+  </section>
+  <section class="option" id="M3">
+    <div class="option-head"><div class="option-letter">3</div><div>
+      <h2>Always-on rail + full ladder on hover</h2>
+      <p>No hover needed to see the shape: a 9-bar <b>rail</b> under each ring's figure shows the period balances at a glance (current period in the measure colour). Hovering the ring or the rail opens the wide ladder with Budget / Balance / % of budget per period and the budget rule per row.</p>
+      <ul><li>Most information, still quiet: the rail is 22 px tall and takes the figure's own colour.</li><li>Also the only one usable on touch screens, where hover does not exist.</li></ul>
+    </div></div>
+    <div class="frame-wrap"><div class="frame"><div class="mock" id="mock3"></div></div></div>
+  </section>
+</div>
+<script id="fd-periods" type="application/json">{"01-2026":{"CH1":{"budget":1150000000,"actual":90012282.55999997,"encumbrance":362400,"fundsAvailable":1059625317.4400003},"CH2":{"budget":4998450000,"actual":4098579.6300000004,"encumbrance":3698582970.6000004,"fundsAvailable":1295768449.77},"CH3":{"budget":1144000000,"actual":0,"encumbrance":193132318.9,"fundsAvailable":950867681.1}},"02-2026":{"CH1":{"budget":1150000000,"actual":176536125.34000003,"encumbrance":10857083.32,"fundsAvailable":962606791.34},"CH2":{"budget":4998450000,"actual":19223746.900000002,"encumbrance":3849764204.0399995,"fundsAvailable":1129462049.06},"CH3":{"budget":2012032100,"actual":91812.5,"encumbrance":1991843027.8600001,"fundsAvailable":20097259.64}},"03-2026":{"CH1":{"budget":1150000000,"actual":284779674.86999995,"encumbrance":11482692.9,"fundsAvailable":853737632.2300001},"CH2":{"budget":4998450000,"actual":422660098.19,"encumbrance":3948305559.609999,"fundsAvailable":627484342.2},"CH3":{"budget":2012032100,"actual":868510891.0400001,"encumbrance":1123192120.42,"fundsAvailable":20329088.54}},"04-2026":{"CH1":{"budget":1156749825,"actual":393389468.19000006,"encumbrance":10866817.440000001,"fundsAvailable":752493539.3699999},"CH2":{"budget":4998450000,"actual":647009964.7199999,"encumbrance":3739184888.2500005,"fundsAvailable":612255147.03},"CH3":{"budget":2012032100,"actual":885436112.2900001,"encumbrance":1094220352.57,"fundsAvailable":32375635.14}},"05-2026":{"CH1":{"budget":1156749825,"actual":490712174.7,"encumbrance":9353301.08,"fundsAvailable":656684349.22},"CH2":{"budget":4990702302,"actual":1175867543.0900002,"encumbrance":2903177248.76,"fundsAvailable":911657510.1500002},"CH3":{"budget":2012032100,"actual":927429039.7099999,"encumbrance":1027978425.15,"fundsAvailable":56624635.13999999}},"06-2026":{"CH1":{"budget":1156749825,"actual":592243750.26,"encumbrance":6402077.6,"fundsAvailable":558103997.1399999},"CH2":{"budget":5009062682,"actual":1814263693.6199996,"encumbrance":2317435510.06,"fundsAvailable":877363478.32},"CH3":{"budget":2056439774,"actual":1042089713.7500001,"encumbrance":980503433.6499999,"fundsAvailable":33846626.599999994}},"07-2026":{"CH1":{"budget":1162005561,"actual":700829186.6899998,"encumbrance":2378202.6599999997,"fundsAvailable":458798171.6500001},"CH2":{"budget":5009062682,"actual":2183502206.0,"encumbrance":2200293187.3899994,"fundsAvailable":625267288.6100001},"CH3":{"budget":2221724774,"actual":1090164950.15,"encumbrance":1096512918.49,"fundsAvailable":35046905.36}},"08-2026":{"CH1":{"budget":1162005561,"actual":795755954.0799997,"encumbrance":549651.46,"fundsAvailable":365699955.4599999},"CH2":{"budget":5094062682,"actual":2397609372.4399996,"encumbrance":1858866023.7300003,"fundsAvailable":837587285.83},"CH3":{"budget":2221724774,"actual":1108644891.9199998,"encumbrance":1058887186.0300001,"fundsAvailable":54192696.05}},"09-2026":{"CH1":{"budget":1162005561,"actual":796339818.1499997,"encumbrance":549651.46,"fundsAvailable":365116091.3899999},"CH2":{"budget":5094062682,"actual":2397662757.4399996,"encumbrance":1866259490.4400003,"fundsAvailable":830140434.1200001},"CH3":{"budget":2221724774,"actual":1108644891.9199998,"encumbrance":1055887186.0300001,"fundsAvailable":57192696.05}}}</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('fd-periods').textContent), PER = Object.keys(D).sort();
+  var CH = 'CH2', cur = PER[PER.length-1];
+  var MON = {'01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun','07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec'};
+  function short(n){ var a=Math.abs(n), s=n<0?'−':''; if(a>=1e9) return s+(a/1e9).toFixed(2)+'B'; if(a>=1e6) return s+(a/1e6).toFixed(1)+'M'; if(a>=1e3) return s+(a/1e3).toFixed(0)+'K'; return s+a.toFixed(0); }
+  function pct(a,b){ return b?Math.round(a/b*100):0; }
+  var C = 2*Math.PI*38;
+  function dash(v,b){ var p=b>0?Math.max(0,Math.min(1,v/b)):0; return (p*C).toFixed(1)+' '+C.toFixed(1); }
+  var t = D[cur][CH];
+  function ring(cls, k, v, sub, hov, extra){
+    return '<div class="ring '+cls+(hov?' hov':'')+'">'+(hov?'<span class="ico">⤢</span>':'')+'<span class="rw"><svg viewBox="0 0 92 92"><circle class="tr" cx="46" cy="46" r="38"/><circle class="arc" cx="46" cy="46" r="38" stroke-dasharray="'+dash(v,t.budget)+'"/></svg><span class="rin">'+pct(v,t.budget)+'%</span></span>'+
+      '<div><div class="k">'+k+'</div><div class="num">'+short(v)+'</div><div class="pct">'+sub+'</div>'+(extra||'')+'</div>'+(hov?POP:'')+'</div>';
+  }
+  var POP = '';
+  function band(hovPop, rails){
+    POP = hovPop;
+    function railFor(key){ if(!rails) return ''; var mx=0; PER.forEach(function(p){ mx=Math.max(mx,D[p][CH][key]); });
+      return '<div class="rail">'+PER.map(function(p){ var v=D[p][CH][key]; return '<i class="'+(p===cur?'cur':'')+'" style="height:'+Math.max(2,Math.round(v/mx*22))+'px" title="'+MON[p.slice(0,2)]+' '+short(v)+'"></i>'; }).join('')+'</div><div class="rail-lab"><span>'+MON[PER[0].slice(0,2)]+'</span><span>'+MON[cur.slice(0,2)]+' YTD</span></div>'; }
+    return '<p class="note">Chapter 2 · Opex · Sep 2026 YTD · All units — the Actual ring is hovered</p><div class="band"><div class="lab"><span>Chapter 2</span><small>Opex</small></div><div class="body">'+
+      ring('r-bud','Budget',t.budget,'YTD · Budget Group 1',false,railFor('budget'))+
+      ring('r-act','Actual',t.actual,'<b>'+pct(t.actual,t.budget)+'%</b> of budget · GL actual',true,railFor('actual'))+
+      ring('r-enc','Encumbrance',t.encumbrance,'<b>'+pct(t.encumbrance,t.budget)+'%</b> of budget · GL encumbrance',false,railFor('encumbrance'))+
+      '<div class="fund"><div class="k">Fund available</div><div class="num">'+short(t.fundsAvailable)+'</div><div class="pct">'+pct(t.fundsAvailable,t.budget)+'% of budget remains</div>'+railFor('fundsAvailable')+'</div></div></div>';
+  }
+  /* M1 */
+  var rows1 = PER.map(function(p){ var d=D[p][CH], w=pct(d.actual,d.budget);
+    return '<div class="m'+(p===cur?' cur':'')+'" style="display:contents"><span class="m">'+MON[p.slice(0,2)]+'</span><span class="bar"><i style="width:'+w+'%"></i>'+(p===cur?'<span class="ref" style="inset-inline-start:'+w+'%"></span>':'')+'</span><span class="v">'+short(d.actual)+'<small>'+w+'% of '+short(d.budget)+'</small></span></div>'; }).join('');
+  var last=D[cur][CH].actual, prev=D[PER[PER.length-2]][CH].actual;
+  var pop1 = '<div class="pop dark"><h4><span>Actual — balance by period</span><b>Chapter 2 · YTD</b></h4><div class="sub">Bar = YTD balance as a share of that period\'s YTD budget · gold = Sep 2026 (selected)</div><div class="rows">'+rows1+'</div><div class="foot"><span>Sep vs Aug: <b>+'+short(last-prev)+'</b> ('+(pct(last-prev,prev))+'%)</span><span>Click the ring to list the GL combinations</span></div></div>';
+  document.getElementById('mock1').innerHTML = band(pop1, false);
+  /* M2 */
+  var mx = D[cur][CH].actual, rows2 = PER.map(function(p,i){ var d=D[p][CH], pv = i? D[PER[i-1]][CH].actual : 0, mov=d.actual-pv;
+    return '<span class="m">'+MON[p.slice(0,2)]+'</span><span class="bar"><i class="prev" style="width:'+(pv/mx*100)+'%"></i><i class="mov" style="inset-inline-start:'+(pv/mx*100)+'%;width:'+(mov/mx*100)+'%"></i></span><span class="v">'+(mov>=0?'+':'')+short(mov)+'<small>'+short(d.actual)+' YTD</small></span>'; }).join('');
+  var pop2 = '<div class="pop light"><h4><span>Actual — monthly movement</span><b style="color:var(--act)">Chapter 2</b></h4><div class="sub">Strong = the month\'s spend · pale = balance brought forward · full width = Sep YTD '+short(mx)+'</div><div class="rows">'+rows2+'</div><div class="lg"><span><i style="background:var(--act)"></i>Month movement</span><span><i style="background:#CFC6E6"></i>Brought forward</span><span>Avg month: <b>'+short(mx/PER.length)+'</b></span></div></div>';
+  document.getElementById('mock2').innerHTML = band(pop2, false);
+  /* M3 */
+  var rows3 = '<span></span><span></span><span class="h">Budget</span><span class="h">Balance</span><span class="h">% used</span>'+PER.map(function(p){ var d=D[p][CH], w=pct(d.actual,d.budget);
+    return '<span class="m'+(p===cur?' cur':'')+'">'+MON[p.slice(0,2)]+'</span><span class="bar"><i style="width:'+w+'%"></i><span class="ref" style="inset-inline-start:100%"></span></span><span class="v dim">'+short(d.budget)+'</span><span class="v">'+short(d.actual)+'</span><span class="v">'+w+'%</span>'; }).join('');
+  var pop3 = '<div class="pop rail-pop"><h4><span>Actual — balance by period (YTD)</span><b style="color:var(--act)">Chapter 2 · Opex</b></h4><div class="sub">Each row = the period\'s YTD actual against its YTD budget (blue rule = 100% of budget)</div><div class="rows">'+rows3+'</div><div class="foot"><span>Budget grew from '+short(D[PER[0]][CH].budget)+' (Jan) to '+short(D[cur][CH].budget)+' (Sep)</span><span>Click to drill</span></div></div>';
+  document.getElementById('mock3').innerHTML = band(pop3, true);
+})();
+</script>

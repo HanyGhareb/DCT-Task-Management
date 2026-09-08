@@ -341,11 +341,17 @@ BEGIN
            TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt, h.funds_status inv_funds, h.voucher_num
       FROM prod.ap_invoice_distributions_v d
       LEFT JOIN prod.ap_invoices_header_v h ON h.invoice_id = d.invoice_id
+      LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                        MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                        MAX(po_schedule) AS po_schedule, MAX(po_distribution) AS po_distribution
+                   FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+                  GROUP BY invoice_id, invoice_line_number) lp
+             ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.invoice_line_number
       LEFT JOIN prod.po_lines pl
-             ON TO_CHAR(pl.order_number) = TO_CHAR(d.po_number) AND pl.line = d.po_line
+             ON TO_CHAR(pl.order_number) = TO_CHAR(COALESCE(lp.po_number, d.po_number)) AND pl.line = COALESCE(lp.po_line_number, d.po_line)
       LEFT JOIN prod.po_distributions pd
-             ON pd.po_line_id = pl.po_line_id AND pd.schedule = d.po_schedule
-            AND pd.distribution_number = d.po_distribution_line
+             ON pd.po_line_id = pl.po_line_id AND pd.schedule = COALESCE(lp.po_schedule, d.po_schedule)
+            AND pd.distribution_number = COALESCE(lp.po_distribution, d.po_distribution_line)
      WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
        AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, '(Multiple sectors)') = 1 OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
        AND ([COLON]chapter IS NULL OR prod.dct_ap_pkg.in_list([COLON]chapter, '(Multiple chapters)') = 1 OR prod.dct_ap_pkg.in_list([COLON]chapter, NVL(d.chapter_name,'Unclassified')) = 1)
@@ -484,11 +490,17 @@ BEGIN
            TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt, h.voucher_num
       FROM prod.ap_invoice_distributions_v d
       LEFT JOIN prod.ap_invoices_header_v h ON h.invoice_id = d.invoice_id
+      LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                        MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                        MAX(po_schedule) AS po_schedule, MAX(po_distribution) AS po_distribution
+                   FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+                  GROUP BY invoice_id, invoice_line_number) lp
+             ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.invoice_line_number
       LEFT JOIN prod.po_lines pl
-             ON TO_CHAR(pl.order_number) = TO_CHAR(d.po_number) AND pl.line = d.po_line
+             ON TO_CHAR(pl.order_number) = TO_CHAR(COALESCE(lp.po_number, d.po_number)) AND pl.line = COALESCE(lp.po_line_number, d.po_line)
       LEFT JOIN prod.po_distributions pd
-             ON pd.po_line_id = pl.po_line_id AND pd.schedule = d.po_schedule
-            AND pd.distribution_number = d.po_distribution_line
+             ON pd.po_line_id = pl.po_line_id AND pd.schedule = COALESCE(lp.po_schedule, d.po_schedule)
+            AND pd.distribution_number = COALESCE(lp.po_distribution, d.po_distribution_line)
      WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
        AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, '(Multiple sectors)') = 1 OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
        AND ([COLON]chapter IS NULL OR prod.dct_ap_pkg.in_list([COLON]chapter, '(Multiple chapters)') = 1 OR prod.dct_ap_pkg.in_list([COLON]chapter, NVL(d.chapter_name,'Unclassified')) = 1)

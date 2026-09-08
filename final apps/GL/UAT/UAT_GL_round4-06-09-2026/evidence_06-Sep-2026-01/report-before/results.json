@@ -1,0 +1,722 @@
+[
+  {
+    "name": "X 2.5 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "3",
+      "actual": "2"
+    }
+  },
+  {
+    "name": "X -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-2",
+      "actual": "-2"
+    }
+  },
+  {
+    "name": "X 2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "2,500",
+      "actual": "2,500"
+    }
+  },
+  {
+    "name": "X -2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-2,500",
+      "actual": "-2,500"
+    }
+  },
+  {
+    "name": "X 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "12,345,678",
+      "actual": "12,345,678"
+    }
+  },
+  {
+    "name": "X 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,000,000,000",
+      "actual": "1,000,000,000"
+    }
+  },
+  {
+    "name": "K 2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0K",
+      "actual": "0K"
+    }
+  },
+  {
+    "name": "K -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0K",
+      "actual": "-0K"
+    }
+  },
+  {
+    "name": "K 2500 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "3K",
+      "actual": "2K"
+    }
+  },
+  {
+    "name": "K -2500 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "-3K",
+      "actual": "-2K"
+    }
+  },
+  {
+    "name": "K 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "12,346K",
+      "actual": "12,346K"
+    }
+  },
+  {
+    "name": "K 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,000,000K",
+      "actual": "1,000,000K"
+    }
+  },
+  {
+    "name": "M 2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.0M",
+      "actual": "0.0M"
+    }
+  },
+  {
+    "name": "M -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.0M",
+      "actual": "-0.0M"
+    }
+  },
+  {
+    "name": "M 2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.0M",
+      "actual": "0.0M"
+    }
+  },
+  {
+    "name": "M -2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.0M",
+      "actual": "-0.0M"
+    }
+  },
+  {
+    "name": "M 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "12.3M",
+      "actual": "12.3M"
+    }
+  },
+  {
+    "name": "M 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1,000.0M",
+      "actual": "1,000.0M"
+    }
+  },
+  {
+    "name": "B 2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.00B",
+      "actual": "0.00B"
+    }
+  },
+  {
+    "name": "B -2.5 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.00B",
+      "actual": "-0.00B"
+    }
+  },
+  {
+    "name": "B 2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.00B",
+      "actual": "0.00B"
+    }
+  },
+  {
+    "name": "B -2500 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "-0.00B",
+      "actual": "-0.00B"
+    }
+  },
+  {
+    "name": "B 12345678 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "0.01B",
+      "actual": "0.01B"
+    }
+  },
+  {
+    "name": "B 1000000000 matches dashboard formatting",
+    "passed": true,
+    "detail": {
+      "expected": "1.00B",
+      "actual": "1.00B"
+    }
+  },
+  {
+    "name": "auto 2.5 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "3",
+      "actual": "2"
+    }
+  },
+  {
+    "name": "auto -2.5 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "-3",
+      "actual": "-2"
+    }
+  },
+  {
+    "name": "auto 2500 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "3K",
+      "actual": "2.5K"
+    }
+  },
+  {
+    "name": "auto -2500 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "-3K",
+      "actual": "-2.5K"
+    }
+  },
+  {
+    "name": "auto 12345678 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "12.3M",
+      "actual": "12.35M"
+    }
+  },
+  {
+    "name": "auto 1000000000 matches dashboard formatting",
+    "passed": false,
+    "detail": {
+      "expected": "1.00B",
+      "actual": "1B"
+    }
+  },
+  {
+    "name": "en tiles long names do not overlap footer",
+    "passed": false,
+    "detail": [
+      {
+        "page": 4,
+        "text": "D23 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3031.53125,
+        "footer": 2839
+      },
+      {
+        "page": 4,
+        "text": "D22 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3031.53125,
+        "footer": 2839
+      },
+      {
+        "page": 4,
+        "text": "D21 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3031.53125,
+        "footer": 2839
+      },
+      {
+        "page": 5,
+        "text": "D14 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3751.53125,
+        "footer": 3559
+      },
+      {
+        "page": 5,
+        "text": "D13 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3751.53125,
+        "footer": 3559
+      },
+      {
+        "page": 5,
+        "text": "D12 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3751.53125,
+        "footer": 3559
+      },
+      {
+        "page": 6,
+        "text": "D05 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 4471.53125,
+        "footer": 4279
+      },
+      {
+        "page": 6,
+        "text": "D04 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 4471.53125,
+        "footer": 4279
+      },
+      {
+        "page": 6,
+        "text": "D03 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 4471.53125,
+        "footer": 4279
+      }
+    ]
+  },
+  {
+    "name": "en rows long names do not overlap footer",
+    "passed": false,
+    "detail": [
+      {
+        "page": 4,
+        "text": "D25 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 763.84375,
+        "footer": 679
+      },
+      {
+        "page": 4,
+        "text": "D24 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 874.8125,
+        "footer": 679
+      },
+      {
+        "page": 4,
+        "text": "D23 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 985.78125,
+        "footer": 679
+      },
+      {
+        "page": 4,
+        "text": "D22 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1096.75,
+        "footer": 679
+      },
+      {
+        "page": 5,
+        "text": "D17 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1483.84375,
+        "footer": 1399
+      },
+      {
+        "page": 5,
+        "text": "D16 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1594.8125,
+        "footer": 1399
+      },
+      {
+        "page": 5,
+        "text": "D15 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1705.78125,
+        "footer": 1399
+      },
+      {
+        "page": 5,
+        "text": "D14 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1816.75,
+        "footer": 1399
+      },
+      {
+        "page": 6,
+        "text": "D09 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2203.84375,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D08 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2314.8125,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D07 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2425.78125,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D06 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2536.75,
+        "footer": 2119
+      },
+      {
+        "page": 7,
+        "text": "D01 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2923.84375,
+        "footer": 2839
+      },
+      {
+        "page": 7,
+        "text": "D00 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3034.8125,
+        "footer": 2839
+      }
+    ]
+  },
+  {
+    "name": "en map long names do not overlap footer",
+    "passed": false,
+    "detail": [
+      {
+        "page": 6,
+        "text": "D25 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2203.84375,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D24 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2314.8125,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D23 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2425.78125,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D22 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2536.75,
+        "footer": 2119
+      },
+      {
+        "page": 7,
+        "text": "D17 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2923.84375,
+        "footer": 2839
+      },
+      {
+        "page": 7,
+        "text": "D16 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3034.8125,
+        "footer": 2839
+      },
+      {
+        "page": 7,
+        "text": "D15 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3145.78125,
+        "footer": 2839
+      },
+      {
+        "page": 7,
+        "text": "D14 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3256.75,
+        "footer": 2839
+      },
+      {
+        "page": 8,
+        "text": "D09 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3643.84375,
+        "footer": 3559
+      },
+      {
+        "page": 8,
+        "text": "D08 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3754.8125,
+        "footer": 3559
+      },
+      {
+        "page": 8,
+        "text": "D07 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3865.78125,
+        "footer": 3559
+      },
+      {
+        "page": 8,
+        "text": "D06 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3976.75,
+        "footer": 3559
+      },
+      {
+        "page": 9,
+        "text": "D01 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 4363.84375,
+        "footer": 4279
+      },
+      {
+        "page": 9,
+        "text": "D00 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 4474.8125,
+        "footer": 4279
+      }
+    ]
+  },
+  {
+    "name": "ar tiles long names do not overlap footer",
+    "passed": false,
+    "detail": [
+      {
+        "page": 4,
+        "text": "D23 Financial Planning and Strategy Coordination Financial P",
+        "bottom": -612.46875,
+        "footer": -761
+      },
+      {
+        "page": 4,
+        "text": "D22 Financial Planning and Strategy Coordination Financial P",
+        "bottom": -612.46875,
+        "footer": -761
+      },
+      {
+        "page": 4,
+        "text": "D21 Financial Planning and Strategy Coordination Financial P",
+        "bottom": -612.46875,
+        "footer": -761
+      },
+      {
+        "page": 5,
+        "text": "D14 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 107.53125,
+        "footer": -41
+      },
+      {
+        "page": 5,
+        "text": "D13 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 107.53125,
+        "footer": -41
+      },
+      {
+        "page": 5,
+        "text": "D12 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 107.53125,
+        "footer": -41
+      },
+      {
+        "page": 6,
+        "text": "D05 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 827.53125,
+        "footer": 679
+      },
+      {
+        "page": 6,
+        "text": "D04 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 827.53125,
+        "footer": 679
+      },
+      {
+        "page": 6,
+        "text": "D03 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 827.53125,
+        "footer": 679
+      }
+    ]
+  },
+  {
+    "name": "ar rows long names do not overlap footer",
+    "passed": false,
+    "detail": [
+      {
+        "page": 4,
+        "text": "D25 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 764.84375,
+        "footer": 679
+      },
+      {
+        "page": 4,
+        "text": "D24 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 875.8125,
+        "footer": 679
+      },
+      {
+        "page": 4,
+        "text": "D23 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 986.78125,
+        "footer": 679
+      },
+      {
+        "page": 4,
+        "text": "D22 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1097.75,
+        "footer": 679
+      },
+      {
+        "page": 5,
+        "text": "D17 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1484.84375,
+        "footer": 1399
+      },
+      {
+        "page": 5,
+        "text": "D16 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1595.8125,
+        "footer": 1399
+      },
+      {
+        "page": 5,
+        "text": "D15 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1706.78125,
+        "footer": 1399
+      },
+      {
+        "page": 5,
+        "text": "D14 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 1817.75,
+        "footer": 1399
+      },
+      {
+        "page": 6,
+        "text": "D09 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2204.84375,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D08 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2315.8125,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D07 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2426.78125,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D06 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2537.75,
+        "footer": 2119
+      },
+      {
+        "page": 7,
+        "text": "D01 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2924.84375,
+        "footer": 2839
+      },
+      {
+        "page": 7,
+        "text": "D00 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3035.8125,
+        "footer": 2839
+      }
+    ]
+  },
+  {
+    "name": "ar map long names do not overlap footer",
+    "passed": false,
+    "detail": [
+      {
+        "page": 6,
+        "text": "D25 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2204.84375,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D24 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2315.8125,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D23 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2426.78125,
+        "footer": 2119
+      },
+      {
+        "page": 6,
+        "text": "D22 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2537.75,
+        "footer": 2119
+      },
+      {
+        "page": 7,
+        "text": "D17 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 2924.84375,
+        "footer": 2839
+      },
+      {
+        "page": 7,
+        "text": "D16 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3035.8125,
+        "footer": 2839
+      },
+      {
+        "page": 7,
+        "text": "D15 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3146.78125,
+        "footer": 2839
+      },
+      {
+        "page": 7,
+        "text": "D14 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3257.75,
+        "footer": 2839
+      },
+      {
+        "page": 8,
+        "text": "D09 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3644.84375,
+        "footer": 3559
+      },
+      {
+        "page": 8,
+        "text": "D08 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3755.8125,
+        "footer": 3559
+      },
+      {
+        "page": 8,
+        "text": "D07 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3866.78125,
+        "footer": 3559
+      },
+      {
+        "page": 8,
+        "text": "D06 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 3977.75,
+        "footer": 3559
+      },
+      {
+        "page": 9,
+        "text": "D01 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 4364.84375,
+        "footer": 4279
+      },
+      {
+        "page": 9,
+        "text": "D00 Financial Planning and Strategy Coordination Financial P",
+        "bottom": 4475.8125,
+        "footer": 4279
+      }
+    ]
+  }
+]

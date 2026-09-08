@@ -133,7 +133,7 @@
         <td><span class="pill {% if r.status in ('PROCESSED','APPROVED','INVOICED') %}p-ok{% elif r.status in ('REJECTED','CANCELLED') %}p-err{% elif r.status == 'DRAFT' %}p-mut{% else %}p-warn{% endif %}">{{ r.status }}</span></td>
         <td class="num">{{ r.lines }}</td>
         <td class="num">{{ money(r.lines_total) }}</td>
-        <td>{{ r.invoice_number or '&mdash;' }}</td>
+        <td>{{ r.invoice_number or '—' }}</td>
         <td>{{ (r.created_by or '')|string|truncate(22) }}</td>
         <td>{{ (r.processed_by or '')|string|truncate(22) }}</td>
       </tr>
@@ -157,10 +157,10 @@
         <td>{{ r.payment_number }}</td>
         <td class="num">{{ r.line_num }}</td>
         <td>{{ r.coding_basis }}</td>
-        <td>{{ r.project_number or '&mdash;' }}{% if r.project_name %}<br><span style="color:#7B8794">{{ r.project_name|string|truncate(28) }}</span>{% endif %}</td>
-        <td>{{ r.task_number or '&mdash;' }}</td>
+        <td>{{ r.project_number or '—' }}{% if r.project_name %}<br><span style="color:#7B8794">{{ r.project_name|string|truncate(28) }}</span>{% endif %}</td>
+        <td>{{ r.task_number or '—' }}</td>
         <td>{{ (r.expenditure_type or '')|string|truncate(38) }}</td>
-        <td>{{ r.gl_combination or '&mdash;' }}</td>
+        <td>{{ r.gl_combination or '—' }}</td>
         <td class="num">{{ money(r.amount) }}</td>
         <td class="num">{{ money(r.amount_aed) }}</td>
         <td>{{ (r.comments or '')|string|truncate(28) }}</td>

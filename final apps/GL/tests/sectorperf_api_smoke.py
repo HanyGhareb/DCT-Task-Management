@@ -214,10 +214,15 @@ def main():
 
     # ---- sample-data controls -------------------------------------------
     sm = api(tok, '/sectorperf/sample?year=' + YEAR)
-    for key in ('active', 'batches', 'expenditureRows', 'revenueRows', 'canPurge'):
+    # 'batches' is omitted when NULL (APEX_JSON drops NULL keys -- platform
+    # convention, clients bind $data.field), so it is asserted only when active
+    for key in ('active', 'expenditureRows', 'revenueRows', 'canPurge'):
         ck('sample status carries ' + key, key in sm)
+    ck('sample status carries batches when active',
+       sm.get('active') != 'Y' or 'batches' in sm)
     ck('sample rows are all batch-stamped when active',
-       sm['active'] != 'Y' or sm['batches'].startswith('SAMPLE:'), sm['batches'])
+       sm.get('active') != 'Y' or sm.get('batches', '').startswith('SAMPLE:'),
+       sm.get('batches'))
 
     # ---- errors ----------------------------------------------------------
     ck('overview without year is 400', status(tok, '/sectorperf') == 400)

@@ -1,0 +1,762 @@
+[
+  [
+    "no JS errors on load",
+    true
+  ],
+  [
+    "Budget Status is a General Ledger sub-tab",
+    true
+  ],
+  [
+    "page is visible",
+    true
+  ],
+  [
+    "region order = Chapters FIRST, then Sectors, then Departments (v1.110.0)",
+    true
+  ],
+  [
+    "no JS errors after load",
+    true
+  ],
+  [
+    "title",
+    true
+  ],
+  [
+    "period defaulted (MM-YYYY)",
+    true
+  ],
+  [
+    "year select = period year",
+    true
+  ],
+  [
+    "12 period options",
+    true
+  ],
+  [
+    "business-unit toggle = All + 4 entities",
+    true
+  ],
+  [
+    "All entities active by default",
+    true
+  ],
+  [
+    "sector cards rendered (>= 10)",
+    true
+  ],
+  [
+    "card shows sector name",
+    true
+  ],
+  [
+    "card shows budget + % used",
+    true
+  ],
+  [
+    "card icon is an inline SVG",
+    true
+  ],
+  [
+    "cards sorted budget desc",
+    true
+  ],
+  [
+    "summary = Showing all sectors",
+    true
+  ],
+  [
+    "no Clear button before a pick",
+    true
+  ],
+  [
+    "5 chapter bands (Chapters 4 + 5 since v1.112.0)",
+    true
+  ],
+  [
+    "Total band is the FIRST band",
+    true
+  ],
+  [
+    "Total band label = Total / Chapters 1-3",
+    true
+  ],
+  [
+    "Total band = 3 rings + Fund square",
+    true
+  ],
+  [
+    "Total band figures = sum of the chapter bands (all 4 measures)",
+    true
+  ],
+  [
+    "Total band == fdTotals (the foot grand total)",
+    true
+  ],
+  [
+    "Total Actual drill (no chapter predicate) == Total band Actual",
+    true
+  ],
+  [
+    "Total drill title names the Total band",
+    true
+  ],
+  [
+    "Show Summary defaults unchecked",
+    true
+  ],
+  [
+    "Unchecked ring has no formatted summary",
+    true
+  ],
+  [
+    "Total band hover ladder opens (all chapters)",
+    true
+  ],
+  [
+    "bands = Chapter 1..5",
+    true
+  ],
+  [
+    "alt names Payroll/Opex/Capex/Subsidy/Aids & Grants",
+    true
+  ],
+  [
+    "Chapter 4 band carries a budget (bg 3 admitted)",
+    true
+  ],
+  [
+    "Total band alt = Chapters 1-5",
+    true
+  ],
+  [
+    "Budget sub-label = each chapter's own budget group (1/1/1/3/5)",
+    true
+  ],
+  [
+    "Total band budget sub-label lists Budget Groups 1 / 3 / 5",
+    true
+  ],
+  [
+    "band has 3 rings + fund square",
+    true
+  ],
+  [
+    "ring arcs carry stroke-dasharray",
+    true
+  ],
+  [
+    "budget ring = 100%",
+    true
+  ],
+  [
+    "actual ring shows a %",
+    true
+  ],
+  [
+    "fund square shows \"% of budget remains\" or over budget",
+    true
+  ],
+  [
+    "sum(bands.budget) == fdTotals().budget",
+    true
+  ],
+  [
+    "fund = budget - actual - encumbrance per band",
+    true
+  ],
+  [
+    "first card selected (.on)",
+    true
+  ],
+  [
+    "aria-pressed=true",
+    true
+  ],
+  [
+    "summary = 1 selected",
+    true
+  ],
+  [
+    "Clear button appears",
+    true
+  ],
+  [
+    "tiles: picked sector shows as a chip",
+    true
+  ],
+  [
+    "other cards dimmed",
+    true
+  ],
+  [
+    "Chapter 2 budget narrowed to the sector",
+    true
+  ],
+  [
+    "bands == the picked sector rows",
+    true
+  ],
+  [
+    "second card adds to the selection (any-of)",
+    true
+  ],
+  [
+    "two sectors >= one sector",
+    true
+  ],
+  [
+    "clicking a selected card unselects it",
+    true
+  ],
+  [
+    "Clear restores all sectors",
+    true
+  ],
+  [
+    "Departments region opens on the top 18 (tiles)",
+    true
+  ],
+  [
+    "\"Show all N departments\" button",
+    true
+  ],
+  [
+    "Show all expands to every department (>= 30)",
+    true
+  ],
+  [
+    "button flips to \"Show top 18 only\"",
+    true
+  ],
+  [
+    "Departments header + hint",
+    true
+  ],
+  [
+    "dept card shows code \u00b7 sector + name",
+    true
+  ],
+  [
+    "dept cards sorted budget desc",
+    true
+  ],
+  [
+    "dept summary = Showing a of b",
+    true
+  ],
+  [
+    "sector pick narrows the department cards",
+    true
+  ],
+  [
+    "all remaining depts belong to the picked sector",
+    true
+  ],
+  [
+    "dept card selected (.on)",
+    true
+  ],
+  [
+    "dept summary = 1 selected",
+    true
+  ],
+  [
+    "Clear button for departments",
+    true
+  ],
+  [
+    "Chapter 2 budget narrowed to the department",
+    true
+  ],
+  [
+    "bands == the picked department rows",
+    true
+  ],
+  [
+    "dept-filtered drill total == band Actual",
+    true
+  ],
+  [
+    "drill subtitle names the department",
+    true
+  ],
+  [
+    "drill rows all that cost centre",
+    true
+  ],
+  [
+    "second dept adds (any-of)",
+    true
+  ],
+  [
+    "text filter narrows cards",
+    true
+  ],
+  [
+    "text filter leaves the figures alone",
+    true
+  ],
+  [
+    "deselecting the sector keeps depts of the (now all) sectors",
+    true
+  ],
+  [
+    "Clear departments restores all",
+    true
+  ],
+  [
+    "dept pick outside the picked sector is dropped",
+    true
+  ],
+  [
+    "no JS errors after department interactions",
+    true
+  ],
+  [
+    "MSS toggle active",
+    true
+  ],
+  [
+    "MSS narrows the cards",
+    true
+  ],
+  [
+    "MSS Chapter 2 budget < all units",
+    true
+  ],
+  [
+    "MSS rows only",
+    true
+  ],
+  [
+    "search summary hidden while region open",
+    true
+  ],
+  [
+    "All entities restores",
+    true
+  ],
+  [
+    "footnote states the basis",
+    true
+  ],
+  [
+    "footnote grand total",
+    true
+  ],
+  [
+    "Figures in = M applies to the band figures",
+    true
+  ],
+  [
+    "figures are drillable (role=button)",
+    true
+  ],
+  [
+    "drill title = Chapter 2 \u00b7 Opex \u2014 Budget",
+    true
+  ],
+  [
+    "drill subtitle carries period + scope",
+    true
+  ],
+  [
+    "drill rows > 0",
+    true
+  ],
+  [
+    "drill total == Chapter 2 budget ring figure",
+    true
+  ],
+  [
+    "drill columns = combination + segments + 4 measures",
+    true
+  ],
+  [
+    "drawer visible",
+    true
+  ],
+  [
+    "first cell is a 10-segment combination",
+    true
+  ],
+  [
+    "hover shows the styled segment popover",
+    true
+  ],
+  [
+    "popover lists 10 segments",
+    true
+  ],
+  [
+    "popover carries segment descriptions",
+    true
+  ],
+  [
+    "popover element rendered",
+    true
+  ],
+  [
+    "drawer closes + popover hidden",
+    true
+  ],
+  [
+    "filtered drill total == filtered Fund Available square",
+    true
+  ],
+  [
+    "filtered drill subtitle names the sector",
+    true
+  ],
+  [
+    "filtered drill rows all that sector",
+    true
+  ],
+  [
+    "no JS errors after drills",
+    true
+  ],
+  [
+    "collapsed search shows the criteria summary",
+    true
+  ],
+  [
+    "year series loaded with the page (periods[] + series[])",
+    true
+  ],
+  [
+    "hover Actual ring -> movement popover visible",
+    true
+  ],
+  [
+    "popover stays glued to the ring while the page scrolls",
+    true
+  ],
+  [
+    "one bar per loaded period up to the selected one",
+    true
+  ],
+  [
+    "popover title + chapter",
+    true
+  ],
+  [
+    "last row YTD == the ring figure (band Actual)",
+    true
+  ],
+  [
+    "movement = YTD \u2212 previous YTD, brought-forward + movement bars",
+    true
+  ],
+  [
+    "legend + average month",
+    true
+  ],
+  [
+    "popover colour follows the measure",
+    true
+  ],
+  [
+    "leaving the ring hides the popover",
+    true
+  ],
+  [
+    "Fund square has its own ladder",
+    true
+  ],
+  [
+    "switching to 01-2026 inside the loaded year fires NO request",
+    true
+  ],
+  [
+    "bands re-derived from the series for that period",
+    true
+  ],
+  [
+    "sector cards follow the period",
+    true
+  ],
+  [
+    "server drill for the derived period == the derived band figure",
+    true
+  ],
+  [
+    "back to the anchor period, still no request",
+    true
+  ],
+  [
+    "hover a sector tile -> popover, Actual by default",
+    true
+  ],
+  [
+    "popover names the sector",
+    true
+  ],
+  [
+    "4 measure chips, Actual lit",
+    true
+  ],
+  [
+    "sector ladder: one bar per period, last row == the tile Actual",
+    true
+  ],
+  [
+    "no native title tooltip competes with the popover",
+    true
+  ],
+  [
+    "hover the budget figure -> Budget ladder (same anchor)",
+    true
+  ],
+  [
+    "hover the free pill -> Fund ladder",
+    true
+  ],
+  [
+    "card ladders fire NO request",
+    true
+  ],
+  [
+    "leaving the tile hides the popover",
+    true
+  ],
+  [
+    "hover a department tile -> its own ladder (code \u00b7 name)",
+    true
+  ],
+  [
+    "department ladder honours the sector pick: last row == the tile Actual",
+    true
+  ],
+  [
+    "hover the committed figure -> Encumbrance ladder",
+    true
+  ],
+  [
+    "sector un-picked, popover hidden",
+    true
+  ],
+  [
+    "Presentation = 3 radio option cards in the Search region",
+    true
+  ],
+  [
+    "3 presentations offered",
+    true
+  ],
+  [
+    "Entity label on the segmented toggle",
+    true
+  ],
+  [
+    "presentation = vertical stack",
+    true
+  ],
+  [
+    "presentation pinned to the end side of the Search grid",
+    true
+  ],
+  [
+    "default = tiles (card .on + radio checked)",
+    true
+  ],
+  [
+    "formatted hint follows the picked presentation (tiles)",
+    true
+  ],
+  [
+    "hint carries the Actual / Encumbrance / Fund legend",
+    true
+  ],
+  [
+    "coloured hint strips on both regions",
+    true
+  ],
+  [
+    "strips say sorted by budget amount + top 18",
+    true
+  ],
+  [
+    "strips carry the card-hover hint",
+    true
+  ],
+  [
+    "sort control on BOTH regions (tiles)",
+    true
+  ],
+  [
+    "sectors sorted by budget desc (default)",
+    true
+  ],
+  [
+    "sectors sort by name re-orders the cards",
+    true
+  ],
+  [
+    "sectors back to budget order",
+    true
+  ],
+  [
+    "tiles show composition bars + state pills",
+    true
+  ],
+  [
+    "tile big figure is compact under Exact",
+    true
+  ],
+  [
+    "sort by % used re-orders the tiles",
+    true
+  ],
+  [
+    "rows: radio card selected + hint switches to the ledger text",
+    true
+  ],
+  [
+    "rows: sort controls stay on both regions",
+    true
+  ],
+  [
+    "rows: one ledger row per sector",
+    true
+  ],
+  [
+    "rows: ledger header",
+    true
+  ],
+  [
+    "rows: largest budget bar = 100% (shared scale)",
+    true
+  ],
+  [
+    "rows: second bar proportional to its budget",
+    true
+  ],
+  [
+    "rows: four figure columns per row",
+    true
+  ],
+  [
+    "rows: hovering the Encumbrance cell -> that sector's Encumbrance ladder",
+    true
+  ],
+  [
+    "rows: click selects (.on) and narrows the bands",
+    true
+  ],
+  [
+    "rows: departments ranked, top 12 with Show all",
+    true
+  ],
+  [
+    "map: hint switches to the map text + no sort controls (area = budget)",
+    true
+  ],
+  [
+    "map: one tile per sector",
+    true
+  ],
+  [
+    "map: hovering a sector tile -> its ladder (full name in the popover)",
+    true
+  ],
+  [
+    "map: measured from the real region width",
+    true
+  ],
+  [
+    "map: tile area proportional to budget",
+    true
+  ],
+  [
+    "map: tiles fill the region (no overflow)",
+    true
+  ],
+  [
+    "map: strip legend = the 5 heat swatches + area/colour tip",
+    true
+  ],
+  [
+    "map: departments nested per sector group",
+    true
+  ],
+  [
+    "map: sector tile selected (.on) + others dimmed",
+    true
+  ],
+  [
+    "map: department map re-drawn to the picked sector",
+    true
+  ],
+  [
+    "map: department tile pick narrows the bands to it",
+    true
+  ],
+  [
+    "map: drill under the map scope reconciles to the band",
+    true
+  ],
+  [
+    "choice saved to gl_fd_ui.layout",
+    true
+  ],
+  [
+    "reload reopens on the remembered presentation",
+    true
+  ],
+  [
+    "no JS errors across the three presentations",
+    true
+  ],
+  [
+    "back to tiles",
+    true
+  ],
+  [
+    "dir=rtl",
+    true
+  ],
+  [
+    "Arabic title",
+    true
+  ],
+  [
+    "Arabic nav label",
+    true
+  ],
+  [
+    "Arabic chapter labels",
+    true
+  ],
+  [
+    "Arabic fund label",
+    true
+  ],
+  [
+    "Arabic departments header",
+    true
+  ],
+  [
+    "Arabic presentation options",
+    true
+  ],
+  [
+    "Arabic hint strip",
+    true
+  ],
+  [
+    "Arabic ledger header (rows, RTL)",
+    true
+  ],
+  [
+    "no JS errors in Arabic",
+    true
+  ],
+  [
+    "EN restored",
+    true
+  ]
+]

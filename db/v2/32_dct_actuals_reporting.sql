@@ -124,7 +124,20 @@ FROM (
 ) b
 )
 WHERE cc_string IS NULL
-   OR NVL(REGEXP_SUBSTR(cc_string, '[^.]+', 1, 5), 'x') <> '452201';
+   OR (NVL(REGEXP_SUBSTR(cc_string, '[^.]+', 1, 5), 'x') <> '452201'
+       -- PLATFORM RULE 2026-09-06 (user): THE FUNDING SIDE IS NEVER BUDGET.
+       -- Fusion budgetary control books every chapter budget TWICE: once on the
+       -- 4xxxxx expense combination (what a department may spend) and once on a
+       -- 3270xx Treasury-contribution / inter-entity-transfer account (where the
+       -- money comes from -- 8.85B in 2026 = the expense budget mirrored, Actual
+       -- always 0). Counting both doubles the budget, so the WHOLE 3270xx node
+       -- (327000 'Inter-entity transfers incl. receipts from Central Treasury':
+       -- 327011-18 chapter contributions, 327021 TSA transfers, 327031-35,
+       -- 327050-52) is dropped HERE at the base so no consumer can display it.
+       -- EBS twin: DCT_EBS_BALANCE_MAPPED_V (db/v2/110, on the mapped Fusion
+       -- account). Expense-only scoping of the budget-vs-actual facts lives in
+       -- db/v2/34 + the DCT_BUDGET_ACTUAL_V below. Read-layer only, reversible.
+       AND NVL(REGEXP_SUBSTR(cc_string, '[^.]+', 1, 5), 'x') NOT LIKE '3270%');
 
 PROMPT GL_BALANCES_CC created (canonical combination string).
 
@@ -177,16 +190,19 @@ SELECT
   l.expenditure_type                                                    AS expenditure_type,
   d.distribution_description                                            AS description
 FROM prod.ap_invoice_distributions d
-LEFT JOIN ap_po_match           pm  ON pm.po_number = d.po_number
-                                   AND pm.po_line   = d.po_line
-                                   AND pm.po_dist_line = d.po_distribution_line
+LEFT JOIN prod.ap_invoice_lines l   ON l.invoice_id = d.invoice_id
+                                   AND l.invoice_line_number = d.line_number
+-- LINE-GRAIN PO RULE (2026-09-06): a corrected PO match lives on the invoice
+-- LINE; the accounted distributions keep the original PO. Line wins, dist is
+-- the fallback -- otherwise the PO charge account comes from the WRONG PO.
+LEFT JOIN ap_po_match           pm  ON pm.po_number = COALESCE(l.po_number, d.po_number)
+                                   AND pm.po_line   = COALESCE(l.po_line_number, d.po_line)
+                                   AND pm.po_dist_line = COALESCE(l.po_distribution, d.po_distribution_line)
 LEFT JOIN prod.dct_gl_coa_snap  cid ON cid.cc_id = d.cc_id
 LEFT JOIN prod.dct_gl_coa_snap  coa ON coa.cc_string = COALESCE(pm.charge_account, cid.cc_string)
 LEFT JOIN prod.ap_invoices      i   ON i.invoice_id = d.invoice_id
 -- beneficiary-aware vendor (db/v2/51): generic BENEFICIARY -> beneficiary name
 LEFT JOIN prod.dct_ap_supplier_eff_v se ON se.invoice_id = d.invoice_id
-LEFT JOIN prod.ap_invoice_lines l   ON l.invoice_id = d.invoice_id
-                                   AND l.invoice_line_number = d.line_number
 LEFT JOIN proj                  pjn ON TO_CHAR(pjn.project_number) = TO_CHAR(l.project_number)
 LEFT JOIN task_num              tkn ON tkn.task_number   = l.task_number
 WHERE NVL(d.reversal_indicator,'N') <> 'Y'   -- exclude reversed/voided AP distributions
@@ -311,9 +327,17 @@ ap_eff AS (
   SELECT COALESCE(pm.charge_account, cid.cc_string) AS cc_string,
          NVL(d.distribution_amount_functi, d.distribution_amount) AS amount
   FROM prod.ap_invoice_distributions d
-  LEFT JOIN ap_po_match pm  ON pm.po_number = d.po_number
-                           AND pm.po_line   = d.po_line
-                           AND pm.po_dist_line = d.po_distribution_line
+  -- LINE-GRAIN PO RULE (2026-09-06): the invoice line is the authoritative
+  -- PO reference (a corrected match updates the line, not the distributions)
+  LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                    MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                    MAX(po_distribution) AS po_distribution
+             FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+             GROUP BY invoice_id, invoice_line_number) lp
+         ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
+  LEFT JOIN ap_po_match pm  ON pm.po_number = COALESCE(lp.po_number, d.po_number)
+                           AND pm.po_line   = COALESCE(lp.po_line_number, d.po_line)
+                           AND pm.po_dist_line = COALESCE(lp.po_distribution, d.po_distribution_line)
   LEFT JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
   WHERE NVL(d.reversal_indicator,'N') <> 'Y'   -- exclude reversed/voided AP distributions
 ),
@@ -383,6 +407,13 @@ LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = s.cc_string
 LEFT JOIN gl_agg  gl  ON gl.cc_string  = s.cc_string
 LEFT JOIN po_agg  po  ON po.cc_string  = s.cc_string
 LEFT JOIN grn_agg grn ON grn.cc_string = s.cc_string
-LEFT JOIN ap_agg  ap  ON ap.cc_string  = s.cc_string;
+LEFT JOIN ap_agg  ap  ON ap.cc_string  = s.cc_string
+-- PLATFORM RULE 2026-09-06 (user): BUDGET = THE EXPENSE SIDE ONLY. Every
+-- budget-vs-actual figure counts 4xxxxx expense accounts alone -- the funding
+-- side (3270xx Treasury contributions, already dropped in GL_BALANCES_CC) and
+-- revenue budgets (321xxx licences, 324xxx entrance fees ... 656M in 2026,
+-- Actual always 0 in budgetary control) are never a budget figure here.
+-- Revenue surfaces read GL_BALANCES_CC directly (db/v2/123 + GL/db/24).
+WHERE NVL(SUBSTR(REGEXP_SUBSTR(s.cc_string, '[^.]+', 1, 5), 1, 1), '4') = '4';
 
 PROMPT DCT_BUDGET_ACTUAL_V created (AED; budget vs encumbrance vs committed vs received vs invoiced).

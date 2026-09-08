@@ -1,0 +1,96 @@
+[
+  {
+    "run_id": 1029,
+    "params": {
+      "period": "09-2026",
+      "format": "PDF",
+      "entity": "ALL",
+      "presentation": "tiles",
+      "unit": "X",
+      "lang": "en",
+      "sector_sort": "budget",
+      "department_sort": "budget"
+    },
+    "done": true,
+    "pages": 15
+  },
+  {
+    "run_id": 1030,
+    "params": {
+      "period": "09-2026",
+      "format": "PPTX",
+      "entity": "ALL",
+      "presentation": "tiles",
+      "unit": "X",
+      "lang": "en",
+      "sector_sort": "budget",
+      "department_sort": "budget"
+    },
+    "done": true,
+    "pages": 15
+  },
+  {
+    "run_id": 1031,
+    "params": {
+      "period": "09-2026",
+      "format": "PDF",
+      "entity": "DCT",
+      "presentation": "rows",
+      "unit": "X",
+      "lang": "en",
+      "sector_sort": "budget",
+      "department_sort": "budget",
+      "sectors": "ALC",
+      "departments": "4510195"
+    },
+    "done": true,
+    "pages": 6
+  },
+  {
+    "run_id": 1032,
+    "params": {
+      "period": "09-2026",
+      "format": "PPTX",
+      "entity": "DCT",
+      "presentation": "rows",
+      "unit": "X",
+      "lang": "en",
+      "sector_sort": "budget",
+      "department_sort": "budget",
+      "sectors": "ALC",
+      "departments": "4510195"
+    },
+    "done": true,
+    "pages": 6
+  },
+  {
+    "run_id": 1033,
+    "params": {
+      "period": "09-2026",
+      "format": "PDF",
+      "entity": "MUSEUMS",
+      "presentation": "map",
+      "unit": "X",
+      "lang": "en",
+      "sector_sort": "budget",
+      "department_sort": "budget"
+    },
+    "done": true,
+    "pages": 10
+  },
+  {
+    "run_id": 1034,
+    "params": {
+      "period": "09-2026",
+      "format": "PPTX",
+      "entity": "MUSEUMS",
+      "presentation": "map",
+      "unit": "X",
+      "lang": "ar",
+      "sector_sort": "budget",
+      "department_sort": "budget"
+    },
+    "done": true,
+    "pages": 10
+  }
+]

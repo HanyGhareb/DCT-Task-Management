@@ -156,3 +156,11 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 ## Shared shell — Cross-UI SSO hand-off (2026-07-06)
 
 When `FEATURE_SSO_HANDOFF` = Y (delivered by `GET /dct/boot`), the shared shell (`final apps/shared/js/shell.js`) injects an **APEX** button into the topbar: it calls `POST /dct/sso/code` (shared `/dct/` module, db/v2/41b) to issue a one-time code, then opens APEX App 200 already signed-in in a new tab. No app-local code — the button arrives via `shell.initRegionTheme`'s existing boot fetch.
+
+## Report storage and cleanup (`workers`, v1.16.0)
+- `loadStorage()` — reads the storage snapshot at entry and manual refresh, independently of worker polling; errors retain the previous snapshot with an explicit warning.
+- `sizeText(bytes)` — formats storage in B/KB/MB/GB/TB; unavailable allocated space displays a dash. `cleanupBadge(status)` — audit status styling.
+- `storage`, `storageLoading`, `storageError` — retained-file totals, allocated space, current retention, eligible files, retained additions in 7/30 days, largest 10 reports and last 20 cleanup audits; bilingual and responsive.
+- `refresh()` refreshes both workers and storage; existing scheduler controls manage the single retained ADMIN maintenance job.
+- Service: `rptService.getStorage()` → **GET `/rpt/storage`**, SYS_ADMIN only. Additive handler: `reporting/db/44_rpt_storage_ords.sql`; re-run after 04.
+- Data: `PROD.DCT_RPT_OUTPUT` / `DCT_RPT_RUN` / definitions/config and new `PROD.DCT_RPT_CLEANUP_LOG`. `PROD.DCT_RPT_MAINT` audits every cleanup under the unchanged retention policy; 43 is canonical and included by 05. No manual delete action.

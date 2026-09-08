@@ -66,6 +66,13 @@ function (ko, config, authService, i18n, shell) {
         ]
       },
       {
+        id: 'trx', labelKey: 'nav.trxGroup', auth: 'arUser',
+        collapsed: ko.observable(false),
+        items: [
+          { id: 'arTrxDashboard', labelKey: 'nav.arTrxDash' },
+        ]
+      },
+      {
         id: 'events', labelKey: 'nav.eventsGroup', auth: 'arUser',
         collapsed: ko.observable(false),
         items: [

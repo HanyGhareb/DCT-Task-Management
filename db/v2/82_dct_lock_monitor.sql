@@ -122,7 +122,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_lock_monitor_pkg AS
         prod.dct_notify.send(u.user_id,'WARNING','Database session blocked',
           l_count||' session(s) are blocked. Longest current wait: '||l_longest||
           ' seconds. No session was terminated automatically.',
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
     END IF;
     MERGE INTO prod.dct_lock_state s USING(SELECT 1 state_id FROM dual)x ON(s.state_id=x.state_id)

@@ -35,6 +35,14 @@ def login():
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
 
+def api_get(path, session):
+    """Authed GET on ORDS through the dev-proxy (Bearer = the login sessionId)."""
+    req = urllib.request.Request(BASE + "/ords/admin" + path,
+                                 headers={"Authorization": "Bearer " + session["sessionId"]})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read())
+
+
 def main():
     from playwright.sync_api import sync_playwright
 
@@ -50,14 +58,17 @@ def main():
         pg.goto(BASE + "/index.html")
         pg.wait_for_function("window.ko && !!window.ko.dataFor(document.body)", timeout=120000)
 
-        check("Legacy nav tab present", pg.locator("nav.pnav a").count() == 10,
+        # nav grew with every tab since (10 -> 13 by 2026-09-06); assert presence, never a literal count
+        check("Legacy nav tab present", pg.locator("nav.pnav a").count() >= 10,
               str(pg.locator("nav.pnav a").count()))
 
         # ── EN: open the Legacy tab by id and wait for the mapping fetch ──
         pg.evaluate("ko.dataFor(document.body).go('legacy')")
         pg.wait_for_function("ko.dataFor(document.body).xmLoaded()", timeout=60000)
         vm_count = pg.evaluate("ko.dataFor(document.body).xmCount()")
-        check("mapping loaded (3,191 rows)", vm_count == 3191, str(vm_count))
+        # 3,191 ACCOUNT rows + the APPROPRIATION identity seed (72+ rows, 2026-07-30) -- compare to the API total
+        api_total = api_get("/gl/coamap?limit=1", session).get("total")
+        check("mapping loaded (all active mappings, == API total)", vm_count == api_total and vm_count >= 3191, "%s vs api %s" % (vm_count, api_total))
         check("interactive report rendered",
               pg.locator("div[data-bind*='xmGridClick'] table").count() >= 1)
         check("page title", "Legacy System (EBS)" in pg.inner_text("#pg-legacy h1"))
@@ -67,7 +78,7 @@ def main():
         pg.wait_for_function("ko.dataFor(document.body).xmCount() < 100", timeout=60000)
         check("search narrows", pg.evaluate("ko.dataFor(document.body).xmCount()") >= 1)
         pg.evaluate("var v=ko.dataFor(document.body); v.xmSearch(''); v.runEbsMap();")
-        pg.wait_for_function("ko.dataFor(document.body).xmCount() === 3191", timeout=60000)
+        pg.wait_for_function("ko.dataFor(document.body).xmCount() >= 3191", timeout=60000)
 
         # ── admin drawer: open new-mapping drawer, then close ──
         check("admin can manage", pg.evaluate("ko.dataFor(document.body).canManageEbs") is True)

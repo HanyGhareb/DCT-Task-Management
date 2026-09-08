@@ -12,6 +12,16 @@
 SET DEFINE OFF
 SET SQLBLANKLINES ON
 
+-- ---------------------------------------------------------------------------
+-- SINGLE SOURCE OF TRUTH (2026-09-06): this file carries EVERY patch ever made
+-- to DCT_GL_COA_V -- GL/db/38 (budget-only combinations from GL_BALANCES_CC,
+-- negative hash cc_id), GL/db/39 (Chapter only on 4xxxxx expense accounts),
+-- GL/db/40 (452201 never a Chapter) and GL/db/47 (Entity columns, kept LAST).
+-- A re-run of this file on 2026-09-05 that pre-dated the fold silently REVERTED
+-- 38/39/40 (snapshot lost its 632 budget-only combos; 3 non-expense combos got
+-- a Chapter back). RULE: never re-create this view from any other file, and
+-- fold every future patch back in here before re-running it.
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE VIEW prod.dct_gl_coa_v AS
 SELECT
   c.cc_id,
@@ -63,8 +73,64 @@ SELECT
   SUBSTR(prod.dct_gl_class_pkg.norm(c.gl_account,6),1,1) AS account_type_code,
   CASE SUBSTR(prod.dct_gl_class_pkg.norm(c.gl_account,6),1,1)
     WHEN '1' THEN 'Assets'  WHEN '2' THEN 'Liability' WHEN '3' THEN 'Revenue'
-    WHEN '4' THEN 'Expense' WHEN '5' THEN 'Owner''s Equity' END AS account_type
-FROM prod.gl_src_combinations c
+    WHEN '4' THEN 'Expense' WHEN '5' THEN 'Owner''s Equity' END AS account_type,
+  -- Entity (GL/db/47, 2026-09-04): date-tracked rules on ANY of the 10 segments
+  -- (dct_gl_seg_class_map.segment_key -- Entity only); the flagged default value
+  -- covers what no rule matches; NULL = Unclassified. One rule per combination
+  -- is enforced at save time -- the ORDER BY in the lateral join is a safety net.
+  -- KEPT LAST (snapshot alignment: DCT_GL_COA_SNAP + _STAGE carry the same 4).
+  NVL(er.class_value_id, ed.class_value_id) AS entity_class_value_id,
+  NVL(er.value_code, ed.value_code)         AS entity_class_code,
+  NVL(er.name_en, ed.name_en)               AS entity_class_name,
+  CASE WHEN er.class_value_id IS NOT NULL THEN 'RULE'
+       WHEN ed.class_value_id IS NOT NULL THEN 'DEFAULT' END AS entity_class_source
+FROM (
+  -- (a) real Fusion combinations -- unchanged, byte-identical to before.
+  -- (b) budget-only combinations: any GL_BALANCES_CC.cc_string with no match
+  --     among the real ones. real_cc is MATERIALIZE-hinted so the NOT EXISTS
+  --     probe below computes each real combo's cc_string ONCE, not once per
+  --     candidate row (same performance lesson as otbi-atd/db/80 -- an
+  --     unhinted correlated check against a PL/SQL-function-heavy view here
+  --     times out).
+  WITH real_cc AS (
+    SELECT /*+ MATERIALIZE */
+           prod.dct_gl_class_pkg.norm(g.entity_code,3)     || '.' ||
+           prod.dct_gl_class_pkg.norm(g.program_code,6)    || '.' ||
+           prod.dct_gl_class_pkg.norm(g.cost_center,7)     || '.' ||
+           prod.dct_gl_class_pkg.norm(g.budget_group,1)    || '.' ||
+           prod.dct_gl_class_pkg.norm(g.gl_account,6)      || '.' ||
+           prod.dct_gl_class_pkg.norm(g.entity_specific,7) || '.' ||
+           prod.dct_gl_class_pkg.norm(g.appropriation,6)   || '.' ||
+           prod.dct_gl_class_pkg.norm(g.intercompany,3)    || '.' ||
+           prod.dct_gl_class_pkg.norm(g.future_1,6)        || '.' ||
+           prod.dct_gl_class_pkg.norm(g.future_2,6)        AS cc_string
+      FROM prod.gl_src_combinations g
+  )
+  SELECT entity_code, cost_center, gl_account, appropriation, budget_group,
+         entity_specific, future_1, future_2, intercompany, program_code, cc_id
+    FROM prod.gl_src_combinations
+  UNION ALL
+  -- gl_src_combinations' segment columns are NUMBER (verified 2026-09-01), so
+  -- the synthetic leg must be too, or UNION ALL raises ORA-01790. norm() in
+  -- the outer SELECT already round-trips through TRIM/LPAD on whatever comes
+  -- in, so TO_NUMBER here is safe and lossless for these zero-padded digit
+  -- codes -- the same implicit conversion the real rows already go through.
+  SELECT TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,1))  AS entity_code,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,3))  AS cost_center,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,5))  AS gl_account,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,7))  AS appropriation,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,4))  AS budget_group,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,6))  AS entity_specific,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,9))  AS future_1,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,10)) AS future_2,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,8))  AS intercompany,
+         TO_NUMBER(REGEXP_SUBSTR(b.cc_string,'[^.]+',1,2))  AS program_code,
+         -(1 + ORA_HASH(b.cc_string, 2147483646))           AS cc_id
+    FROM (SELECT DISTINCT cc_string FROM prod.gl_balances_cc
+           WHERE cc_string IS NOT NULL
+             AND REGEXP_COUNT(cc_string,'\.') = 9) b
+   WHERE NOT EXISTS (SELECT 1 FROM real_cc r WHERE r.cc_string = b.cc_string)
+) c
 -- description joins are de-duplicated (GROUP BY) so duplicate codes in the
 -- Fusion-loaded list tables (e.g. program 0 = "Unspecified"/"Un specified")
 -- never fan out the one-row-per-combination grain.
@@ -97,6 +163,17 @@ LEFT JOIN prod.dct_gl_class_value sv ON sv.class_value_id = sm.class_value_id
 LEFT JOIN prod.dct_gl_seg_class_map hm
        ON hm.class_type_code = 'CHAPTER'
       AND hm.segment_value   = prod.dct_gl_class_pkg.norm(c.appropriation,6)
+      -- 2026-09-01 (GL/db/39): Chapter is an EXPENSE classification -- only
+      -- apply it when the combination's own account is an expense account
+      -- (leading digit 4). Stops a Chapter-mapped appropriation from
+      -- bleeding onto Asset/Liability/Revenue accounts riding the SAME
+      -- appropriation code (e.g. the 3xxxxx budgetary-control offset rows).
+      AND SUBSTR(prod.dct_gl_class_pkg.norm(c.gl_account,6),1,1) = '4'
+      -- 2026-09-01 (GL/db/40): account 452201 "Revenue Transfer to Treasury"
+      -- is excluded from ALL calc/reporting platform-wide (same exclusion
+      -- GL_BALANCES_CC already applies) -- never a Chapter either, even
+      -- though it happens to start with digit 4.
+      AND prod.dct_gl_class_pkg.norm(c.gl_account,6) <> '452201'
       AND NVL(TO_DATE(SYS_CONTEXT('GL_CTX','ASOF'),'YYYY-MM-DD'),TRUNC(SYSDATE))
             BETWEEN hm.start_date AND NVL(hm.end_date, DATE '4000-01-01')
 LEFT JOIN prod.dct_gl_class_value hv ON hv.class_value_id = hm.class_value_id
@@ -105,7 +182,31 @@ LEFT JOIN prod.dct_gl_seg_class_map pm
       AND pm.segment_value   = prod.dct_gl_class_pkg.norm(c.program_code,6)
       AND NVL(TO_DATE(SYS_CONTEXT('GL_CTX','ASOF'),'YYYY-MM-DD'),TRUNC(SYSDATE))
             BETWEEN pm.start_date AND NVL(pm.end_date, DATE '4000-01-01')
-LEFT JOIN prod.dct_gl_class_value pv ON pv.class_value_id = pm.class_value_id;
+LEFT JOIN prod.dct_gl_class_value pv ON pv.class_value_id = pm.class_value_id
+LEFT JOIN LATERAL (
+  SELECT ev.class_value_id, ev.value_code, ev.name_en
+    FROM prod.dct_gl_seg_class_map em
+    JOIN prod.dct_gl_class_type  et ON et.class_type_code = em.class_type_code
+    JOIN prod.dct_gl_segment     eg ON eg.segment_key = NVL(em.segment_key, et.segment_key)
+    JOIN prod.dct_gl_class_value ev ON ev.class_value_id = em.class_value_id
+   WHERE em.class_type_code = 'ENTITY'
+     AND NVL(TO_DATE(SYS_CONTEXT('GL_CTX','ASOF'),'YYYY-MM-DD'),TRUNC(SYSDATE))
+           BETWEEN em.start_date AND NVL(em.end_date, DATE '4000-01-01')
+     AND em.segment_value = CASE eg.segment_key
+           WHEN 'ENTITY'          THEN prod.dct_gl_class_pkg.norm(c.entity_code,3)
+           WHEN 'PROGRAM_CODE'    THEN prod.dct_gl_class_pkg.norm(c.program_code,6)
+           WHEN 'COST_CENTER'     THEN prod.dct_gl_class_pkg.norm(c.cost_center,7)
+           WHEN 'BUDGET_GROUP'    THEN prod.dct_gl_class_pkg.norm(c.budget_group,1)
+           WHEN 'ACCOUNT'         THEN prod.dct_gl_class_pkg.norm(c.gl_account,6)
+           WHEN 'ENTITY_SPECIFIC' THEN prod.dct_gl_class_pkg.norm(c.entity_specific,7)
+           WHEN 'APPROPRIATION'   THEN prod.dct_gl_class_pkg.norm(c.appropriation,6)
+           WHEN 'INTERCOMPANY'    THEN prod.dct_gl_class_pkg.norm(c.intercompany,3)
+           WHEN 'FUTURE1'         THEN prod.dct_gl_class_pkg.norm(c.future_1,6)
+           WHEN 'FUTURE2'         THEN prod.dct_gl_class_pkg.norm(c.future_2,6) END
+   ORDER BY em.start_date, em.map_id
+   FETCH FIRST 1 ROW ONLY) er ON 1 = 1
+LEFT JOIN prod.dct_gl_class_value ed
+       ON ed.class_type_code = 'ENTITY' AND ed.is_default = 'Y' AND ed.is_active = 'Y';
 
 CREATE OR REPLACE SYNONYM prod.gl_coa_v FOR prod.dct_gl_coa_v;
 
@@ -147,6 +248,18 @@ BEGIN
     IF l_col = 0 THEN
       EXECUTE IMMEDIATE 'ALTER TABLE prod.dct_gl_coa_snap ADD (account_type_code VARCHAR2(1), account_type VARCHAR2(20))';
     END IF;
+    -- Entity classification columns (GL/db/47) -- snapshot AND the db/v2/118 staging copy
+    FOR t IN (SELECT column_value tab FROM TABLE(sys.odcivarchar2list('DCT_GL_COA_SNAP','DCT_GL_COA_STAGE'))) LOOP
+      SELECT COUNT(*) INTO l_tab FROM all_tables WHERE owner='PROD' AND table_name=t.tab;
+      IF l_tab > 0 THEN
+        SELECT COUNT(*) INTO l_col FROM all_tab_columns
+         WHERE owner='PROD' AND table_name=t.tab AND column_name='ENTITY_CLASS_CODE';
+        IF l_col = 0 THEN
+          EXECUTE IMMEDIATE 'ALTER TABLE prod.' || t.tab ||
+            ' ADD (entity_class_value_id NUMBER, entity_class_code VARCHAR2(60), entity_class_name VARCHAR2(300), entity_class_source VARCHAR2(10))';
+        END IF;
+      END IF;
+    END LOOP;
   END IF;
 END;
 /

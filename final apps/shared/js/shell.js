@@ -13,7 +13,7 @@ define([], function () {
   'use strict';
 
   var MODULES = [
-    { key: 'admin', code: 'iF', app: '200', color: '#C74634', url: '/Admin/Jet/index.html',
+    { key: 'admin', code: 'iF', app: '200', color: '#C74634', url: '/dct/index.html',
       mc: 'ADMIN',        nameKey: 'mod.admin', descKey: 'mod.admin.desc' },
     { key: 'pc',    code: 'PC', app: '201', color: '#2E7D32', url: '/PC/Jet/index.html',
       mc: 'PETTY_CASH',   nameKey: 'mod.pc',    descKey: 'mod.pc.desc' },

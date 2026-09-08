@@ -1,0 +1,114 @@
+[
+  [
+    "PDF generated",
+    true
+  ],
+  [
+    "PowerPoint includes all report pages",
+    true
+  ],
+  [
+    "UI loads without JS errors",
+    true
+  ],
+  [
+    "Show Summary starts unchecked",
+    true
+  ],
+  [
+    "Unchecked suppresses ring summary",
+    true
+  ],
+  [
+    "Checked enables ring summary",
+    true
+  ],
+  [
+    "Unchecking immediately closes an open summary",
+    true
+  ],
+  [
+    "Unchecked suppresses keyboard focus summary",
+    true
+  ],
+  [
+    "Ring drill remains available",
+    true
+  ],
+  [
+    "Other card summaries remain available",
+    true
+  ],
+  [
+    "Compact presentation at far right",
+    true
+  ],
+  [
+    "Presentation descriptions not clipped",
+    true
+  ],
+  [
+    "PDF downloads with frozen period filename",
+    true
+  ],
+  [
+    "PPTX downloads with frozen period filename",
+    true
+  ],
+  [
+    "Export sends current filters and presentation",
+    true
+  ],
+  [
+    "Print recovers after fail",
+    true
+  ],
+  [
+    "Print recovers after status_fail",
+    true
+  ],
+  [
+    "Print recovers after download_fail",
+    true
+  ],
+  [
+    "Reset restores unchecked default",
+    true
+  ],
+  [
+    "Search controls fit at 1024px",
+    true
+  ],
+  [
+    "Search controls fit at 768px",
+    true
+  ],
+  [
+    "Search controls fit at 390px",
+    true
+  ],
+  [
+    "Arabic checkbox label",
+    true
+  ],
+  [
+    "No JS errors through interaction",
+    true
+  ],
+  [
+    "Print disabled after data-load failure",
+    true
+  ],
+  [
+    "tiles report pages fit",
+    true
+  ],
+  [
+    "rows report pages fit",
+    true
+  ],
+  [
+    "map report pages fit",
+    true
+  ]
+]

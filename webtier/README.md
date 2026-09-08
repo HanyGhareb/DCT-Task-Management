@@ -58,7 +58,10 @@ SSH_USER=opc ./provision_webtier.sh <vm-ip> [dns-name]
 SSH_USER=opc ./deploy_frontend.sh  <vm-ip>
 ```
 
-Then open `https://<vm-ip-or-dns>/` → redirects to `/Admin/Jet/index.html`.
+Then open `https://<vm-ip-or-dns>/dct/` → the Admin login (since the 2026-09-07
+cutover the ONLY entry URL; `/`, unknown paths and the blocked legacy
+`/Admin/Jet/` all show the branded unavailable page from
+`/var/www/ifinance-static/unavailable.html`, shipped by the provisioner).
 The self-signed certificate warning is expected until a real cert is installed.
 
 Re-deploying the frontend after code changes = bump `window.APP_VERSION` in
@@ -67,7 +70,8 @@ browser cache key), then re-run `deploy_frontend.sh`.
 
 ## Smoke test checklist
 
-1. `curl -kI https://<host>/` → `302` to `/Admin/Jet/index.html`; headers
+1. `curl -kI https://<host>/dct/` → `200` (Admin login). `curl -kI https://<host>/`
+   → `404` + the branded unavailable page (root is deliberately not an entry); headers
    include `X-Content-Type-Options: nosniff`.
 2. `curl -k https://<host>/ords/admin/dct/branding` → JSON (the one public
    endpoint; proves the ORDS proxy + SNI + resolver work).

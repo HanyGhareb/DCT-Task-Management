@@ -1,0 +1,206 @@
+[
+  [
+    "POST /gl/fd/report no token => 401",
+    true
+  ],
+  [
+    "GET /gl/fd/report/0 no token => 401",
+    true
+  ],
+  [
+    "GET /gl/fd/report/0/file no token => 401",
+    true
+  ],
+  [
+    "Invalid report parameter => 400 {}",
+    true
+  ],
+  [
+    "Invalid report parameter => 400 {'period': '13-2026'}",
+    true
+  ],
+  [
+    "Invalid report parameter => 400 {'period': '09-2026', 'format': 'XLSX'}",
+    true
+  ],
+  [
+    "Invalid report parameter => 400 {'period': '09-2026', 'presentation': 'bad'}",
+    true
+  ],
+  [
+    "Invalid report parameter => 400 {'period': '09-2026', 'entity': 'bad'}",
+    true
+  ],
+  [
+    "Invalid report parameter => 400 {'period': '09-2026', 'sectors': \"X' OR 1=1\"}",
+    true
+  ],
+  [
+    "Unknown run => 404 /gl/fd/report/0",
+    true
+  ],
+  [
+    "Unknown run => 404 /gl/fd/report/0/file",
+    true
+  ],
+  [
+    "tiles PDF enqueued",
+    true
+  ],
+  [
+    "tiles PPTX enqueued",
+    true
+  ],
+  [
+    "rows PDF enqueued",
+    true
+  ],
+  [
+    "rows PPTX enqueued",
+    true
+  ],
+  [
+    "map PDF enqueued",
+    true
+  ],
+  [
+    "map PPTX enqueued",
+    true
+  ],
+  [
+    "tiles_PDF report SUCCESS",
+    true
+  ],
+  [
+    "tiles_PDF authenticated file download",
+    true
+  ],
+  [
+    "tiles_PDF Total budget matches live dashboard",
+    true
+  ],
+  [
+    "tiles_PDF Total actual matches live dashboard",
+    true
+  ],
+  [
+    "tiles_PDF Total encumbrance matches live dashboard",
+    true
+  ],
+  [
+    "tiles_PDF Total fundsAvailable matches live dashboard",
+    true
+  ],
+  [
+    "tiles_PDF title and selected period included",
+    true
+  ],
+  [
+    "tiles_PDF excludes Search/Print controls",
+    true
+  ],
+  [
+    "tiles_PPTX report SUCCESS",
+    true
+  ],
+  [
+    "tiles_PPTX authenticated file download",
+    true
+  ],
+  [
+    "tiles_PPTX deck opens with report slide images",
+    true
+  ],
+  [
+    "rows_PDF report SUCCESS",
+    true
+  ],
+  [
+    "rows_PDF authenticated file download",
+    true
+  ],
+  [
+    "rows_PDF Total budget matches live dashboard",
+    true
+  ],
+  [
+    "rows_PDF Total actual matches live dashboard",
+    true
+  ],
+  [
+    "rows_PDF Total encumbrance matches live dashboard",
+    true
+  ],
+  [
+    "rows_PDF Total fundsAvailable matches live dashboard",
+    true
+  ],
+  [
+    "rows_PDF title and selected period included",
+    true
+  ],
+  [
+    "rows_PDF excludes Search/Print controls",
+    true
+  ],
+  [
+    "rows_PPTX report SUCCESS",
+    true
+  ],
+  [
+    "rows_PPTX authenticated file download",
+    true
+  ],
+  [
+    "rows_PPTX deck opens with report slide images",
+    true
+  ],
+  [
+    "map_PDF report SUCCESS",
+    true
+  ],
+  [
+    "map_PDF authenticated file download",
+    true
+  ],
+  [
+    "map_PDF Total budget matches live dashboard",
+    true
+  ],
+  [
+    "map_PDF Total actual matches live dashboard",
+    true
+  ],
+  [
+    "map_PDF Total encumbrance matches live dashboard",
+    true
+  ],
+  [
+    "map_PDF Total fundsAvailable matches live dashboard",
+    true
+  ],
+  [
+    "map_PDF title and selected period included",
+    true
+  ],
+  [
+    "map_PDF excludes Search/Print controls",
+    true
+  ],
+  [
+    "map_PPTX report SUCCESS",
+    true
+  ],
+  [
+    "map_PPTX authenticated file download",
+    true
+  ],
+  [
+    "map_PPTX deck opens with report slide images",
+    true
+  ],
+  [
+    "All six report jobs finished",
+    true
+  ]
+]

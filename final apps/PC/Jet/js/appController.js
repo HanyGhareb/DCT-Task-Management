@@ -181,7 +181,7 @@ function (ko, config, authService, approvalService, i18n, shell) {
     function _requireAuth() {
       self.currentUser(null);
       if (config.apiBase) {
-        window.location.href = '../Admin/Jet/index.html';
+        window.location.href = '/dct/index.html';
       } else {
         self._loadRoute('login');
       }

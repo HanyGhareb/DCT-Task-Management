@@ -661,3 +661,15 @@ and the server **no longer validates the codes against the masters**. Consequenc
   1.18.0. Fresh run 43: 115 groups over 9 categories (58 partial-name /
   34 capitalisation / 5+5+5 spelling·typo·spacing / 4 account-only / 2 word-order
   / 1+1), 0 self-pairs; sections smoke 12/12 EN+AR.
+
+## 2026-09-06 — LINE-GRAIN PO RULE: AP/db/04 + 05 re-run
+
+Platform rule (CLAUDE.md, user-approved): a Fusion PO-match correction updates the invoice
+LINE; the accounted distributions keep the ORIGINAL PO — so the dist register/export
+handlers (04) and AP_INVOICE_DISTRIBUTIONS_V (05) now resolve the effective charge account
+and PO-header attribution through COALESCE(invoice-line PO refs, dist PO refs) (new lgp/lp
+invoice-lines join; the view exposes d.line_number AS invoice_line_number — the 04 handlers
+join on that alias). Deployed: 05 re-run + dct_ap_pkg body recompile + 04 re-run (SQLcl
+gotcha: @ paths containing "final apps" MUST be double-quoted or SQLcl truncates at the
+space). Displayed raw po_number columns still show the extract's dist-grain value by
+design — only joins/attributions are corrected. Smoke: /ap/dists OK.

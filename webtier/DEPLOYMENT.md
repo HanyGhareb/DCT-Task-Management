@@ -83,7 +83,9 @@ APEX apps (200-211) are served by the ADB's APEX engine at the
 
 ## When something looks wrong
 
-1. `curl -ksI https://129.151.159.189/` → expect `302` to `/Admin/Jet/index.html`.
+1. `curl -ksI https://129.151.159.189/dct/` → expect `200` (the Admin login; the ONLY
+   entry URL since 2026-09-07). `/`, unknown paths and the blocked legacy
+   `/Admin/Jet/…` all return `404` + the branded unavailable page.
 2. `curl -ks https://129.151.159.189/ords/admin/dct/branding` → expect JSON
    (proves the ADB proxy path).
 3. `ssh opc@129.151.159.189 "systemctl status nginx; sudo tail -20 /var/log/nginx/error.log"`.

@@ -141,12 +141,16 @@ BEGIN
          NVL(SUM(pc.procash_aed),0), NVL(SUM(pc.procash_count),0),
          NVL(SUM(ca.cost_adj_aed),0), NVL(SUM(ca.adj_count),0),
          NVL(SUM(ca.budget_ovr_aed),0), NVL(SUM(ca.budget_ovr_annual),0),
-         COUNT(CASE WHEN (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
-                          + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005 THEN 1 END),
-         NVL(SUM(CASE WHEN (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
-                            + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005
+         -- 2026-09-02 (user): sub-AED fractions are negligible -- the page
+         -- displays whole AED, so a GRN receipt a few fils above its budget
+         -- shows Budget = Actual yet used to flag. ROUND(expr) < 0 (whole
+         -- AED) only trips on a genuine >= 0.5 AED shortfall.
+         COUNT(CASE WHEN ROUND(v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                          + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < 0 THEN 1 END),
+         ROUND(NVL(SUM(CASE WHEN ROUND(v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                            + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < 0
                       THEN (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
-                            + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) END),0),
+                            + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) END),0),1),
          NVL(SUM(cm.cmt_n),0),
          NVL(SUM(pf.plan_appr_annual),0), NVL(SUM(pf.plan_appr_ytd),0),
          NVL(SUM(pf.plan_rev_annual),0), NVL(SUM(pf.plan_rev_ytd),0),
@@ -195,8 +199,8 @@ BEGIN
             AND pf.expenditure_type = v.expenditure_type
    WHERE v.budget_year = l_year
      AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
-     AND (l_negf IS NULL OR (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
-                              + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005)
+     AND (l_negf IS NULL OR ROUND(v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                              + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < 0)
      AND (l_plst IS NULL OR l_plst = CASE WHEN CASE WHEN NVL(pf.plan_rev_annual,0)<>0 THEN NVL(pf.plan_rev_ytd,0) ELSE NVL(pf.plan_appr_ytd,0) END<=0.005 THEN 'NOPLAN'
                                           WHEN 100*(CASE WHEN l_cadj='Y' THEN v.actual_ap+NVL(ca.cost_adj_aed,0) ELSE v.actual_ap END + v.actual_grn + CASE WHEN l_pcash='Y' THEN NVL(pc.procash_aed,0) ELSE 0 END)/NULLIF(CASE WHEN NVL(pf.plan_rev_annual,0)<>0 THEN NVL(pf.plan_rev_ytd,0) ELSE NVL(pf.plan_appr_ytd,0) END,0) < l_thx1 THEN 'BELOW'
                                           WHEN 100*(CASE WHEN l_cadj='Y' THEN v.actual_ap+NVL(ca.cost_adj_aed,0) ELSE v.actual_ap END + v.actual_grn + CASE WHEN l_pcash='Y' THEN NVL(pc.procash_aed,0) ELSE 0 END)/NULLIF(CASE WHEN NVL(pf.plan_rev_annual,0)<>0 THEN NVL(pf.plan_rev_ytd,0) ELSE NVL(pf.plan_appr_ytd,0) END,0) > l_thx2 THEN 'AHEAD' ELSE 'WITHIN' END)
@@ -260,11 +264,16 @@ BEGIN
   APEX_JSON.write('actualAp', CASE WHEN l_cadj = 'Y' THEN t_ap + t_cadj ELSE t_ap END);
   APEX_JSON.write('actualGrn', t_grn);
   APEX_JSON.write('commitmentPr', t_pr); APEX_JSON.write('obligationPo', t_po);
+  -- 2026-09-02 (user): a sub-half-AED fund remainder is negligible -- snap
+  -- it to exactly 0 (the page shows whole AED); real values keep 1 decimal.
   APEX_JSON.write('fundAvailable',
-                  t_fund - CASE WHEN l_pcash = 'Y' THEN t_pcash ELSE 0 END
-                         + CASE WHEN l_cadj = 'Y' THEN t_covr - t_cadj ELSE 0 END);
+                  CASE WHEN ABS(t_fund - CASE WHEN l_pcash = 'Y' THEN t_pcash ELSE 0 END
+                         + CASE WHEN l_cadj = 'Y' THEN t_covr - t_cadj ELSE 0 END) < 0.5 THEN 0
+                       ELSE ROUND(t_fund - CASE WHEN l_pcash = 'Y' THEN t_pcash ELSE 0 END
+                         + CASE WHEN l_cadj = 'Y' THEN t_covr - t_cadj ELSE 0 END,1) END);
   APEX_JSON.write('fundAvailableExProcash',
-                  t_fund + CASE WHEN l_cadj = 'Y' THEN t_covr - t_cadj ELSE 0 END);
+                  CASE WHEN ABS(t_fund + CASE WHEN l_cadj = 'Y' THEN t_covr - t_cadj ELSE 0 END) < 0.5 THEN 0
+                       ELSE ROUND(t_fund + CASE WHEN l_cadj = 'Y' THEN t_covr - t_cadj ELSE 0 END,1) END);
   APEX_JSON.write('procash', t_pcash);
   APEX_JSON.write('procashCount', t_pcnt);
   APEX_JSON.write('procashUnmapped', t_punmap);
@@ -347,8 +356,8 @@ BEGIN
             AND tnm.tt = v.task_number
     WHERE v.budget_year = l_year
       AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
-      AND (l_negf IS NULL OR (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
-                               + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005)
+      AND (l_negf IS NULL OR ROUND(v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                               + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < 0)
       AND (l_plst IS NULL OR l_plst = CASE WHEN CASE WHEN NVL(pf.plan_rev_annual,0)<>0 THEN NVL(pf.plan_rev_ytd,0) ELSE NVL(pf.plan_appr_ytd,0) END<=0.005 THEN 'NOPLAN'
                                           WHEN 100*(CASE WHEN l_cadj='Y' THEN v.actual_ap+NVL(ca.cost_adj_aed,0) ELSE v.actual_ap END + v.actual_grn + CASE WHEN l_pcash='Y' THEN NVL(pc.procash_aed,0) ELSE 0 END)/NULLIF(CASE WHEN NVL(pf.plan_rev_annual,0)<>0 THEN NVL(pf.plan_rev_ytd,0) ELSE NVL(pf.plan_appr_ytd,0) END,0) < l_thx1 THEN 'BELOW'
                                           WHEN 100*(CASE WHEN l_cadj='Y' THEN v.actual_ap+NVL(ca.cost_adj_aed,0) ELSE v.actual_ap END + v.actual_grn + CASE WHEN l_pcash='Y' THEN NVL(pc.procash_aed,0) ELSE 0 END)/NULLIF(CASE WHEN NVL(pf.plan_rev_annual,0)<>0 THEN NVL(pf.plan_rev_ytd,0) ELSE NVL(pf.plan_appr_ytd,0) END,0) > l_thx2 THEN 'AHEAD' ELSE 'WITHIN' END)
@@ -404,9 +413,12 @@ BEGIN
     APEX_JSON.write('commitmentPr', r.commitment_pr);
     APEX_JSON.write('obligationPo', r.obligation_po);
     APEX_JSON.write('fundAvailable',
-                    r.fund_available
+                    CASE WHEN ABS(r.fund_available
                     - CASE WHEN l_pcash = 'Y' THEN r.procash ELSE 0 END
-                    + CASE WHEN l_cadj = 'Y' THEN r.cadj_ovr - r.cost_adj ELSE 0 END);
+                    + CASE WHEN l_cadj = 'Y' THEN r.cadj_ovr - r.cost_adj ELSE 0 END) < 0.5 THEN 0
+                         ELSE ROUND(r.fund_available
+                    - CASE WHEN l_pcash = 'Y' THEN r.procash ELSE 0 END
+                    + CASE WHEN l_cadj = 'Y' THEN r.cadj_ovr - r.cost_adj ELSE 0 END,1) END);
     APEX_JSON.write('procash', r.procash);
     APEX_JSON.write('planApprovedAnnual', r.plan_appr_annual);
     APEX_JSON.write('planApprovedYtd', r.plan_appr_ytd);

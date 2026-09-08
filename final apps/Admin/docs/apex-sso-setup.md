@@ -29,7 +29,8 @@ single-use, direction-bound, audited (`SSO_ISSUE` / `SSO_REDEEM` in `dct_audit_l
 3. Settings present: `FEATURE_SSO_HANDOFF` (leave `N` until everything below is done),
    `SSO_CODE_TTL_SECS`, `APEX_SSO_URL`, `JET_SSO_URL`.
    **`JET_SSO_URL` must point DIRECTLY at the Admin JET app's `index.html`**
-   (dev: `http://localhost:8080/Admin/Jet/index.html`) — the Admin app owns the
+   (PROD: `https://129.151.159.189/dct/index.html` — the nginx `/dct/` alias serving
+   the Admin app since 2026-09-07; dev: `http://localhost:8080/dct/index.html`) — the Admin app owns the
    `#sso=` exchange hook. Never point it at a lander or a module app: module apps
    redirect session-less visitors to Admin **and drop the URL fragment**, so the
    one-time code is silently lost (hit 2026-07-06 — the root `/index.html` on the
@@ -190,16 +191,18 @@ Until an app is allowlisted, its JET users land in App 200 (safe default).
 **LIVE both directions** (`FEATURE_SSO_HANDOFF=Y`): db/v2/41 + 41b + 41c deployed;
 App 200 Builder side wired (9999 item+process, page 9996 GO_JET, nav entry);
 app mapping active (`APEX_SSO_APPS='200'`, `APEX_SSO_URL` = `%APP%` template);
-`JET_SSO_URL = http://localhost:8080/Admin/Jet/index.html` (dev). Verified:
+`JET_SSO_URL = https://129.151.159.189/dct/index.html` (PROD web tier since the
+2026-09-07 /dct cutover; dev = `http://localhost:8080/dct/index.html`). Verified:
 PL/SQL unit 19/19, API smoke 13/13, mapping smoke 6/6, browser E2E 7/7,
 cold-start APEX→JET PASS. Tests live in `assessment-3/phase4/tests/`
 (`sso_plsql_unit.sql`, `sso_smoke.py`, `sso_map_smoke.py`, `sso_e2e.py`).
 
 Backlog, roughly by value:
 
-1. **Point `JET_SSO_URL` at the production web tier** — the nginx web tier
-   (`webtier/`, OCI `ifinance-web`) now serves `final apps/`; when users work
-   through it, APEX→JET must redirect there, not to localhost. Single setting.
+1. ~~**Point `JET_SSO_URL` at the production web tier**~~ — DONE 2026-09-07 as
+   part of the `/dct` login-URL cutover: `JET_SSO_URL =
+   https://129.151.159.189/dct/index.html` (the nginx `/dct/` alias serving the
+   Admin app; the legacy `/Admin/Jet/` path is blocked on the web tier).
 2. **Onboard module APEX apps as they are built** (PC 201, CC 202, FL 203,
    DT 204, HR 205, TM 207): wire each app's 9999 like App 200 (§1a–1c) + append
    the id to `APEX_SSO_APPS`. App 211 (BI) exists TODAY and could be wired first.

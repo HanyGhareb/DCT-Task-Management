@@ -1,0 +1,42 @@
+[
+  [
+    "Storage panel loads real data",
+    true
+  ],
+  [
+    "Authenticated storage API returns 200",
+    true
+  ],
+  [
+    "Retention remains 90 days",
+    true
+  ],
+  [
+    "Storage totals are plausible",
+    true
+  ],
+  [
+    "Cleanup audit is present",
+    true
+  ],
+  [
+    "At most 10 largest reports and 20 audits",
+    true
+  ],
+  [
+    "File bytes reconcile with all listed reports when fewer than 10",
+    true
+  ],
+  [
+    "Anonymous storage API blocked",
+    true
+  ],
+  [
+    "Existing scheduler controls still list maintenance",
+    true
+  ],
+  [
+    "Non-admin storage API blocked",
+    true
+  ]
+]

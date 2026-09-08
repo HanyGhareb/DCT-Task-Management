@@ -101,7 +101,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_storage_health_pkg AS
           u.user_id,'WARNING','Database file storage warning',
           'PROD LOB storage is '||l_size_mb||' MB and reached the configured '||
           l_threshold||' MB warning level. Review generated reports and document growth.',
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
 
       MERGE INTO prod.dct_storage_alert_state s

@@ -30,6 +30,55 @@
   </div>
   <!-- /ko -->
 
+  <section class="card rpt-storage" aria-labelledby="rpt-storage-title">
+    <div class="section-heading-row">
+      <h2 class="section-heading" id="rpt-storage-title" data-bind="text:$root.t('storage.title')"></h2>
+      <div class="region-actions"><button type="button" class="btn btn-sm btn-secondary" data-bind="click:loadStorage,enable:!storageLoading(),text:$root.t('runs.refresh')"></button></div>
+    </div>
+    <p class="rpt-storage-note" data-bind="text:$root.t('storage.hint')"></p>
+    <!-- ko if: storageError --><div class="alert-banner alert-banner--danger" role="alert" data-bind="text:$root.t('storage.error')"></div><!-- /ko -->
+    <!-- ko if: storageLoading --><div role="status"><list-skeleton params="rows:3"></list-skeleton></div><!-- /ko -->
+    <!-- ko if: storage() && !storageLoading() -->
+    <!-- ko with: storage -->
+    <div class="kpi-row rpt-storage-kpis">
+      <div class="kpi"><div class="kpi-n" dir="ltr" data-bind="text:$vm.sizeText(fileBytes)"></div><div class="kpi-l" data-bind="text:$root.t('storage.filesSize')"></div></div>
+      <div class="kpi"><div class="kpi-n" data-bind="text:fileCount"></div><div class="kpi-l" data-bind="text:$root.t('storage.files')"></div></div>
+      <div class="kpi"><div class="kpi-n" data-bind="text:retentionDays===0?$root.t('storage.forever'):retentionDays"></div><div class="kpi-l" data-bind="text:$root.t('storage.retention')"></div></div>
+      <div class="kpi"><div class="kpi-n" dir="ltr" data-bind="text:$vm.sizeText(expiredBytes)"></div><div class="kpi-l"><span data-bind="text:expiredCount"></span> <span data-bind="text:$root.t('storage.eligible')"></span></div></div>
+    </div>
+    <div class="rpt-storage-facts">
+      <span><span data-bind="text:$root.t('storage.allocated')"></span>: <b dir="ltr" data-bind="text:$vm.sizeText(allocatedBytes)"></b></span>
+      <span><span data-bind="text:$root.t('storage.added7')"></span>: <b dir="ltr" data-bind="text:$vm.sizeText(added7DaysBytes)"></b></span>
+      <span><span data-bind="text:$root.t('storage.added30')"></span>: <b dir="ltr" data-bind="text:$vm.sizeText(added30DaysBytes)"></b></span>
+      <span><span data-bind="text:$root.t('storage.asOf')"></span>: <b dir="ltr" data-bind="text:asOf"></b></span>
+    </div>
+    <p class="rpt-storage-note" data-bind="text:$root.t('storage.allocationHint')"></p>
+    <h3 class="section-heading" data-bind="text:$root.t('storage.largest')"></h3>
+    <!-- ko ifnot: reports.length --><div class="empty-state" data-bind="text:$root.t('storage.noFiles')"></div><!-- /ko -->
+    <!-- ko if: reports.length -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr><th data-bind="text:$root.t('storage.report')"></th><th data-bind="text:$root.t('storage.files')"></th><th data-bind="text:$root.t('storage.filesSize')"></th><th data-bind="text:$root.t('storage.oldest')"></th></tr></thead>
+      <tbody data-bind="foreach:reports"><tr>
+        <td><b data-bind="text:$root.lang()==='ar'?nameAr:name"></b><small class="rpt-storage-code" data-bind="text:reportCode"></small></td>
+        <td data-bind="text:fileCount"></td><td dir="ltr" data-bind="text:$vm.sizeText(fileBytes)"></td><td dir="ltr" data-bind="text:oldestAt"></td>
+      </tr></tbody>
+    </table></div><!-- /ko -->
+    <h3 class="section-heading" data-bind="text:$root.t('storage.cleanup')"></h3>
+    <p class="rpt-storage-note" data-bind="text:$root.t('storage.cleanupHint')"></p>
+    <!-- ko ifnot: cleanup.length --><div class="empty-state" data-bind="text:$root.t('storage.noCleanup')"></div><!-- /ko -->
+    <!-- ko if: cleanup.length -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr><th data-bind="text:$root.t('storage.started')"></th><th data-bind="text:$root.t('col.status')"></th><th data-bind="text:$root.t('storage.deleted')"></th><th data-bind="text:$root.t('storage.removedSize')"></th><th data-bind="text:$root.t('storage.duration')"></th><th data-bind="text:$root.t('storage.details')"></th></tr></thead>
+      <tbody data-bind="foreach:cleanup"><tr>
+        <td dir="ltr" data-bind="text:startedAt"></td><td><span data-bind="text:$root.t('storage.status'+status),attr:{class:$vm.cleanupBadge(status)}"></span></td>
+        <td data-bind="text:filesDeleted"></td><td dir="ltr" data-bind="text:$vm.sizeText(bytesDeleted)"></td><td data-bind="text:durationSeconds===null?'—':durationSeconds"></td>
+        <td class="rpt-storage-detail"><span data-bind="text:error || (retentionDays===0?$root.t('storage.keepNotice'):$root.t('storage.daysPolicy').replace('{0}',retentionDays===null?'—':retentionDays))"></span></td>
+      </tr></tbody>
+    </table></div><!-- /ko -->
+    <!-- /ko -->
+    <!-- /ko -->
+  </section>
+
   <!-- ── Python engine workers ─────────────────────────────────────────── -->
   <div class="card" style="margin-bottom:16px">
     <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('wrk.workers')"></div>

@@ -1,0 +1,506 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- ── Header: title + actions (top-right) ───────────────────────────── -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $vm.t('dash.title')"></div>
+      <div class="page-subtitle" data-bind="text: $vm.t('dash.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: resetFilters, text: $root.t('dash.reset')"></button>
+      <button class="btn btn-secondary" data-bind="click: refresh, text: $root.t('dash.refresh')"></button>
+      <button class="btn btn-primary" data-bind="click: printReport">
+        &#128424; <span data-bind="text: $root.t('dash.print')"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Level selector (radio) + applied filter chips ─────────────────── -->
+  <div class="ap-chips">
+    <span style="font-size:12px;font-weight:600;color:var(--text-2)" data-bind="text: $root.t('dash.level') + ':'"></span>
+    <div class="ap-seg" role="radiogroup">
+      <button class="ap-seg-btn" role="radio" data-bind="click: function(){ $vm.setLevel('trx'); },
+              css: { on: level() === 'trx' }, attr: { 'aria-checked': level() === 'trx' }">
+        <span class="dot"></span><span data-bind="text: $root.t('dash.levelTrx')"></span>
+      </button>
+      <button class="ap-seg-btn" role="radio" data-bind="click: function(){ $vm.setLevel('line'); },
+              css: { on: level() === 'line' }, attr: { 'aria-checked': level() === 'line' }">
+        <span class="dot"></span><span data-bind="text: $root.t('dash.levelLine')"></span>
+      </button>
+    </div>
+    <span style="flex:1 1 auto"></span>
+    <!-- ko foreach: chips -->
+    <span class="ap-chip">
+      <span data-bind="text: label"></span><b data-bind="text: value"></b>
+      <button class="ap-chip-x" data-bind="click: clear">&#10005;</button>
+    </span>
+    <!-- /ko -->
+    <!-- ko if: chips().length > 0 -->
+    <button class="btn btn-sm btn-secondary ap-chip-clear" data-bind="click: resetFilters, text: $root.t('f.clear')"></button>
+    <!-- /ko -->
+  </div>
+
+  <div class="ap-body">
+
+    <!-- ── Facet rail (APEX faceted-search style) ──────────────────────── -->
+    <aside class="card ap-facets">
+      <div class="fct-title" data-bind="text: $root.t('f.filters')"></div>
+
+      <input class="form-control fct-text" type="search"
+             data-bind="value: search, valueUpdate: 'input', attr: { placeholder: $root.t('f.search') }">
+
+      <div class="fct-text">
+        <label class="form-label" data-bind="text: $root.t('f.dates')"></label>
+        <div class="fct-dates">
+          <input class="form-control" type="date" data-bind="value: datefrom, attr: { title: $root.t('f.datefrom') }">
+          <input class="form-control" type="date" data-bind="value: dateto, attr: { title: $root.t('f.dateto') }">
+        </div>
+      </div>
+
+      <div class="fct-text">
+        <label class="form-label" data-bind="text: $root.t('f.duedates')"></label>
+        <div class="fct-dates">
+          <input class="form-control" type="date" data-bind="value: duefrom, attr: { title: $root.t('f.duefrom') }">
+          <input class="form-control" type="date" data-bind="value: dueto, attr: { title: $root.t('f.dueto') }">
+        </div>
+      </div>
+
+      <div class="fct-text">
+        <label class="form-label" data-bind="text: $root.t('f.gldates')"></label>
+        <div class="fct-dates">
+          <input class="form-control" type="date" data-bind="value: gldatefrom, attr: { title: $root.t('f.glfrom') }">
+          <input class="form-control" type="date" data-bind="value: gldateto, attr: { title: $root.t('f.glto') }">
+        </div>
+      </div>
+
+      <!-- ko if: loadingFilters() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+      <!-- ko foreach: groups -->
+      <div class="fct-group" data-bind="css: { open: open() }">
+        <button class="fct-head" data-bind="click: function(){ $vm.toggleGroup($data); }">
+          <span data-bind="text: $vm.t(labelKey)"></span>
+          <!-- ko if: selCount() > 0 --><span class="fct-sel" data-bind="text: selCount()"></span><!-- /ko -->
+          <span class="fct-chev">&#9660;</span>
+        </button>
+        <!-- ko if: open -->
+        <div class="fct-body">
+          <!-- ko if: searchable -->
+          <input class="form-control fct-mini" data-bind="value: filter, valueUpdate: 'input',
+                 attr: { placeholder: $vm.t('f.find') }">
+          <!-- /ko -->
+          <div class="fct-list">
+            <!-- ko foreach: visible -->
+            <div class="fct-item" data-bind="click: function(){ $vm.toggleItem($parent, $data); },
+                 css: { on: checked() }">
+              <input type="checkbox" tabindex="-1" data-bind="checked: checked">
+              <span class="fct-lbl" data-bind="text: label, attr: { title: label }"></span>
+              <!-- ko if: $data.count !== null --><span class="fct-count" data-bind="text: $vm.fmtInt($data.count)"></span><!-- /ko -->
+            </div>
+            <!-- /ko -->
+            <!-- ko if: visible().length === 0 -->
+            <div class="fct-none" data-bind="text: $vm.t('f.noMatch')"></div>
+            <!-- /ko -->
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </aside>
+
+    <!-- ── Work area: two collapsible / maximizable / exportable regions ─ -->
+    <div class="ap-main">
+
+      <!-- Build-bar loader: segmented progress bar + spinner while the
+           dashboard's three data loads (filters / analytics / register)
+           are in flight. Fills a segment as each request completes. -->
+      <div class="arld-ov" data-bind="visible: buildLoading" style="display:none">
+        <div class="arld-card">
+          <div class="arld-spin"><span class="arld-diamond"></span></div>
+          <div class="arld-title" data-bind="text: $root.t('ld.title')"></div>
+          <div class="arld-sub" data-bind="text: $root.t('ld.sub')"></div>
+          <div class="arld-bar">
+            <div class="arld-fill" data-bind="style: { width: buildPct() + '%' }"></div>
+            <div class="arld-sweep"></div>
+          </div>
+          <div class="arld-segs">
+            <span class="arld-seg" data-bind="css: { done: !loadingFilters() }">
+              <i></i><span data-bind="text: $root.t('ld.filters')"></span></span>
+            <span class="arld-seg" data-bind="css: { done: !loadingSummary() }">
+              <i></i><span data-bind="text: $root.t('ld.analytics')"></span></span>
+            <span class="arld-seg" data-bind="css: { done: !loadingRows() }">
+              <i></i><span data-bind="text: $root.t('ld.register')"></span></span>
+          </div>
+          <div class="arld-pct" data-bind="text: buildPct() + '%'"></div>
+        </div>
+      </div>
+
+      <!-- Region 1 — Analytics -->
+      <div class="card ap-region" data-bind="css: { 'ap-region--max': chartsMax() }">
+        <div class="section-heading-row">
+          <div class="section-heading ap-rh"><span data-bind="text: $root.t('rg.analytics')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('analytics', e); }, mousemove: function (d, e) { return $vm.hintMove('analytics', e); }, mouseout: $vm.hintOut }" aria-label="region hint">i</i></div>
+          <div class="region-actions">
+            <button class="btn btn-sm btn-secondary" data-bind="click: exportSummaryCsv,
+                    text: $root.t('rg.exportData'), attr: { title: $root.t('rg.exportData') }"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: exportChartsPng,
+                    text: $root.t('rg.exportPng'), attr: { title: $root.t('rg.exportPng') }"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: toggleChartsMax,
+                    attr: { title: chartsMax() ? $root.t('rg.restore') : $root.t('rg.maximize') }">&#10530;</button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: toggleCharts,
+                    attr: { title: chartsCollapsed() ? $root.t('rg.expand') : $root.t('rg.collapse') },
+                    text: chartsCollapsed() ? '▸' : '▾'"></button>
+          </div>
+        </div>
+
+        <!-- ko ifnot: chartsCollapsed() -->
+        <!-- ko if: loadingSummary() --><list-skeleton params="rows: 4"></list-skeleton><!-- /ko -->
+        <!-- ko ifnot: loadingSummary() -->
+        <!-- ko if: kpis() -->
+        <div class="tkpi-row">
+          <div class="tkpi"><div class="tkpi-n" data-bind="text: fmtInt(kpis().transactions)"></div>
+            <div class="tkpi-l" data-bind="text: $root.t('kpi.transactions')"></div></div>
+          <div class="tkpi"><div class="tkpi-n" data-bind="text: fmtInt(kpis().customers)"></div>
+            <div class="tkpi-l" data-bind="text: $root.t('kpi.customers')"></div></div>
+          <div class="tkpi"><div class="tkpi-n" data-bind="text: fmtCompact(kpis().invoicedAed), attr: { title: fmtAmt(kpis().invoicedAed) }"></div>
+            <div class="tkpi-l" data-bind="text: $root.t('kpi.invoicedAed')"></div></div>
+          <div class="tkpi"><div class="tkpi-n tkpi-ok" data-bind="text: fmtCompact(kpis().appliedAed), attr: { title: fmtAmt(kpis().appliedAed) }"></div>
+            <div class="tkpi-l" data-bind="text: $root.t('kpi.appliedAed')"></div></div>
+          <div class="tkpi"><div class="tkpi-n" data-bind="text: fmtCompact(kpis().creditAdjAed), attr: { title: fmtAmt(kpis().creditAdjAed) }"></div>
+            <div class="tkpi-l" data-bind="text: $root.t('kpi.creditAdjAed')"></div></div>
+          <div class="tkpi"><div class="tkpi-n tkpi-warn" data-bind="text: fmtCompact(kpis().outstandingAed), attr: { title: fmtAmt(kpis().outstandingAed) }"></div>
+            <div class="tkpi-l" data-bind="text: $root.t('kpi.outstandingAed')"></div></div>
+          <div class="tkpi"><div class="tkpi-n tkpi-bad" data-bind="text: fmtCompact(kpis().overdueAed), attr: { title: fmtAmt(kpis().overdueAed) }"></div>
+            <div class="tkpi-l" data-bind="text: $root.t('kpi.overdueAed')"></div></div>
+          <div class="tkpi"><div class="tkpi-n" data-bind="text: (kpis().collectionRate || 0) + '%'"></div>
+            <div class="tkpi-l" data-bind="text: $root.t('kpi.collectionRate')"></div></div>
+        </div>
+        <!-- /ko -->
+
+        <div class="ap-charts">
+          <div class="ap-chart-card c-8">
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.aging')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('aging', e); }, mousemove: function (d, e) { return $vm.hintMove('aging', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-body"><canvas id="arChartAging"></canvas></div>
+          </div>
+          <div class="ap-chart-card c-4">
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.settlement')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('settlement', e); }, mousemove: function (d, e) { return $vm.hintMove('settlement', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-body"><canvas id="arChartSettle"></canvas></div>
+          </div>
+          <div class="ap-chart-card c-12">
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.trend')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('trend', e); }, mousemove: function (d, e) { return $vm.hintMove('trend', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-body"><canvas id="arChartTrend"></canvas></div>
+          </div>
+          <div class="ap-chart-card c-6">
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.topCustomers')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('customers', e); }, mousemove: function (d, e) { return $vm.hintMove('customers', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-body"><canvas id="arChartCust"></canvas></div>
+          </div>
+          <div class="ap-chart-card c-6">
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.byType')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('type', e); }, mousemove: function (d, e) { return $vm.hintMove('type', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-body"><canvas id="arChartType"></canvas></div>
+          </div>
+          <div class="ap-chart-card c-4">
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.bySource')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('source', e); }, mousemove: function (d, e) { return $vm.hintMove('source', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-body"><canvas id="arChartSource"></canvas></div>
+          </div>
+          <div class="ap-chart-card c-4">
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.byBu')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('bu', e); }, mousemove: function (d, e) { return $vm.hintMove('bu', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-body"><canvas id="arChartBu"></canvas></div>
+          </div>
+          <div class="ap-chart-card c-4">
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.byCc')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('cc', e); }, mousemove: function (d, e) { return $vm.hintMove('cc', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-body"><canvas id="arChartCc"></canvas></div>
+          </div>
+        </div>
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+
+      <!-- Region 2 — Register -->
+      <div class="card ap-region" data-bind="css: { 'ap-region--max': tableMax() }">
+        <div class="section-heading-row">
+          <div class="section-heading ap-rh">
+            <span data-bind="text: $root.t('rg.register')"></span>
+            <span style="font-weight:400;font-size:12px;color:var(--text-2)"
+                  data-bind="text: ' · ' + fmtInt(total()) + ' ' + $root.t('tbl.rows')"></span>
+            <i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('register', e); }, mousemove: function (d, e) { return $vm.hintMove('register', e); }, mouseout: $vm.hintOut }" aria-label="region hint">i</i>
+          </div>
+          <div class="region-actions">
+            <button class="btn btn-sm btn-secondary" data-bind="click: toggleColsPanel, text: $root.t('cols.button')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: exportCsv, text: $root.t('rg.exportCsv')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: exportXlsx, text: $root.t('rg.exportXlsx')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: toggleTableMax,
+                    attr: { title: tableMax() ? $root.t('rg.restore') : $root.t('rg.maximize') }">&#10530;</button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: toggleTable,
+                    attr: { title: tableCollapsed() ? $root.t('rg.expand') : $root.t('rg.collapse') },
+                    text: tableCollapsed() ? '▸' : '▾'"></button>
+          </div>
+        </div>
+
+        <!-- ko if: colsOpen() -->
+        <div class="card ap-cols-panel">
+          <div class="fct-title" data-bind="text: $root.t('cols.title')"></div>
+          <div class="fct-list" style="max-height:320px">
+            <!-- ko foreach: levelCols -->
+            <div class="fct-item" data-bind="click: function () { $vm.toggleCol($data); }, css: { on: $vm.isColOn($data) }">
+              <input type="checkbox" tabindex="-1" data-bind="checked: $vm.isColOn($data)">
+              <span class="fct-lbl" data-bind="text: $vm.t($data.labelKey)"></span>
+            </div>
+            <!-- /ko -->
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">
+            <button class="btn btn-sm btn-secondary" data-bind="click: showAllCols, text: $root.t('cols.showAll')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: resetCols, text: $root.t('cols.reset')"></button>
+            <button class="btn btn-sm btn-primary" data-bind="click: toggleColsPanel, text: $root.t('dr.close')"></button>
+          </div>
+        </div>
+        <!-- /ko -->
+
+        <!-- ko ifnot: tableCollapsed() -->
+        <!-- ko if: loadingRows() --><list-skeleton params="rows: 10"></list-skeleton><!-- /ko -->
+        <!-- ko ifnot: loadingRows() -->
+        <!-- ko if: rows().length === 0 -->
+        <div class="empty-state" data-bind="text: $root.t('tbl.none')"></div>
+        <!-- /ko -->
+        <!-- ko if: rows().length > 0 -->
+
+        <!-- one metadata-driven register table for both levels -->
+        <div class="data-table-wrap"><table class="data-table">
+          <thead><tr>
+            <!-- ko foreach: visibleCols -->
+            <th data-bind="css: { 'ap-amount': !!$data.amt, 'ap-th-sort': !!$data.sort },
+                           click: function () { if ($data.sort) $vm.sortBy($data.sort); return true; }">
+              <span data-bind="text: $vm.t($data.labelKey)"></span>
+              <!-- ko if: $data.sort --><span class="arr" data-bind="text: $vm.sortArrow($data.sort)"></span><!-- /ko -->
+            </th>
+            <!-- /ko -->
+          </tr></thead>
+          <tbody><!-- ko foreach: rows -->
+            <tr class="ap-row-click" data-bind="click: function () { $vm.openDrill($data); }">
+              <!-- ko foreach: $vm.visibleCols -->
+              <td data-bind="css: { 'ap-amount': !!$data.amt, 'ap-clip': !!$data.clip },
+                             attr: { title: $vm.cellTitle($parent, $data), 'data-key': $data.key }">
+                <!-- ko if: $data.badge -->
+                <span data-bind="text: $vm.badgeText($data.badge, $parent[$data.key]), attr: { class: $vm.badgeCls($data.badge, $parent[$data.key]) }"></span>
+                <!-- /ko -->
+                <!-- ko ifnot: $data.badge -->
+                <span data-bind="text: $vm.cellVal($parent, $data)"></span>
+                <!-- /ko -->
+              </td>
+              <!-- /ko -->
+            </tr>
+          <!-- /ko --></tbody>
+        </table></div>
+        <!-- ko if: rowTotals() -->
+        <div class="ap-table-note">
+          <!-- ko if: level() === 'trx' -->
+          <b data-bind="text: $root.t('tbl.totalInvoiced') + ': ' + fmtAmt(rowTotals().invoicedAed)"></b>
+          <span data-bind="text: ' · ' + $root.t('tbl.totalRemaining') + ': ' + fmtAmt(rowTotals().remainingAed)"></span>
+          <!-- /ko -->
+          <!-- ko if: level() === 'line' -->
+          <b data-bind="text: $root.t('tbl.totalRevenue') + ': ' + fmtAmt(rowTotals().revenueAed)"></b>
+          <!-- /ko -->
+        </div>
+        <!-- /ko -->
+
+        <list-pager params="offset: offset, limit: limit, total: total, onChange: reloadRows"></list-pager>
+        <!-- /ko -->
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+
+    </div><!-- /.ap-main -->
+  </div><!-- /.ap-body -->
+
+  <!-- ── Transaction drill window: master region + summary card + lines ── -->
+  <!-- ko if: showDrill() && drill() -->
+  <div class="modal-overlay" data-bind="click: closeDrill">
+    <div class="modal-box inv-box" data-bind="css: { 'inv-max': invMax() }, click: function(){ return false; }, clickBubble: false">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">
+            <span data-bind="text: $root.t('dr.title')"></span>
+            <span style="font-weight:400" data-bind="text: ' · ' + drill().header.trxNumber"></span>
+          </div>
+          <div style="font-size:12px;color:var(--text-2)" data-bind="text: drill().header.customer"></div>
+        </div>
+        <div class="region-actions">
+          <button class="btn btn-sm btn-secondary" data-bind="click: toggleInvMax,
+                  attr: { title: invMax() ? $root.t('rg.restore') : $root.t('rg.maximize') },
+                  text: invMax() ? '⤡' : '⤢'"></button>
+          <button class="btn btn-sm btn-secondary" data-bind="click: closeDrill, text: $root.t('dr.close')"></button>
+        </div>
+      </div>
+      <div class="modal-body inv-body">
+
+        <div class="inv-master" data-bind="with: drill().header">
+          <div class="inv-id">
+            <div class="inv-eyebrow" data-bind="text: $vm.t('dr.trxHeader')"></div>
+            <div class="inv-number" data-bind="text: $data.trxNumber"></div>
+            <div class="inv-supplier">
+              <span data-bind="text: $data.customer"></span>
+              <span class="badge badge--idle" data-bind="text: $data.trxType || ''"></span>
+            </div>
+
+            <div class="inv-sec" data-bind="text: $vm.t('dr.details')"></div>
+            <div class="inv-grid">
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.custNo')"></span><span data-bind="text: $vm.drillX('customerNumber')"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.custType')"></span><span data-bind="text: $vm.drillX('customerType')"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('f.bu')"></span><span data-bind="text: $data.businessUnit || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.source')"></span><span data-bind="text: $data.source || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.complete')"></span><span data-bind="text: $data.complete || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.terms')"></span><span data-bind="text: $data.terms || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.currency')"></span><span data-bind="text: $vm.drillX('currency')"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.createdBy')"></span><span data-bind="text: $data.createdBy || ''"></span></div>
+            </div>
+
+            <div class="inv-sec" data-bind="text: $vm.t('dr.dates')"></div>
+            <div class="inv-grid">
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.date')"></span><span data-bind="text: $data.trxDate || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.dueDate')"></span><span data-bind="text: $data.dueDate || ''"></span></div>
+              <!-- ko if: $data.delayDays -->
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.dpd')"></span><span data-bind="text: $data.delayDays"></span></div>
+              <!-- /ko -->
+            </div>
+          </div>
+
+          <!-- summary card: hero amount + money rows + status stack -->
+          <aside class="inv-sum">
+            <div class="inv-eyebrow" data-bind="text: $vm.t('dr.summary')"></div>
+            <div class="inv-amount" data-bind="text: $vm.fmtAmt($data.enteredAed)"></div>
+            <div class="inv-amount-l" data-bind="text: $vm.t('dr.entered')"></div>
+            <div class="inv-rows">
+              <div><span data-bind="text: $vm.t('dr.applied')"></span><b data-bind="text: $vm.fmtAmt($data.appliedAed)"></b></div>
+              <div><span data-bind="text: $vm.t('dr.credits')"></span><b data-bind="text: $vm.fmtAmt($data.creditAed)"></b></div>
+              <div><span data-bind="text: $vm.t('dr.adj')"></span><b data-bind="text: $vm.fmtAmt($data.adjAed)"></b></div>
+              <div><span data-bind="text: $vm.t('dr.remaining')"></span><b data-bind="text: $vm.fmtAmt($data.remainingAed)"></b></div>
+            </div>
+            <div class="inv-badges">
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.status')"></span>
+                <span data-bind="text: $vm.badgeText('st', $data.status), attr: { class: $vm.badgeCls('st', $data.status) }"></span></div>
+              <!-- ko if: $data.aging -->
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.aging')"></span>
+                <span data-bind="text: $vm.badgeText('ag', $data.aging), attr: { class: $vm.badgeCls('ag', $data.aging) }"></span></div>
+              <!-- /ko -->
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.complete')"></span>
+                <span data-bind="text: $data.complete || '', attr: { class: ($data.complete === 'Yes') ? 'badge badge--success' : 'badge badge--warn' }"></span></div>
+            </div>
+          </aside>
+        </div>
+
+        <!-- detail region: revenue lines -->
+        <div class="inv-detail">
+          <div class="ap-tabs">
+            <button class="ap-tab on">
+              <span data-bind="text: $root.t('dr.lines') + ' (' + drill().lines.length + ')'"></span></button>
+          </div>
+          <!-- ko if: drill().lines.length === 0 -->
+          <div class="empty-state" data-bind="text: $root.t('dr.noLines')"></div>
+          <!-- /ko -->
+          <!-- ko if: drill().lines.length > 0 -->
+          <div class="data-table-wrap"><table class="data-table">
+            <thead><tr>
+              <th data-bind="text: $root.t('tbl.line')"></th>
+              <th data-bind="text: $root.t('tbl.memoLine')"></th>
+              <th data-bind="text: $root.t('tbl.description')"></th>
+              <th data-bind="text: $root.t('tbl.project')"></th>
+              <th data-bind="text: $root.t('tbl.task')"></th>
+              <th data-bind="text: $root.t('tbl.cc')"></th>
+              <th data-bind="text: $root.t('tbl.account')"></th>
+              <th class="ap-amount" data-bind="text: $root.t('tbl.revenue')"></th>
+              <th class="ap-amount" data-bind="text: $root.t('tbl.tax')"></th>
+              <th data-bind="text: $root.t('tbl.glDate')"></th>
+            </tr></thead>
+            <tbody><!-- ko foreach: drill().lines -->
+              <tr>
+                <td data-bind="text: $data.lineNumber"></td>
+                <td data-bind="text: $data.memoLine || '', attr: { title: $data.memoDesc || '' }"></td>
+                <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                    data-bind="text: $data.description || '', attr: { title: $data.description || '' }"></td>
+                <td data-bind="text: $data.projectNumber || '', attr: { title: $data.projectName || '' }"></td>
+                <td data-bind="text: $data.taskNumber || '', attr: { title: $data.taskName || '' }"></td>
+                <td data-bind="text: $data.costCenterCode || '', attr: { title: $data.costCenterDesc || '' }"></td>
+                <td data-bind="text: $data.accountCode || '', attr: { title: $data.accountDesc || '' }"></td>
+                <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.revenueAed)"></td>
+                <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.taxAed)"></td>
+                <td data-bind="text: $data.glDate || ''"></td>
+              </tr>
+            <!-- /ko --></tbody>
+          </table></div>
+          <!-- /ko -->
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Rich hint popover (chart / region ⓘ hover) ─────────────────────── -->
+  <div class="ap-tip" data-bind="visible: hintShow, style: { left: hintX() + 'px', top: hintY() + 'px' }" style="display:none">
+    <div class="ap-tip-h" data-bind="text: hintTitle"></div>
+    <div class="ap-tip-d" data-bind="text: hintDesc"></div>
+    <!-- ko if: hintRows().length > 0 -->
+    <div class="ap-tip-rows" data-bind="foreach: hintRows">
+      <div class="ap-tip-row"><span data-bind="text: l"></span><b data-bind="text: v"></b></div>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ── Chart drill-down drawer (right-edge slide-in) ──────────────────── -->
+  <div class="dw-scrim" data-bind="css: { show: dwOpen }, click: closeDw"></div>
+  <aside class="dw-drawer" data-bind="css: { show: dwOpen, 'dw-full': dwMax }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: dwEyebrow"></div>
+        <div class="dw-title" data-bind="text: dwTitle"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-sm" data-bind="click: toggleDwMax,
+                attr: { title: dwMax() ? $root.t('rg.restore') : $root.t('rg.maximize') },
+                text: dwMax() ? '⤡' : '⤢'"></button>
+        <button class="btn btn-sm" data-bind="click: dwExportCsv, text: $root.t('rg.exportCsv'),
+                visible: !dwLoading() && dwRows().length > 0"></button>
+        <button class="btn btn-sm" data-bind="click: closeDw, text: $root.t('dr.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <div class="dw-ctx" data-bind="visible: dwCtx(), text: dwCtx"></div>
+      <!-- ko if: dwLoading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+      <!-- ko ifnot: dwLoading() -->
+      <div class="dw-cap" data-bind="visible: dwCapNote(), text: dwCapNote"></div>
+      <!-- ko if: dwRows().length === 0 -->
+      <div class="empty-state" data-bind="text: $root.t('tbl.none')"></div>
+      <!-- /ko -->
+      <!-- ko if: dwRows().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <!-- ko foreach: dwCols -->
+          <th data-bind="css: { 'ap-amount': !!$data.amt }">
+            <span data-bind="text: $vm.t($data.labelKey)"></span>
+          </th>
+          <!-- /ko -->
+        </tr></thead>
+        <tbody><!-- ko foreach: dwRows -->
+          <tr class="ap-row-click" data-bind="click: function () { $vm.openDrill($data); }">
+            <!-- ko foreach: $vm.dwCols -->
+            <td data-bind="css: { 'ap-amount': !!$data.amt, 'ap-clip': !!$data.clip },
+                           attr: { title: $vm.cellTitle($parent, $data) }">
+              <!-- ko if: $data.badge -->
+              <span data-bind="text: $vm.badgeText($data.badge, $parent[$data.key]), attr: { class: $vm.badgeCls($data.badge, $parent[$data.key]) }"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.badge -->
+              <span data-bind="text: $vm.cellVal($parent, $data)"></span>
+              <!-- /ko -->
+            </td>
+            <!-- /ko -->
+          </tr>
+        <!-- /ko --></tbody>
+        <tfoot><tr><td class="dw-total" data-bind="attr: { colspan: dwCols.length }">
+          <span data-bind="text: $root.t('tbl.totalInvoiced')"></span>
+          <b data-bind="text: fmtAmt(dwInvoiced())"></b>
+          <span style="margin-inline-start:16px" data-bind="text: $root.t('tbl.totalRemaining')"></span>
+          <b data-bind="text: fmtAmt(dwRemaining())"></b>
+        </td></tr></tfoot>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+  </aside>
+
+</div>

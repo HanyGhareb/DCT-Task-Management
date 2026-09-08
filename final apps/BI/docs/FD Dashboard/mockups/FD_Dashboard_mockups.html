@@ -1,0 +1,351 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body style="margin:0"><title>Budget Status Mockups</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --ink:#1B2A27; --muted:#5F6E6A; --line:#D8E0DC; --accent:#3F6F5F; --accent-soft:#E4EEE9;
+  --budget:#3A6EA5; --actual:#59468F; --enc:#9A6B1F; --fund:#2E7D5B; --bad:#B3261E;
+  --font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --serif:'Source Serif 4',Georgia,'Times New Roman',serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#0F1614; --surface:#182120; --ink:#E6EDEA; --muted:#98A6A1; --line:#2A3634; --accent:#7CC3A8; --accent-soft:#1E2D28; } }
+:root[data-theme="dark"]{ --bg:#0F1614; --surface:#182120; --ink:#E6EDEA; --muted:#98A6A1; --line:#2A3634; --accent:#7CC3A8; --accent-soft:#1E2D28; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+.page{max-width:1280px;margin:0 auto;padding:28px 24px 80px}
+.masthead{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:22px}
+.masthead h1{font-family:var(--serif);font-weight:600;font-size:30px;margin:0 0 4px;letter-spacing:-.01em;text-wrap:balance}
+.masthead p{margin:0;color:var(--muted);max-width:68ch}
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.jump{display:flex;gap:8px;flex-wrap:wrap}
+.jump a{color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:8px;font-weight:600;font-size:13px}
+.jump a:hover,.jump a:focus-visible{border-color:var(--accent);outline:none}
+.legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:0 0 26px;color:var(--muted);font-size:12.5px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:6px;vertical-align:-1px}
+.option{margin:0 0 54px}
+.option-head{display:grid;grid-template-columns:auto 1fr;gap:16px 20px;align-items:start;margin-bottom:14px}
+.option-letter{font-family:var(--serif);font-size:44px;font-weight:600;line-height:1;color:var(--accent);padding-top:2px}
+.option-head h2{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.option-head p{margin:0;color:var(--muted);max-width:78ch}
+.option-head ul{margin:8px 0 0;padding-inline-start:18px;color:var(--muted);max-width:78ch}
+.option-head li{margin:2px 0}
+.frame-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 12px 30px rgba(15,30,25,.08)}
+.frame{min-width:1180px}
+/* ============ shared mock chrome (explicit colours: frames hold on any host ground) ============ */
+.mock{--m-bg:#F4F6F5;--m-card:#FFFFFF;--m-ink:#1B2A27;--m-muted:#66746F;--m-line:#DCE3DF;--m-brand:#3F6F5F;--m-brand-dark:#2C5044;--m-brand-soft:#E7EFEB;--m-track:rgba(27,42,39,.09);
+  background:var(--m-bg);color:var(--m-ink);padding:0 0 22px;font-family:var(--font)}
+.mock.dark{--m-bg:#0E1715;--m-card:#172220;--m-ink:#E9F0ED;--m-muted:#93A39D;--m-line:#243330;--m-brand:#7CC3A8;--m-brand-dark:#A9DCC8;--m-brand-soft:#1B2925;--m-track:rgba(233,240,237,.12)}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 22px;background:var(--m-brand-dark);color:#fff}
+.mock.dark .topbar{background:#0A1210;border-bottom:1px solid var(--m-line);color:var(--m-ink)}
+.topbar .wm{display:flex;align-items:center;gap:10px;font-weight:600}
+.topbar .wm b{font-family:var(--serif);font-size:18px;font-weight:600}
+.topbar .cube{width:26px;height:26px;border-radius:7px;background:#fff;color:var(--m-brand-dark);display:grid;place-items:center;font-size:11px;font-weight:700}
+.mock.dark .topbar .cube{background:var(--m-brand);color:#0E1715}
+.topbar .crumbs{font-size:12.5px;opacity:.85}
+.topbar .right{display:flex;gap:10px;align-items:center;font-size:12.5px;opacity:.9}
+.topbar .avatar{width:26px;height:26px;border-radius:50%;background:#fff3;display:grid;place-items:center;font-size:11px;font-weight:700}
+.phead{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:18px 22px 10px;flex-wrap:wrap}
+.phead h1{font-family:var(--serif);font-weight:600;font-size:26px;margin:0;letter-spacing:-.01em}
+.phead .sub{color:var(--m-muted);font-size:12.5px;margin-top:3px}
+.phead .sub b{color:var(--m-ink);font-weight:600}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--m-line);border-radius:9px;overflow:hidden;background:var(--m-card)}
+.seg button{border:0;background:transparent;color:var(--m-muted);font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;cursor:pointer}
+.seg button.on{background:var(--m-brand);color:#fff}
+.mock.dark .seg button.on{color:#0E1715}
+.seg button:focus-visible{outline:2px solid var(--m-brand);outline-offset:-2px}
+.chip-sel{border:1px solid var(--m-line);background:var(--m-card);border-radius:9px;padding:7px 12px;font-size:12.5px;color:var(--m-ink);display:inline-flex;gap:8px;align-items:center}
+.chip-sel small{color:var(--m-muted)}
+.btn{border:1px solid var(--m-line);background:var(--m-card);color:var(--m-ink);border-radius:9px;padding:7px 13px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--m-brand);border-color:var(--m-brand);color:#fff}
+.mock.dark .btn.primary{color:#0E1715}
+.region{margin:10px 22px 0;background:var(--m-card);border:1px solid var(--m-line);border-radius:12px;overflow:hidden}
+.region-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 14px;background:var(--m-brand-soft);border-bottom:1px solid var(--m-line);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--m-brand-dark)}
+.region-h .hint{font-weight:500;text-transform:none;letter-spacing:0;color:var(--m-muted);font-size:12px}
+.region-h .acts{display:flex;gap:8px;align-items:center}
+.region-h .lnk{background:none;border:0;color:var(--m-brand-dark);font:inherit;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-transform:none;letter-spacing:0}
+/* ---- sector cards (shared base) ---- */
+.sectors{display:grid;gap:10px;padding:14px}
+.scard{position:relative;border:1px solid var(--m-line);background:var(--m-card);border-radius:11px;padding:11px 12px 10px;text-align:start;cursor:pointer;font:inherit;color:var(--m-ink);display:flex;flex-direction:column;gap:6px;min-width:0;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+.scard:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(20,40,32,.10);border-color:var(--m-brand)}
+.scard:focus-visible{outline:2px solid var(--m-brand);outline-offset:2px}
+.scard .ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--m-brand-soft);color:var(--m-brand-dark);flex:none}
+.scard .ico svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.scard .txt{display:flex;flex-direction:column;gap:5px;min-width:0}
+.scard .nm{display:block;font-weight:600;font-size:13px;line-height:1.25;white-space:normal}
+.scard .bud{display:block;font-size:11.5px;color:var(--m-muted);font-variant-numeric:tabular-nums}
+.scard .bud b{color:var(--m-ink);font-weight:600}
+.scard .bar{display:block;height:4px;border-radius:99px;background:var(--m-track);overflow:hidden}
+.scard .bar i{display:block;height:100%;background:var(--actual);border-radius:99px}
+.scard .tick{position:absolute;top:8px;inset-inline-end:8px;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--m-line);background:var(--m-card);display:grid;place-items:center;color:#fff;font-size:11px;line-height:1}
+.scard.on{border-color:var(--m-brand);box-shadow:inset 0 0 0 1.5px var(--m-brand);background:var(--m-brand-soft)}
+.scard.on .tick{background:var(--m-brand);border-color:var(--m-brand)}
+.scard.on .tick::after{content:'✓'}
+.mock.dark .scard.on .tick{color:#0E1715}
+.scard.dim{opacity:.55}
+/* ---- chapter bands (shared base) ---- */
+.bands{display:flex;flex-direction:column;gap:12px;padding:14px 22px 0}
+.band{display:grid;grid-template-columns:54px 1fr;background:var(--m-card);border:1px solid var(--m-line);border-radius:12px;overflow:hidden}
+.band .lab{background:var(--m-brand-soft);border-inline-end:1px solid var(--m-line);display:grid;place-items:center;padding:10px 0}
+.band .lab span{writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--m-brand-dark);white-space:nowrap}
+.band .lab small{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10.5px;color:var(--m-muted);margin-top:6px;letter-spacing:.02em}
+.band .body{padding:14px 18px;min-width:0}
+.num{font-family:var(--serif);font-variant-numeric:tabular-nums;font-weight:600;letter-spacing:-.01em}
+.k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--m-muted)}
+.neg{color:var(--bad)!important}
+.foot{padding:12px 22px 0;color:var(--m-muted);font-size:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.foot b{color:var(--m-ink);font-weight:600}
+/* ============ A · Ring Bands ============ */
+.mA .sectors{grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
+.mA .body{display:grid;grid-template-columns:repeat(3,1fr) 1.15fr;gap:14px;align-items:center}
+.ring{display:flex;align-items:center;gap:12px}
+.ring svg{width:92px;height:92px;flex:none;transform:rotate(-90deg)}
+.ring svg circle{fill:none;stroke-width:8}
+.ring .track{stroke:var(--m-track)}
+.ring .txt .k{margin-bottom:2px}
+.ring .txt .num{font-size:24px;line-height:1.1}
+.ring .txt .pct{font-size:11.5px;color:var(--m-muted);margin-top:2px}
+.ring .txt .pct b{font-weight:600}
+.ring .cval{position:absolute}
+.ringwrap{position:relative;width:92px;height:92px;flex:none}
+.ringwrap .in{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.fundsq{border-radius:12px;padding:12px 14px;min-height:98px;display:flex;flex-direction:column;justify-content:center;gap:2px;background:#E4F1EA;border:1px solid #BFDCCB}
+.fundsq .k{color:#2E7D5B}
+.fundsq .num{font-size:28px;color:#1F5E43;line-height:1.05}
+.fundsq .pct{font-size:12px;color:#3F6F5F}
+.fundsq.neg{background:#F8E9E6;border-color:#E7BDB5}
+.fundsq.neg .k,.fundsq.neg .num,.fundsq.neg .pct{color:var(--bad)}
+/* ============ B · Consumption Bar ============ */
+.mB .sectors{grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+.mB .scard{flex-direction:row;align-items:center;gap:9px;padding:8px 10px}
+.mB .scard .txt{min-width:0;display:flex;flex-direction:column;gap:2px;flex:1}
+.mB .scard .nm{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mB .scard .ico{width:26px;height:26px;border-radius:8px}
+.mB .scard .ico svg{width:15px;height:15px}
+.mB .scard .tick{position:static;width:16px;height:16px;font-size:10px}
+.mB .band{grid-template-columns:54px 190px 1fr}
+.mB .hero{padding:14px 16px;border-inline-end:1px dashed var(--m-line);display:flex;flex-direction:column;justify-content:center;gap:2px}
+.mB .hero .num{font-size:30px;color:var(--budget);line-height:1.05}
+.mB .hero .sub{font-size:11.5px;color:var(--m-muted)}
+.mB .body{display:flex;flex-direction:column;gap:10px;justify-content:center}
+.stack{display:flex;height:22px;border-radius:7px;overflow:hidden;background:var(--m-track);gap:2px}
+.stack i{display:block;height:100%;min-width:0}
+.stack .a{background:var(--actual)} .stack .e{background:var(--enc)} .stack .f{background:var(--fund)} .stack .o{background:var(--bad)}
+.figs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.fig{display:flex;gap:9px;align-items:flex-start}
+.fig .dot{width:10px;height:10px;border-radius:3px;margin-top:5px;flex:none}
+.fig .num{font-size:20px;line-height:1.1}
+.fig .pct{font-size:11.5px;color:var(--m-muted)}
+.split{display:grid;grid-template-columns:44px 1fr auto;gap:8px 10px;align-items:center;font-size:11.5px;color:var(--m-muted);padding-top:8px;border-top:1px solid var(--m-line)}
+.split .bu{font-weight:700;letter-spacing:.06em;font-size:10.5px}
+.split .mini{display:flex;height:7px;border-radius:99px;overflow:hidden;background:var(--m-track);gap:1px}
+.split .mini i{display:block;height:100%}
+.split .v{font-variant-numeric:tabular-nums;white-space:nowrap}
+.split .v b{color:var(--m-ink);font-weight:600}
+/* ============ C · Boardroom ============ */
+.mC .sectors{display:flex;overflow-x:auto;gap:10px;padding:14px;scroll-snap-type:x proximity}
+.mC .scard{flex:0 0 170px;scroll-snap-align:start;background:#1D2926;border-color:#2A3835}
+.mC .scard .ico{background:#243330;color:var(--m-brand)}
+.mC .scard.on{background:#20362E;border-color:var(--m-brand)}
+.mC .scard .bar i{background:var(--m-brand)}
+.mC .band{grid-template-columns:54px 1fr;background:#151F1D;border-color:#243330}
+.mC .band .lab{background:#111A18;border-color:#243330}
+.mC .band.total{background:linear-gradient(90deg,#1B2A26,#151F1D);border-color:var(--m-brand)}
+.mC .band.total .lab{background:var(--m-brand)} .mC .band.total .lab span{color:#0E1715}
+.mC .body{display:grid;grid-template-columns:repeat(4,1fr);gap:0;padding:0}
+.mC .cell{padding:14px 18px 12px;border-inline-end:1px solid #243330;display:flex;flex-direction:column;gap:3px;min-width:0}
+.mC .cell:last-child{border-inline-end:0}
+.mC .cell .k{display:flex;align-items:center;gap:7px}
+.mC .cell .k i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.mC .cell .num{font-size:30px;line-height:1.05;color:var(--m-ink)}
+.mC .band.total .cell .num{font-size:36px}
+.mC .cell .pct{font-size:11.5px;color:var(--m-muted);font-variant-numeric:tabular-nums}
+.mC .cell .pct b{color:var(--m-ink);font-weight:600}
+.mC .rail{grid-column:1/-1;height:6px;display:flex;gap:2px;background:var(--m-track)}
+.mC .rail i{display:block;height:100%}
+.mC .rail .a{background:var(--actual)} .mC .rail .e{background:var(--enc)} .mC .rail .f{background:var(--fund)} .mC .rail .o{background:var(--bad)}
+.mC .fundcell .num{color:#8CD9B8}
+.mC .fundcell.neg .num{color:#FF8A7A}
+@media (prefers-reduced-motion:reduce){ .scard,.scard:hover{transition:none;transform:none} }
+</style>
+
+<div class="page">
+  <div class="masthead">
+    <div>
+      <div class="eyebrow">FD Dashboard · three treatments of the same sketch</div>
+      <h1>Budget Status Mockups</h1>
+      <p>Same layout in all three: a Sectors card strip on top, then one band per Chapter with Budget, Actual, Encumbrance and Fund Available. Sector cards are live in every mockup — click one or more to filter the bands, and switch the business-unit scope. Figures are the real 2026 Projects Budget Utilization totals as of today (AED, millions).</p>
+    </div>
+    <nav class="jump"><a href="#optA">A · Ring Bands</a><a href="#optB">B · Consumption Bar</a><a href="#optC">C · Boardroom</a></nav>
+  </div>
+  <div class="legend"><span><i style="background:var(--budget)"></i>Budget</span><span><i style="background:var(--actual)"></i>Actual (AP + GRN)</span><span><i style="background:var(--enc)"></i>Encumbrance (open PR + PO)</span><span><i style="background:var(--fund)"></i>Fund Available = Budget − Actual − Encumbrance</span><span><i style="background:var(--bad)"></i>Over budget</span></div>
+
+  <!-- ================= OPTION A ================= -->
+  <section class="option" id="optA">
+    <div class="option-head">
+      <div class="option-letter">A</div>
+      <div>
+        <h2>Ring Bands — the sketch, drawn faithfully</h2>
+        <p>Keeps the shapes of the draft: three circles and one square per chapter. The circles are rings, so the Actual and Encumbrance rings visually show their share of Budget, and the square Fund Available tile is the loud green answer at the end of each row.</p>
+        <ul><li>Sector cards: icon, name, budget and a thin utilization bar; selected cards get a check and a brand ring.</li><li>Best when the reader wants each chapter as its own picture, one at a time.</li></ul>
+      </div>
+    </div>
+    <div class="frame-wrap"><div class="frame"><div class="mock mA" id="mockA"></div></div></div>
+  </section>
+
+  <!-- ================= OPTION B ================= -->
+  <section class="option" id="optB">
+    <div class="option-head">
+      <div class="option-letter">B</div>
+      <div>
+        <h2>Consumption Bar — where every dirham of the budget sits</h2>
+        <p>Budget is the hero figure on the left of each band; one stacked bar then splits it into Actual, Encumbrance and Fund Available with the three figures under their segments. Two thin rows beneath split the same chapter by business unit (DCT / MSS), so the executive sees both at once without another filter.</p>
+        <ul><li>Sector cards are compact chips, so all of them fit in two rows.</li><li>Best for comparing chapters against each other and spotting the one that is nearly consumed.</li></ul>
+      </div>
+    </div>
+    <div class="frame-wrap"><div class="frame"><div class="mock mB" id="mockB"></div></div></div>
+  </section>
+
+  <!-- ================= OPTION C ================= -->
+  <section class="option" id="optC">
+    <div class="option-head">
+      <div class="option-letter">C</div>
+      <div>
+        <h2>Boardroom — dark scorecard for a wall screen</h2>
+        <p>A dark, large-numeral scorecard for projection in a meeting room: an "All chapters" total band on top, then a four-column band per chapter with a consumption rail along its bottom edge. Sector cards sit in a horizontally scrolling strip so the chapters always start above the fold.</p>
+        <ul><li>Same data, same interactions; only the treatment changes. Would ship as a GL app theme option, not a separate page.</li><li>Best for a single-screen, glance-and-go read by senior management.</li></ul>
+      </div>
+    </div>
+    <div class="frame-wrap"><div class="frame"><div class="mock dark mC" id="mockC"></div></div></div>
+  </section>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* live 2026 figures — DCT_BUDGET_UTILIZATION_V grouped by sector × BU × chapter (AED) */
+var RAW = "(Unclassified)|DCT|(None)|6622142|0|0|6622142\nAD-Guggenheim Museum|MSS|Chapter 2|217981890|50542376|85940400|81499114\nAD-Guggenheim Museum|MSS|Chapter 3|323277714|33972344|59048864|230256506\nALC|DCT|Chapter 2|158520072|43410521|56927901|58181650\nALC|DCT|Chapter 3|1980568|300349|47000|1633219\nCulture|DCT|(None)|2413211|15079670|0|-12666459\nCulture|DCT|Chapter 2|566202730|227300732|148152226|190749772\nCulture|DCT|Chapter 3|79774917|8555181|35355465|35864272\nCulture|DCT|Chapter 4|5500000|5500000|0|0\nCulture|DCT|Chapter 5|27910698|20000000|0|7910698\nExecutive Office|DCT|Chapter 2|346495183|197042550|19982024|129470609\nExecutive Office|DCT|Chapter 3|1079841378|911729161|0|168112217\nInternal Audit|DCT|Chapter 2|3350000|502103|2147700|700197\nLegal & Government Affairs|DCT|Chapter 2|11115150|4240858|1963806|4910486\nLouvre Abu Dhabi|MSS|Chapter 2|170707064|64851756|40411610|65443699\nLouvre Abu Dhabi|MSS|Chapter 3|392326077|27366519|95139426|269820132\nMuseum Shared Services|MSS|Chapter 1|3630001|937589|977061|1715352\nMuseum Shared Services|MSS|Chapter 2|153832443|31102583|36555521|86174339\nMuseum Shared Services|MSS|Chapter 3|97799595|6133831|51677425|39988339\nNatural History Museum|MSS|Chapter 2|122800813|56271899|23100423|43428492\nNatural History Museum|MSS|Chapter 3|111525610|24830789|31727292|54967528\nProjects Management & Engineering|DCT|Chapter 2|12260770|2569206|3640984|6050580\nProjects Management & Engineering|DCT|Chapter 3|1000000|80000|350000|570000\nStrategic Affairs|DCT|Chapter 2|183061862|47977559|84856486|50227818\nStrategic Affairs|DCT|Chapter 3|44174486|4032074|24309415|15832997\nStrategic Affairs|DCT|Chapter 4|258559161|52997008|51267539|154294614\nStrategic Marketing & Communication|DCT|Chapter 2|1035351944|305944150|178909574|550498220\nSupport Service|DCT|(None)|111447733|126993000|0|-15545267\nSupport Service|DCT|Chapter 1|9477095|6091272|3382685|3137\nSupport Service|DCT|Chapter 2|252418494|94602196|93731470|64084827\nSupport Service|DCT|Chapter 3|47677624|2824760|23567125|21285739\nTeamLab|MSS|Chapter 2|71000000|0|0|71000000\nTeamLab|MSS|Chapter 3|9000000|0|0|9000000\nTendering and Projects Control|DCT|Chapter 2|6518504|1608616|1054113|3855775\nTourism|DCT|(None)|794689|131000|7189939|-6526250\nTourism|DCT|Chapter 2|1617095549|676491215|436569007|504035326\nTourism|DCT|Chapter 3|5340801|394200|3153800|1792801\nTourism|DCT|Chapter 4|46022376|36544249|9110327|367800\nZayed National Museum|MSS|Chapter 2|164781933|69746867|72743329|22291736\nZayed National Museum|MSS|Chapter 3|26000000|9548442|10856751|5594808";
+var ROWS = RAW.split('\n').map(function(l){var p=l.split('|');return {s:p[0],bu:p[1],ch:p[2],bud:+p[3],act:+p[4],enc:+p[5],fund:+p[6]};});
+var CHAPTERS = [['Chapter 1','Payroll'],['Chapter 2','Opex'],['Chapter 3','Capex'],['Chapter 4','Subsidy'],['Chapter 5','Aids & Grants']];
+var ICONS = {
+  building:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-5h6v5M8 7h2M14 7h2M8 11h2M14 11h2"/></svg>',
+  mask:'<svg viewBox="0 0 24 24"><path d="M4 5c2.5 1 5.5 1.5 8 1.5S17.5 6 20 5v6.5c0 4.5-3.5 8-8 8s-8-3.5-8-8Z"/><path d="M8.5 10.5c.8-.6 1.7-.6 2.5 0M13 10.5c.8-.6 1.7-.6 2.5 0M9 15c1.8 1.4 4.2 1.4 6 0"/></svg>',
+  compass:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 5.3-5.3 2.2 2.2-5.3Z"/></svg>',
+  brief:'<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M3 12h18"/></svg>',
+  mega:'<svg viewBox="0 0 24 24"><path d="M4 10v4h3l7 4V6l-7 4Z"/><path d="M17 9.5a3.5 3.5 0 0 1 0 5M8 14l1.5 5"/></svg>',
+  target:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>',
+  museum:'<svg viewBox="0 0 24 24"><path d="M3 9.5 12 4l9 5.5M4 10h16M6 10v8M10 10v8M14 10v8M18 10v8M3 20h18"/></svg>',
+  book:'<svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5V5.5M8 7h8"/></svg>',
+  shield:'<svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 9.5 4-1.5 7-5 7-9.5V6Z"/><path d="m9.5 12 1.8 1.8L15 10"/></svg>',
+  scale:'<svg viewBox="0 0 24 24"><path d="M12 4v16M6 20h12M5 8h14"/><path d="M5 8 3 13h4ZM19 8l-2 5h4Z"/></svg>',
+  wrench:'<svg viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0 5.2 5.2L10 21.5l-3-3L16.7 8.7"/><path d="M14.5 6.5 17 4l3 3-2.5 2.5"/></svg>',
+  clip:'<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6M9 18h3"/></svg>',
+  lab:'<svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 15h9"/></svg>'
+};
+var SECTOR_ICON = {'Tourism':'compass','Culture':'mask','Support Service':'building','Executive Office':'brief','Strategic Marketing & Communication':'mega','Strategic Affairs':'target','Louvre Abu Dhabi':'museum','AD-Guggenheim Museum':'museum','Zayed National Museum':'museum','Natural History Museum':'museum','Museum Shared Services':'museum','TeamLab':'lab','ALC':'book','Internal Audit':'shield','Legal & Government Affairs':'scale','Projects Management & Engineering':'wrench','Tendering and Projects Control':'clip'};
+
+function sum(rows){var o={bud:0,act:0,enc:0,fund:0};rows.forEach(function(r){o.bud+=r.bud;o.act+=r.act;o.enc+=r.enc;o.fund+=r.fund;});return o;}
+function filt(sel,bu){return ROWS.filter(function(r){return (bu==='ALL'||r.bu===bu)&&(!sel.length||sel.indexOf(r.s)>=0);});}
+function chap(rows,ch){return sum(rows.filter(function(r){return r.ch===ch;}));}
+function fmtM(v){var m=v/1e6;var s=Math.abs(m)>=1000?m.toLocaleString('en-AE',{maximumFractionDigits:0}):m.toLocaleString('en-AE',{minimumFractionDigits:1,maximumFractionDigits:1});return s+'M';}
+function fmtFull(v){return 'AED '+Math.round(v).toLocaleString('en-AE');}
+function pct(a,b){return b?Math.round(a/b*100):0;}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+var SECTORS=[];ROWS.forEach(function(r){if(r.s!=='(Unclassified)'&&SECTORS.indexOf(r.s)<0)SECTORS.push(r.s);});
+SECTORS.sort(function(a,b){return sum(ROWS.filter(function(r){return r.s===b;})).bud-sum(ROWS.filter(function(r){return r.s===a;})).bud;});
+
+function topbar(app){return '<div class="topbar"><div class="wm"><span class="cube">'+app.cube+'</span><b>'+app.name+'</b><span class="crumbs">· Budget Status</span></div><div class="right"><span>EN | AR</span><span>Hany Ghareb</span><span class="avatar">HG</span></div></div>';}
+function phead(st){
+  var scope=st.bu==='ALL'?'DCT + MSS':st.bu;
+  return '<div class="phead"><div><h1>Budget status</h1><div class="sub">Budget year <b>2026</b> · figures as of today · scope <b>'+scope+'</b> · <b>'+(st.sel.length?st.sel.length+' sector'+(st.sel.length>1?'s':''):'all sectors')+'</b> · AED millions</div></div>'+
+  '<div class="controls"><span class="chip-sel"><small>Year</small> 2026 ▾</span><span class="chip-sel"><small>Period</small> YTD 09-2026 ▾</span>'+
+  '<div class="seg" data-role="bu"><button data-bu="ALL" class="'+(st.bu==='ALL'?'on':'')+'">All units</button><button data-bu="DCT" class="'+(st.bu==='DCT'?'on':'')+'">DCT</button><button data-bu="MSS" class="'+(st.bu==='MSS'?'on':'')+'">MSS</button></div>'+
+  '<button class="btn">Export</button></div></div>';
+}
+function sectorCards(st,rows){
+  var all=filt([],st.bu);
+  return SECTORS.map(function(s){
+    var t=sum(all.filter(function(r){return r.s===s;}));
+    if(!t.bud&&st.bu!=='ALL')return '';
+    var on=st.sel.indexOf(s)>=0, dim=st.sel.length&&!on;
+    return '<button class="scard'+(on?' on':'')+(dim?' dim':'')+'" data-s="'+esc(s)+'" title="'+esc(s)+' · Budget '+fmtFull(t.bud)+' · Actual '+fmtFull(t.act)+'"><span class="tick"></span><span class="ico">'+ICONS[SECTOR_ICON[s]||'building']+'</span><span class="txt"><span class="nm">'+esc(s)+'</span><span class="bud">Budget <b>'+fmtM(t.bud)+'</b> · '+pct(t.act,t.bud)+'% used</span><span class="bar"><i style="width:'+Math.min(100,pct(t.act,t.bud))+'%"></i></span></span></button>';
+  }).join('');
+}
+function sectorsRegion(st,rows,hint){
+  return '<div class="region"><div class="region-h"><span>Sectors <span class="hint">· '+hint+'</span></span><div class="acts"><span class="hint">'+(st.sel.length?st.sel.join(', '):'Showing all sectors')+'</span>'+(st.sel.length?'<button class="lnk" data-role="clear">Clear</button>':'')+'</div></div><div class="sectors">'+sectorCards(st,rows)+'</div></div>';
+}
+function footer(rows){
+  var none=sum(rows.filter(function(r){return r.ch==='(None)';}));
+  var t=sum(rows);
+  return '<div class="foot"><span>Totals across shown chapters reconcile to the Budget Utilization page for the same criteria. Lines with no chapter classification: <b>'+fmtM(none.bud)+'</b> budget / <b>'+fmtM(none.act)+'</b> actual (shown here, not in a band).</span><span>Grand total · Budget <b>'+fmtM(t.bud)+'</b> · Fund available <b'+(t.fund<0?' class="neg"':'')+'>'+fmtM(t.fund)+'</b></span></div>';
+}
+
+/* ---------- A ---------- */
+function ringSvg(color,p){var r=38,c=2*Math.PI*r,d=Math.max(0,Math.min(1,p))*c;return '<span class="ringwrap"><svg viewBox="0 0 92 92"><circle class="track" cx="46" cy="46" r="'+r+'"/><circle cx="46" cy="46" r="'+r+'" stroke="'+color+'" stroke-dasharray="'+d.toFixed(1)+' '+c.toFixed(1)+'" stroke-linecap="round"/></svg><span class="in">'+Math.round(p*100)+'%</span></span>';}
+function ring(label,color,v,bud,sub){return '<div class="ring" title="'+label+' '+fmtFull(v)+'">'+ringSvg(color,bud?v/bud:0)+'<div class="txt"><div class="k">'+label+'</div><div class="num" style="color:'+color+'">'+fmtM(v)+'</div><div class="pct">'+sub+'</div></div></div>';}
+function renderA(st){
+  var rows=filt(st.sel,st.bu);
+  var html=topbar({cube:'GL',name:'i-Finance · General Ledger'})+phead(st)+sectorsRegion(st,rows,'click one or more cards to filter the chapters below');
+  html+='<div class="bands">'+CHAPTERS.map(function(c){
+    var t=chap(rows,c[0]); if(!t.bud&&!t.act)return '';
+    return '<div class="band"><div class="lab"><span>'+c[0]+'</span><small>'+c[1]+'</small></div><div class="body">'+
+      ring('Budget','var(--budget)',t.bud,t.bud,'annual, all periods')+
+      ring('Actual','var(--actual)',t.act,t.bud,'<b>'+pct(t.act,t.bud)+'%</b> of budget · AP + GRN')+
+      ring('Encumbrance','var(--enc)',t.enc,t.bud,'<b>'+pct(t.enc,t.bud)+'%</b> of budget · PR+PO')+
+      '<div class="fundsq'+(t.fund<0?' neg':'')+'" title="Fund available '+fmtFull(t.fund)+'"><div class="k">Fund available</div><div class="num">'+fmtM(t.fund)+'</div><div class="pct">'+(t.fund<0?'over budget':pct(t.fund,t.bud)+'% of budget remains')+'</div></div></div></div>';
+  }).join('')+'</div>'+footer(rows);
+  return html;
+}
+/* ---------- B ---------- */
+function stack(t,cls){
+  var b=t.bud||1, a=Math.max(0,t.act), e=Math.max(0,t.enc), over=Math.max(0,a+e-t.bud), f=Math.max(0,t.fund);
+  var tot=Math.max(t.bud,a+e)||1;
+  return '<div class="'+cls+'"><i class="a" style="width:'+(a/tot*100)+'%" title="Actual '+fmtFull(t.act)+'"></i><i class="e" style="width:'+(e/tot*100)+'%" title="Encumbrance '+fmtFull(t.enc)+'"></i>'+(over?'<i class="o" style="width:'+(over/tot*100)+'%" title="Over budget '+fmtFull(over)+'"></i>':'<i class="f" style="width:'+(f/tot*100)+'%" title="Fund available '+fmtFull(t.fund)+'"></i>')+'</div>';
+}
+function fig(label,color,v,bud,sub){return '<div class="fig" title="'+label+' '+fmtFull(v)+'"><span class="dot" style="background:'+color+'"></span><div><div class="k">'+label+'</div><div class="num'+(v<0?' neg':'')+'" style="color:'+color+'">'+fmtM(v)+'</div><div class="pct">'+sub+'</div></div></div>';}
+function renderB(st){
+  var rows=filt(st.sel,st.bu);
+  var html=topbar({cube:'GL',name:'i-Finance · General Ledger'})+phead(st)+sectorsRegion(st,rows,'multi-select · chips show budget and % used');
+  html+='<div class="bands">'+CHAPTERS.map(function(c){
+    var t=chap(rows,c[0]); if(!t.bud&&!t.act)return '';
+    var split='';
+    if(st.bu==='ALL'){ split='<div class="split">'+['DCT','MSS'].map(function(bu){var u=chap(rows.filter(function(r){return r.bu===bu;}),c[0]);if(!u.bud&&!u.act)return '';var tot=Math.max(u.bud,u.act+u.enc)||1;return '<span class="bu">'+bu+'</span><span class="mini"><i style="width:'+(Math.max(0,u.act)/tot*100)+'%;background:var(--actual)"></i><i style="width:'+(Math.max(0,u.enc)/tot*100)+'%;background:var(--enc)"></i><i style="width:'+(Math.max(0,u.fund)/tot*100)+'%;background:var(--fund)"></i></span><span class="v">Budget <b>'+fmtM(u.bud)+'</b> · Actual <b>'+fmtM(u.act)+'</b> · Enc. <b>'+fmtM(u.enc)+'</b> · Fund <b'+(u.fund<0?' class="neg"':'')+'>'+fmtM(u.fund)+'</b></span>';}).join('')+'</div>'; }
+    return '<div class="band"><div class="lab"><span>'+c[0]+'</span><small>'+c[1]+'</small></div>'+
+      '<div class="hero" title="Budget '+fmtFull(t.bud)+'"><div class="k">Budget</div><div class="num">'+fmtM(t.bud)+'</div><div class="sub">annual · '+pct(t.act+t.enc,t.bud)+'% consumed</div></div>'+
+      '<div class="body">'+stack(t,'stack')+'<div class="figs">'+
+      fig('Actual','var(--actual)',t.act,t.bud,pct(t.act,t.bud)+'% of budget')+
+      fig('Encumbrance','var(--enc)',t.enc,t.bud,pct(t.enc,t.bud)+'% of budget')+
+      fig('Fund available',t.fund<0?'var(--bad)':'var(--fund)',t.fund,t.bud,t.fund<0?'over budget':pct(t.fund,t.bud)+'% remains')+
+      '</div>'+split+'</div></div>';
+  }).join('')+'</div>'+footer(rows);
+  return html;
+}
+/* ---------- C ---------- */
+function cell(label,color,v,bud,sub,cls){return '<div class="cell '+(cls||'')+(v<0?' neg':'')+'" title="'+label+' '+fmtFull(v)+'"><div class="k"><i style="background:'+color+'"></i>'+label+'</div><div class="num">'+fmtM(v)+'</div><div class="pct">'+sub+'</div></div>';}
+function bandC(lab,sub,t,total){
+  return '<div class="band'+(total?' total':'')+'"><div class="lab"><span>'+lab+'</span>'+(sub?'<small>'+sub+'</small>':'')+'</div><div class="body">'+
+    cell('Budget','var(--budget)',t.bud,t.bud,'annual budget')+
+    cell('Actual','var(--actual)',t.act,t.bud,'<b>'+pct(t.act,t.bud)+'%</b> of budget')+
+    cell('Encumbrance','var(--enc)',t.enc,t.bud,'<b>'+pct(t.enc,t.bud)+'%</b> of budget')+
+    cell('Fund available','var(--fund)',t.fund,t.bud,t.fund<0?'<b>over budget</b>':'<b>'+pct(t.fund,t.bud)+'%</b> remains','fundcell')+
+    stack(t,'rail')+'</div></div>';
+}
+function renderC(st){
+  var rows=filt(st.sel,st.bu), inBands=rows.filter(function(r){return r.ch!=='(None)';});
+  var html=topbar({cube:'GL',name:'i-Finance · General Ledger'})+phead(st)+sectorsRegion(st,rows,'scroll → · click to filter');
+  html+='<div class="bands">'+bandC('All chapters','',sum(inBands),true)+CHAPTERS.map(function(c){var t=chap(rows,c[0]);if(!t.bud&&!t.act)return '';return bandC(c[0],c[1],t,false);}).join('')+'</div>'+footer(rows);
+  return html;
+}
+
+function mount(id,render){
+  var el=document.getElementById(id), st={sel:[],bu:'ALL'};
+  function draw(){el.innerHTML=render(st);}
+  el.addEventListener('click',function(e){
+    var card=e.target.closest('.scard'); if(card){var s=card.getAttribute('data-s');var i=st.sel.indexOf(s);if(i>=0)st.sel.splice(i,1);else st.sel.push(s);draw();return;}
+    var bu=e.target.closest('[data-bu]'); if(bu){st.bu=bu.getAttribute('data-bu');draw();return;}
+    if(e.target.closest('[data-role="clear"]')){st.sel=[];draw();}
+  });
+  draw();
+}
+mount('mockA',renderA); mount('mockB',renderB); mount('mockC',renderC);
+})();
+</script>
+</body></html>

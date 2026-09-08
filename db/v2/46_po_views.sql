@@ -103,13 +103,24 @@ grn_dist AS (
   GROUP BY po_distribution_id
 ),
 apd AS (
-  SELECT d.po_number, d.po_line, d.po_distribution_line,
+  -- LINE-GRAIN PO RULE (2026-09-06): the invoice line carries a corrected PO
+  -- match; the accounted distributions keep the original. Line wins.
+  SELECT COALESCE(lp.po_number, d.po_number)                  AS po_number,
+         COALESCE(lp.po_line_number, d.po_line)               AS po_line,
+         COALESCE(lp.po_distribution, d.po_distribution_line) AS po_distribution_line,
          SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) AS inv_aed,
          COUNT(DISTINCT d.invoice_id)                                  AS inv_count
   FROM prod.ap_invoice_distributions d
-  WHERE d.po_number IS NOT NULL
+  LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                    MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                    MAX(po_distribution) AS po_distribution
+             FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+             GROUP BY invoice_id, invoice_line_number) lp
+         ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
+  WHERE COALESCE(lp.po_number, d.po_number) IS NOT NULL
     AND NVL(d.reversal_indicator,'N') <> 'Y'
-  GROUP BY d.po_number, d.po_line, d.po_distribution_line
+  GROUP BY COALESCE(lp.po_number, d.po_number), COALESCE(lp.po_line_number, d.po_line),
+           COALESCE(lp.po_distribution, d.po_distribution_line)
 ),
 proj AS (
   SELECT project_id, MAX(project_number) AS project_number, MAX(project_name) AS project_name
@@ -231,13 +242,23 @@ dist_sch AS (
   GROUP BY po_header_id, po_line_id, schedule
 ),
 aps AS (
-  SELECT d.po_number, d.po_line, d.po_schedule,
+  -- LINE-GRAIN PO RULE (2026-09-06): corrected matches live on the invoice line
+  SELECT COALESCE(lp.po_number, d.po_number)     AS po_number,
+         COALESCE(lp.po_line_number, d.po_line) AS po_line,
+         COALESCE(lp.po_schedule, d.po_schedule) AS po_schedule,
          SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) AS inv_aed,
          COUNT(DISTINCT d.invoice_id)                                  AS inv_count
   FROM prod.ap_invoice_distributions d
-  WHERE d.po_number IS NOT NULL
+  LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                    MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                    MAX(po_schedule) AS po_schedule, MAX(po_distribution) AS po_distribution
+             FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+             GROUP BY invoice_id, invoice_line_number) lp
+         ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
+  WHERE COALESCE(lp.po_number, d.po_number) IS NOT NULL
     AND NVL(d.reversal_indicator,'N') <> 'Y'
-  GROUP BY d.po_number, d.po_line, d.po_schedule
+  GROUP BY COALESCE(lp.po_number, d.po_number), COALESCE(lp.po_line_number, d.po_line),
+           COALESCE(lp.po_schedule, d.po_schedule)
 )
 SELECT
   h.order_number,
@@ -369,13 +390,21 @@ sch_line AS (
   GROUP BY po_line_id
 ),
 apl AS (
-  SELECT d.po_number, d.po_line,
+  -- LINE-GRAIN PO RULE (2026-09-06): corrected matches live on the invoice line
+  SELECT COALESCE(lp.po_number, d.po_number)     AS po_number,
+         COALESCE(lp.po_line_number, d.po_line) AS po_line,
          SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) AS inv_aed,
          COUNT(DISTINCT d.invoice_id)                                  AS inv_count
   FROM prod.ap_invoice_distributions d
-  WHERE d.po_number IS NOT NULL
+  LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                    MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                    MAX(po_schedule) AS po_schedule, MAX(po_distribution) AS po_distribution
+             FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+             GROUP BY invoice_id, invoice_line_number) lp
+         ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
+  WHERE COALESCE(lp.po_number, d.po_number) IS NOT NULL
     AND NVL(d.reversal_indicator,'N') <> 'Y'
-  GROUP BY d.po_number, d.po_line
+  GROUP BY COALESCE(lp.po_number, d.po_number), COALESCE(lp.po_line_number, d.po_line)
 ),
 proj AS (
   SELECT project_id, MAX(project_number) AS project_number, MAX(project_name) AS project_name
@@ -542,12 +571,20 @@ grn_hdr AS (
   GROUP BY po_header_id
 ),
 inv_link AS (
-  SELECT d.po_number, d.invoice_id,
+  -- LINE-GRAIN PO RULE (2026-09-06): corrected matches live on the invoice line
+  SELECT COALESCE(lp.po_number, d.po_number) AS po_number, d.invoice_id,
          SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) AS matched_aed
   FROM prod.ap_invoice_distributions d
-  WHERE d.po_number IS NOT NULL
+  LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                    MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                    MAX(po_schedule) AS po_schedule, MAX(po_distribution) AS po_distribution
+             FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+             GROUP BY invoice_id, invoice_line_number) lp
+         ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
+  WHERE COALESCE(lp.po_number, d.po_number) IS NOT NULL
     AND NVL(d.reversal_indicator,'N') <> 'Y'
-  GROUP BY d.po_number, d.invoice_id
+    AND d.distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax')
+  GROUP BY COALESCE(lp.po_number, d.po_number), d.invoice_id
 ),
 inv AS (
   SELECT invoice_id,
@@ -585,15 +622,23 @@ inv_agg AS (
   GROUP BY il.po_number
 ),
 invpr AS (
-  SELECT d.po_number,
+  -- LINE-GRAIN PO RULE (2026-09-06): corrected matches live on the invoice line
+  SELECT COALESCE(lp.po_number, d.po_number) AS po_number,
          COUNT(DISTINCT d.requisition) AS invoiced_pr_count,
          LISTAGG(DISTINCT TO_CHAR(d.requisition), ', ' ON OVERFLOW TRUNCATE)
            WITHIN GROUP (ORDER BY TO_CHAR(d.requisition)) AS invoiced_pr_numbers
   FROM prod.ap_invoice_distributions d
-  WHERE d.po_number IS NOT NULL
+  LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                    MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                    MAX(po_schedule) AS po_schedule, MAX(po_distribution) AS po_distribution
+             FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+             GROUP BY invoice_id, invoice_line_number) lp
+         ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
+  WHERE COALESCE(lp.po_number, d.po_number) IS NOT NULL
     AND d.requisition IS NOT NULL
     AND NVL(d.reversal_indicator,'N') <> 'Y'
-  GROUP BY d.po_number
+    AND d.distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax')
+  GROUP BY COALESCE(lp.po_number, d.po_number)
 )
 SELECT
   -- identity and status

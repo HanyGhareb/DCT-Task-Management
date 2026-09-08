@@ -1,0 +1,58 @@
+[
+  [
+    "Live APP_VERSION 1.113.0",
+    true
+  ],
+  [
+    "Summary defaults unchecked",
+    true
+  ],
+  [
+    "Unchecked suppresses summary",
+    true
+  ],
+  [
+    "Checked enables summary",
+    true
+  ],
+  [
+    "Unchecking closes summary immediately",
+    true
+  ],
+  [
+    "Print menu offers PDF and PowerPoint",
+    true
+  ],
+  [
+    "Escape closes Print menu",
+    true
+  ],
+  [
+    "Print menu downloads live pdf",
+    true
+  ],
+  [
+    "Print menu downloads live pptx",
+    true
+  ],
+  [
+    "Search fits 1024px",
+    true
+  ],
+  [
+    "Search fits 768px",
+    true
+  ],
+  [
+    "Search fits 390px",
+    true
+  ],
+  [
+    "Arabic Summary label",
+    true
+  ],
+  [
+    "No JavaScript errors",
+    true
+  ]
+]

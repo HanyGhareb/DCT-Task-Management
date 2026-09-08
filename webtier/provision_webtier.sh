@@ -81,6 +81,12 @@ echo "== [$HOST] installing nginx config (server_name=$SERVER_NAME, ords=$ORDS_H
              ${SUDO}sed -ri 's/(listen[[:space:]]+(\[::\]:)?80) default_server;/\1;/' /etc/nginx/nginx.conf || true;
              command -v restorecon >/dev/null 2>&1 && ${SUDO}restorecon -R /etc/nginx || true"
 
+echo "== [$HOST] static unavailable page (outside the release tree)"
+"${SSH[@]}" "${SUDO}mkdir -p /var/www/ifinance-static"
+"${SCP[@]}" "$KIT_DIR/www/unavailable.html" "$SSH_USER@$HOST:/tmp/unavailable.html"
+"${SSH[@]}" "${SUDO}mv /tmp/unavailable.html /var/www/ifinance-static/unavailable.html;
+             command -v restorecon >/dev/null 2>&1 && ${SUDO}restorecon -R /var/www/ifinance-static || true"
+
 echo "== [$HOST] SELinux + firewall (whichever applies)"
 "${SSH[@]}" "if command -v setsebool >/dev/null 2>&1 && sestatus 2>/dev/null | grep -qi 'status:.*enabled'; then
                ${SUDO}setsebool -P httpd_can_network_connect 1;

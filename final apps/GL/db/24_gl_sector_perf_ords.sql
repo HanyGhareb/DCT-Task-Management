@@ -653,6 +653,32 @@ BEGIN
     IF r.mth BETWEEN 1 AND 12 THEN a_act(r.mth) := r.amt; END IF;
   END LOOP;
 
+  -- APPROVED costing adjustments join the monthly actual (the KPI actual is
+  -- costadj-adjusted, so the cumulative line must be too or December stops
+  -- tying to it); joined through the perf view so every criteria filter and
+  -- the sector security scope apply identically
+  FOR r IN (
+    SELECT TO_NUMBER(SUBSTR(a.accounting_period,1,2)) AS mth, SUM(a.amount_aed) AS amt
+    FROM prod.dct_pa_cost_adj a
+    JOIN prod.dct_sector_perf_v v
+      ON v.budget_year = a.budget_year AND v.project_number = a.project_number
+     AND v.task_number = a.task_number AND v.expenditure_type = a.expenditure_type
+    WHERE a.budget_year = l_year AND a.status = 'APPROVED'
+      AND (l_kind   IS NULL OR INSTR('|'||l_kind||'|',   '|'||v.expenditure_kind||'|') > 0)
+      AND (l_sector IS NULL OR INSTR('|'||l_sector||'|', '|'||v.sector||'|') > 0)
+      AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|',  '|'||v.project_type||'|') > 0)
+      AND (l_bu     IS NULL OR INSTR('|'||l_bu||'|',     '|'||v.business_unit||'|') > 0)
+      AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
+                            OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
+      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv
+             JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code
+              AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid
+             WHERE cv.class_type_code = 'SECTOR'))
+    GROUP BY TO_NUMBER(SUBSTR(a.accounting_period,1,2)) )
+  LOOP
+    IF r.mth BETWEEN 1 AND 12 THEN a_act(r.mth) := a_act(r.mth) + r.amt; END IF;
+  END LOOP;
+
   FOR r IN (
     SELECT TO_NUMBER(SUBSTR(p.accounting_period,1,2)) AS mth, SUM(p.cf_amount) AS amt
     FROM prod.dct_project_cashflow p

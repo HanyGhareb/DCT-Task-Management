@@ -1,0 +1,56 @@
+<!doctype html><html lang="{{ 'ar' if fd.ar else 'en' }}" dir="{{ 'rtl' if fd.ar else 'ltr' }}"><head><meta charset="utf-8">
+<style>
+@page{size:1280px 720px;margin:0}*{box-sizing:border-box}body{margin:0;color:#273F37;background:#fff;font:15px 'DejaVu Sans',sans-serif}.report-page{width:1280px;height:720px;padding:30px 48px;break-after:page;position:relative;overflow:hidden}.report-page:last-child{break-after:auto}header{border-bottom:3px solid #3C6D5D;padding-bottom:12px;margin-bottom:18px}h1{font:700 29px Georgia,serif;margin:0 0 5px}h2{font-size:19px;margin:0 0 15px}.meta{font-size:12px;color:#60776E;line-height:1.5}.selection{font-size:11px;margin-top:5px;line-height:1.5;overflow-wrap:anywhere}footer{position:absolute;bottom:22px;left:48px;right:48px;font-size:10px;color:#60776E;border-top:1px solid #DAE5DF;padding-top:7px;display:flex;justify-content:space-between;gap:15px}.band{border:1px solid #C9DCD2;border-radius:12px;margin-bottom:15px;padding:12px 16px;break-inside:avoid}.band h3{font-size:15px;margin:0 0 10px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}.metric{display:flex;align-items:center;gap:10px;min-width:0}.metric svg{width:65px;height:65px;flex:none}.metric .value{font:700 20px Georgia,serif;white-space:nowrap}.metric small{display:block;font-size:11px;margin-bottom:4px}.metric.budget{color:#3C74A4}.metric.actual{color:#604D94}.metric.encumbrance{color:#A4751C}.metric.funds_available{color:#35705B;background:#E3F1E9;padding:10px;border-radius:9px}.pct{font-size:10px;margin-top:4px}.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.tile{border:1px solid #CEDFD5;border-radius:10px;padding:12px;min-height:136px}.name{font-weight:700;font-size:13px;overflow-wrap:anywhere;line-height:1.3}.tile .name{min-height:34px}.tile .amount{font:700 23px Georgia,serif;margin:4px 0}.bar{height:9px;background:#E9EDEC;border-radius:4px;overflow:hidden;display:flex}.bar i{display:block;height:100%}.bar .a{background:#604D94}.bar .e{background:#A4751C}.bar .f{background:#84B29D}.state{font-size:10px;border-radius:5px;padding:2px 6px;display:inline-block;margin-top:5px;background:#E3F1E9}.state.tight{background:#F4DEAE}.state.over{background:#FBE6E1}.selected{border:2px solid #3C6D5D}.tile .details{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;margin-top:7px}.ledger{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px}.ledger th{text-align:start;background:#E3EEE8;padding:9px}.ledger td{padding:9px 8px;border-bottom:1px solid #DAE5DF;vertical-align:middle;overflow-wrap:anywhere}.ledger th:first-child{width:34%}.ledger .bar{margin-top:5px}.ledger .value{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:11px}.ledger .name{font-size:12px}.legend{font-size:11px;color:#60776E;margin-top:10px}.map{position:relative;width:1184px;height:420px}.map-tile{position:absolute;border:2px solid white;padding:8px;overflow:hidden;color:#273F37}.map-tile .name{font-size:12px}.map-tile .value{font-size:14px;margin-top:6px}.scope-line{margin:10px 0;line-height:1.5;overflow-wrap:anywhere}
+</style></head><body>
+{% macro bar(r) %}<div class="bar"><i class="a" style="width:{{ r.segments[0] }}%"></i><i class="e" style="width:{{ r.segments[1] }}%"></i><i class="f" style="width:{{ r.segments[2] }}%"></i></div>{% endmacro %}
+{% for p in fd.pages %}<section class="report-page">
+<header><h1>{{ fd.labels.title }}</h1><div class="meta">{{ fd.scope }}</div><div class="selection">{{ fd.selections }}</div></header>
+<h2>{{ p.title }}</h2>
+{% if p.kind == 'bands' %}
+{% for r in p.rows %}<div class="band"><h3>{{ r.name }}</h3><div class="metrics">
+{% for m in r.figures %}<div class="metric {{ m.key }}">
+{% if m.key != 'funds_available' %}<svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="32" fill="none" stroke="#E7ECE9" stroke-width="7"/><circle cx="40" cy="40" r="32" fill="none" stroke="currentColor" stroke-width="7" pathLength="100" stroke-dasharray="{{ m.dash }} 100" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-size="13" fill="currentColor">{{ m.pct }}%</text></svg>{% endif %}
+<div><small>{{ m.label }}</small><div class="value" dir="ltr">{{ m.text }}</div><div class="pct">{{ m.pct }}%</div></div></div>{% endfor %}
+</div></div>{% endfor %}
+{% elif p.kind == 'tiles' %}<div class="tiles">{% for r in p.rows %}<article class="tile {{ 'selected' if r.selected else '' }}"><div class="name">{{ r.name }}{% if r.selected %} ✓{% endif %}</div><div class="amount" dir="ltr">{{ r.figures[0].text }}</div>{{ bar(r) }}<span class="state {{ r.state }}">{{ r.state_label }}</span><div class="details">{% for m in r.figures[1:] %}<span>{{ m.label }} <b dir="ltr">{{ m.text }}</b></span>{% endfor %}</div></article>{% endfor %}</div>
+{% elif p.kind == 'rows' %}<table class="ledger"><thead><tr><th>{{ p.title }}</th>{% for k in ['budget','actual','encumbrance','funds_available'] %}<th>{{ fd.labels[k] }}</th>{% endfor %}</tr></thead><tbody>
+{% for r in p.rows %}<tr><td><div class="name">{{ r.name }}{% if r.selected %} ✓{% endif %}</div><div style="width:{{ r.scale }}%">{{ bar(r) }}</div></td>{% for m in r.figures %}<td class="value"><span dir="ltr">{{ m.text }}</span></td>{% endfor %}</tr>{% endfor %}</tbody></table>
+{% elif p.kind == 'map' %}<div class="map">{% for r in p.rows %}<div class="map-tile" style="inset-inline-start:{{ r.x }}px;top:{{ r.y }}px;width:{{ r.w }}px;height:{{ r.h }}px;background:{{ r.color }};color:{{ '#fff' if r.dark else '#273F37' }}">{% if r.w > 90 and r.h > 55 %}<div class="name">{{ r.name }}{% if r.selected %} ✓{% endif %}</div><div class="value" dir="ltr">{{ r.figures[0].text }}</div>{% endif %}</div>{% endfor %}</div><div class="legend">{{ fd.labels.legend }} {{ fd.labels.zero }}<br>{{ fd.labels.tight }} ≥ {{ fd.near }}% · {{ fd.labels.over }} &gt; {{ fd.over }}%</div>
+{% elif p.kind == 'scope' %}{% for line in p.rows %}<div class="scope-line">{{ line }}</div>{% endfor %}
+{% else %}<p>{{ fd.labels.no_data }}</p>{% endif %}
+<footer><span>{{ fd.labels.context }}</span><span dir="ltr">{{ generated_at }} · {{ loop.index }} / {{ fd.pages|length }}</span></footer>
+</section>{% endfor %}
+<script>
+// Measure real text wrapping and move complete entries to continuation pages.
+// Both PDF and PowerPoint consume this same artwork; no names are truncated.
+(function () {
+  var pages = Array.from(document.querySelectorAll('.report-page'));
+  pages.forEach(function split(page) {
+    var container = page.querySelector('.tiles, .ledger tbody');
+    var entries = container ? Array.from(container.children) : Array.from(page.querySelectorAll(':scope > .band, :scope > .scope-line'));
+    if (entries.length < 2) return;
+    var limit = page.querySelector('footer').getBoundingClientRect().top - 8;
+    var first = entries.findIndex(function (e) { return e.getBoundingClientRect().bottom > limit; });
+    if (first < 0) return;
+    // Tile rows stay together; at least one entry remains to guarantee progress.
+    if (container && container.classList.contains('tiles')) first -= first % 3;
+    if (first === 0) first = container && container.classList.contains('tiles') ? 3 : 1;
+    if (first >= entries.length) return;
+    var next = page.cloneNode(true);
+    var nextContainer = next.querySelector('.tiles, .ledger tbody');
+    if (nextContainer) nextContainer.replaceChildren();
+    else next.querySelectorAll(':scope > .band, :scope > .scope-line').forEach(function (e) { e.remove(); });
+    entries.slice(first).forEach(function (e) {
+      if (nextContainer) nextContainer.appendChild(e);
+      else next.insertBefore(e, next.querySelector('footer'));
+    });
+    page.after(next);
+    split(next);
+  });
+  pages = Array.from(document.querySelectorAll('.report-page'));
+  pages.forEach(function (p, i) {
+    var label = p.querySelector('footer span:last-child');
+    label.textContent = label.textContent.replace(/ · \d+ \/ \d+$/, ' · ' + (i + 1) + ' / ' + pages.length);
+  });
+})();
+</script></body></html>

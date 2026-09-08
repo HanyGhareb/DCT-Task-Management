@@ -1,0 +1,256 @@
+[
+  {
+    "name": "Saved JSON null does not break dashboard boot",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "Malformed saved JSON recovers",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "Baseline fixture opens",
+    "passed": true,
+    "detail": []
+  },
+  {
+    "name": "Budget Year has an accessible label",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Accounting Period has an accessible label",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Figures in has an accessible label",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Search collapse can be reached by keyboard",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Enter collapses Search",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Space expands Search",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Entity buttons expose selected state",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Hover instructions hidden while summaries disabled",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Returning to cached valid period clears load error",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "en tiles dashboard fits 1535px",
+    "passed": true,
+    "detail": {
+      "width": 1535,
+      "scroll": 1535
+    }
+  },
+  {
+    "name": "en tiles dashboard fits 768px",
+    "passed": true,
+    "detail": {
+      "width": 768,
+      "scroll": 768
+    }
+  },
+  {
+    "name": "en tiles dashboard fits 390px",
+    "passed": true,
+    "detail": {
+      "width": 390,
+      "scroll": 390
+    }
+  },
+  {
+    "name": "en rows dashboard fits 1535px",
+    "passed": true,
+    "detail": {
+      "width": 1535,
+      "scroll": 1535
+    }
+  },
+  {
+    "name": "en rows dashboard fits 768px",
+    "passed": true,
+    "detail": {
+      "width": 768,
+      "scroll": 768
+    }
+  },
+  {
+    "name": "en rows dashboard fits 390px",
+    "passed": true,
+    "detail": {
+      "width": 390,
+      "scroll": 390
+    }
+  },
+  {
+    "name": "en map dashboard fits 1535px",
+    "passed": true,
+    "detail": {
+      "width": 1535,
+      "scroll": 1535
+    }
+  },
+  {
+    "name": "en map dashboard fits 768px",
+    "passed": true,
+    "detail": {
+      "width": 768,
+      "scroll": 768
+    }
+  },
+  {
+    "name": "en map dashboard fits 390px",
+    "passed": true,
+    "detail": {
+      "width": 390,
+      "scroll": 390
+    }
+  },
+  {
+    "name": "ar tiles dashboard fits 1535px",
+    "passed": true,
+    "detail": {
+      "width": 1535,
+      "scroll": 1535
+    }
+  },
+  {
+    "name": "ar tiles dashboard fits 768px",
+    "passed": true,
+    "detail": {
+      "width": 768,
+      "scroll": 768
+    }
+  },
+  {
+    "name": "ar tiles dashboard fits 390px",
+    "passed": true,
+    "detail": {
+      "width": 390,
+      "scroll": 390
+    }
+  },
+  {
+    "name": "ar rows dashboard fits 1535px",
+    "passed": true,
+    "detail": {
+      "width": 1535,
+      "scroll": 1535
+    }
+  },
+  {
+    "name": "ar rows dashboard fits 768px",
+    "passed": true,
+    "detail": {
+      "width": 768,
+      "scroll": 768
+    }
+  },
+  {
+    "name": "ar rows dashboard fits 390px",
+    "passed": true,
+    "detail": {
+      "width": 390,
+      "scroll": 390
+    }
+  },
+  {
+    "name": "ar map dashboard fits 1535px",
+    "passed": true,
+    "detail": {
+      "width": 1535,
+      "scroll": 1535
+    }
+  },
+  {
+    "name": "ar map dashboard fits 768px",
+    "passed": true,
+    "detail": {
+      "width": 768,
+      "scroll": 768
+    }
+  },
+  {
+    "name": "ar map dashboard fits 390px",
+    "passed": true,
+    "detail": {
+      "width": 390,
+      "scroll": 390
+    }
+  },
+  {
+    "name": "Late earlier response cannot replace newer search result",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Stale failed request cannot disable a newer successful result",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Cached period switch ignores a pending stale response",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Unbudgeted active sectors exist in the data",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Zero-budget activity uses approved Ledger fallback",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Zero-budget data-sector summary hidden unchecked",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Zero-budget data-sector summary shown checked",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Zero-budget data-cc summary hidden unchecked",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Zero-budget data-cc summary shown checked",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "Collapsed Search uses configured entity name",
+    "passed": true,
+    "detail": null
+  }
+]

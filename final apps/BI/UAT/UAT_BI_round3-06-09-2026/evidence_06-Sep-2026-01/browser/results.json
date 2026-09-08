@@ -1,0 +1,86 @@
+[
+  [
+    "Storage figures render",
+    true
+  ],
+  [
+    "Retention displayed",
+    true
+  ],
+  [
+    "Largest reports displayed",
+    true
+  ],
+  [
+    "Audit has exact removed size",
+    true
+  ],
+  [
+    "Worker polling does not repeatedly scan storage",
+    true
+  ],
+  [
+    "Manual refresh reloads storage",
+    true
+  ],
+  [
+    "en no untranslated storage keys",
+    true
+  ],
+  [
+    "en fits 1535px",
+    true
+  ],
+  [
+    "en fits 768px",
+    true
+  ],
+  [
+    "en fits 390px",
+    true
+  ],
+  [
+    "ar no untranslated storage keys",
+    true
+  ],
+  [
+    "ar fits 1535px",
+    true
+  ],
+  [
+    "ar fits 768px",
+    true
+  ],
+  [
+    "ar fits 390px",
+    true
+  ],
+  [
+    "Failure shown without losing previous data",
+    true
+  ],
+  [
+    "Empty reports and audit states",
+    true
+  ],
+  [
+    "Keep-forever state renders",
+    true
+  ],
+  [
+    "Failed banner clears on retry",
+    true
+  ],
+  [
+    "Failed cleanup visible",
+    true
+  ],
+  [
+    "Error text safely escaped",
+    true
+  ],
+  [
+    "No JavaScript errors",
+    true
+  ]
+]

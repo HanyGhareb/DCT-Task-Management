@@ -6,16 +6,19 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.97.1';</script>
+<script>window.APP_VERSION = '1.122.1';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
      .search-box/.modal-*/.ir-*/.ed-*) for the Projects Encumbrances tab. -->
 <link rel="stylesheet" id="platform-css">
 <link rel="stylesheet" id="app-css">
+<link rel="stylesheet" id="quill-css">
 <script>
   document.getElementById('platform-css').href='/shared/css/platform.css?v='+window.APP_VERSION;
   document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;
+  /* Quill snow theme (Terms and Key definitions editor, Settings tab) */
+  document.getElementById('quill-css').href='lib/quill/quill.snow.css?v='+window.APP_VERSION;
 </script>
 </head>
 <body>
@@ -72,7 +75,7 @@
     <!-- /ko -->
   </nav>
 
-  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'||view()==='legacy'||view()==='cashflow'||view()==='dof'||view()==='portfolio'||view()==='proj360'}">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'||view()==='legacy'||view()==='cashflow'||view()==='dof'||view()==='portfolio'||view()==='proj360'||view()==='fmr'||view()==='fd'}">
 
         <!-- ══ PROJECT PORTFOLIO ══════════════════════════════════════════ -->
     <div id="pg-portfolio" data-bind="visible:view()==='portfolio'">
@@ -583,7 +586,7 @@
               <tbody>
                 <!-- ko foreach: values -->
                 <tr data-bind="css:{child: !!$data.parentValueId}, click:function(){$root.openClsDrill($data)}, attr:{title:$root.t('clsRowHint')}" style="cursor:pointer">
-                  <td class="mono" data-bind="text:valueCode"></td>
+                  <td class="mono"><span data-bind="text:valueCode"></span><!-- ko if: $data.isDefault==='Y' --> <span class="chip gold" data-bind="text:$root.t('defaultChip')"></span><!-- /ko --></td>
                   <td><b data-bind="text:nameEn"></b><span data-bind="visible:$data.nameAr, text:' · '+($data.nameAr||'')" style="color:var(--muted)"></span></td>
                   <td style="color:var(--muted);font-size:12px" data-bind="text:[$data.altName1,$data.altName2,$data.altName3].filter(Boolean).join(' · ')||'—'"></td>
                   <td><span class="chip gold" data-bind="visible:$data.tag, text:$data.tag||''"></span></td>
@@ -615,6 +618,7 @@
         <div class="bu-sec-b">
           <div class="toolbar">
             <select class="inp" data-bind="options:dimensions, optionsText:function(d){return $root.dimName(d)}, optionsValue:'code', value:mapType"></select>
+            <select class="inp" data-bind="visible:mapType()==='ENTITY', options:segments, optionsText:function(g){return $root.segName(g)}, optionsValue:'key', value:mapSegKey, attr:{title:t('segmentKey')}"></select>
             <input class="inp search" type="text" data-bind="textInput:segSearch, attr:{placeholder:t('searchSegment')}">
             <select class="inp" style="min-width:280px" data-bind="options:segOptions, optionsText:'label', optionsValue:'segmentValue', value:mapSegment, optionsCaption:t('pickSegment')"></select>
             <span style="flex:1"></span>
@@ -657,6 +661,7 @@
             <input class="inp search" type="text" data-bind="textInput:expSearch, attr:{placeholder:t('searchCombos')}">
             <select class="inp" data-bind="options:sectorOpts, optionsText:'nameEn', optionsValue:'valueCode', value:fSector, optionsCaption:t('allSectors')"></select>
             <select class="inp" data-bind="options:chapterOpts, optionsText:'nameEn', optionsValue:'valueCode', value:fChapter, optionsCaption:t('allChapters')"></select>
+            <select class="inp" data-bind="options:entityOpts, optionsText:'nameEn', optionsValue:'valueCode', value:fEntity, optionsCaption:t('allEntities')"></select>
             <label class="lbl" style="align-self:center" data-bind="text:t('asOf')"></label>
             <input class="inp" type="date" style="min-width:150px" data-bind="value:asOf">
             <button class="btn btn-sm" data-bind="click:function(){asOf('');loadCombos(0)}, text:t('today')"></button>
@@ -665,7 +670,7 @@
             <table class="tbl">
               <thead><tr>
                 <th class="combo" data-bind="text:t('combination')"></th><th data-bind="text:t('costCenter')"></th>
-                <th data-bind="text:t('account')"></th><th>Sector</th><th>Chapter</th>
+                <th data-bind="text:t('account')"></th><th>Sector</th><th>Chapter</th><th data-bind="text:t('entityCol')"></th>
                 <th data-bind="text:t('program')"></th>
               </tr></thead>
               <tbody>
@@ -676,6 +681,7 @@
                   <td><span class="mono" data-bind="text:accountCode"></span><div style="color:var(--muted);font-size:11.5px" data-bind="text:$data.accountDesc||''"></div></td>
                   <td><span class="chip" data-bind="visible:$data.sectorName, text:$data.sectorName||''"></span><span data-bind="visible:!$data.sectorName" style="color:var(--muted)">—</span></td>
                   <td><span class="chip gold" data-bind="visible:$data.chapterName, text:$data.chapterName||''"></span><span data-bind="visible:!$data.chapterName" style="color:var(--muted)">—</span></td>
+                  <td><span class="chip" data-bind="visible:$data.entityClassName, text:$data.entityClassName||''"></span><small data-bind="visible:$data.entityClassSource==='DEFAULT'" style="color:var(--muted)"> · default</small><span data-bind="visible:!$data.entityClassName" style="color:var(--muted)">—</span></td>
                   <td data-bind="text:$data.programName||'—'"></td>
                 </tr>
                 <!-- /ko -->
@@ -853,8 +859,14 @@
             <div class="gen-menu">
               <button class="gen-item" data-bind="click:function(){closeGen();runBuBook();}, attr:{title:t('buBookHint')}">
                 <span class="gen-ic">📄</span><span class="gen-tx"><b data-bind="text:t('repBook')"></b><small data-bind="text:t('repBookSub')"></small></span></button>
+              <button class="gen-item" data-bind="click:function(){closeGen();runBuSpb();}, enable:buSector, attr:{title:buSector()?t('buSpbHint'):t('buSpbNeedSector')}">
+                <span class="gen-ic">📘</span><span class="gen-tx"><b data-bind="text:t('repSpb')"></b><small data-bind="text:buSector()?t('repSpbSub'):t('buSpbNeedSector')"></small></span></button>
               <button class="gen-item" data-bind="click:function(){closeGen();runBuXlsx();}, attr:{title:t('buXlsxHint')}">
                 <span class="gen-ic">📊</span><span class="gen-tx"><b data-bind="text:t('repXlsx')"></b><small data-bind="text:t('repXlsxSub')"></small></span></button>
+              <button class="gen-item" data-bind="click:function(){closeGen();runBuFbp();}, attr:{title:t('buFbpHint')}">
+                <span class="gen-ic">📗</span><span class="gen-tx"><b data-bind="text:t('repFbp')"></b><small data-bind="text:t('repFbpSub')"></small></span></button>
+              <button class="gen-item" data-bind="click:function(){closeGen();runBuMss();}, attr:{title:t('buMssHint')}">
+                <span class="gen-ic">📙</span><span class="gen-tx"><b data-bind="text:t('repMss')"></b><small data-bind="text:t('repMssSub')"></small></span></button>
               <button class="gen-item" data-bind="click:function(){closeGen();runBuPpt();}, attr:{title:t('buPptHint')}">
                 <span class="gen-ic">📑</span><span class="gen-tx"><b data-bind="text:t('repPpt')"></b><small data-bind="text:t('repPptSub')"></small></span></button>
             </div>
@@ -2958,6 +2970,491 @@
       </div>
     </div>
 
+    <div id="pg-fmr" data-bind="visible:view()==='fmr'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('fmrTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('fmrSub')"></div></div>
+      </div>
+
+      <!-- search criteria (Budget Year + Accounting Period) — collapsible
+           region matching the Budget Utilization page's own Search region -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:toggleFmrSec, css:{closed:!fmrSecSearchOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecSearch')"></span>
+          <span class="bu-sec-sum" data-bind="text:fmrSearchSummary()"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:fmrSecSearchOpen">
+          <div class="filter-grid">
+            <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
+              <select class="inp" data-bind="options:fmrYears, value:fmrYear"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('cmtPeriodL')"></label>
+              <select class="inp" data-bind="options:fmrPeriods, optionsText:'label', optionsValue:'period', value:fmrPeriod"></select></div>
+            <div class="field filter-actions">
+              <button class="btn btn-primary" data-bind="click:function(){runFmr()}, css:{busy:fmrBusy}, text:t('btnSearch')"></button>
+              <button class="btn" data-bind="click:fmrReset, enable:!fmrBusy(), text:t('btnReset')"></button>
+              <!-- Generate Report — PDF / Excel / PowerPoint via the GL_FMR_REPORT bridge (GL/db/41) -->
+              <div class="gen" data-bind="css:{open:fmrGenOpen}">
+                <button class="btn btn-secondary gen-btn" data-bind="click:toggleFmrGen, clickBubble:false, css:{busy:fmrGenBusy}, text:fmrGenBusy()?t('genRunning'):t('fmrGenReport')"></button>
+                <!-- ko if: fmrGenOpen -->
+                <div class="gen-back" data-bind="click:closeFmrGen"></div>
+                <div class="gen-menu">
+                  <button class="gen-item" data-bind="click:function(){closeFmrGen();runFmrReport('PDF');}">
+                    <span class="gen-ic">📄</span><span class="gen-tx"><b data-bind="text:t('repBook')"></b><small data-bind="text:t('fmrRepPdfSub')"></small></span></button>
+                  <button class="gen-item" data-bind="click:function(){closeFmrGen();runFmrReport('XLSX');}">
+                    <span class="gen-ic">📊</span><span class="gen-tx"><b data-bind="text:t('repXlsx')"></b><small data-bind="text:t('fmrRepXlsxSub')"></small></span></button>
+                  <button class="gen-item" data-bind="click:function(){closeFmrGen();runFmrReport('PPTX');}">
+                    <span class="gen-ic">📑</span><span class="gen-tx"><b data-bind="text:t('repPpt')"></b><small data-bind="text:t('fmrRepPptSub')"></small></span></button>
+                </div>
+                <!-- /ko -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ko if: fmrError -->
+      <div class="err" data-bind="text:fmrError"></div>
+      <!-- /ko -->
+
+      <div class="sp-body">
+        <div class="bu-load-ov" data-bind="visible:fmrBusy" aria-live="polite">
+          <div class="fmr-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+
+        <!-- ─────────────── Entity Level ─────────────── -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('fmrEntityLevel')"></span></div>
+          <div class="bu-sec-b">
+            <div class="bu-kpis sp-kpis">
+              <div class="bk bk-click" data-bind="click:function(){fmrOpenKpiDrill('budget')}"><div class="bk-body"><div class="bk-k"><span data-bind="text:t('spBudget')"></span><span class="fmr-hint"><button type="button" class="fmr-hint-b" data-bind="click:function(){return false}, clickBubble:false">&#9432;</button><span class="fmr-hint-pop"><b data-bind="text:t('spBudget')"></b><span data-bind="text:t('fmrHintBudget')"></span></span></span></div>
+                <div class="bk-v mono" data-bind="text:buNum((fmrOverall()||{}).budget), attr:{title:money((fmrOverall()||{}).budget)}"></div></div></div>
+              <div class="bk bk-click" data-bind="click:function(){fmrOpenKpiDrill('actual')}"><div class="bk-body"><div class="bk-k"><span data-bind="text:t('spActual')"></span><span class="fmr-hint"><button type="button" class="fmr-hint-b" data-bind="click:function(){return false}, clickBubble:false">&#9432;</button><span class="fmr-hint-pop"><b data-bind="text:t('spActual')"></b><span data-bind="text:t('fmrHintActual')"></span></span></span></div>
+                <div class="bk-v mono" data-bind="text:buNum((fmrOverall()||{}).actual), attr:{title:money((fmrOverall()||{}).actual)}"></div>
+                <div class="bk-sub" data-bind="text:t('spActVsBudget')+' '+spPct((fmrOverall()||{}).actualVsBudgetPct)"></div></div></div>
+              <div class="bk bk-click" data-bind="click:function(){fmrOpenKpiDrill('plan')}"><div class="bk-body"><div class="bk-k"><span data-bind="text:t('fmrYtdPlan')"></span><span class="fmr-hint"><button type="button" class="fmr-hint-b" data-bind="click:function(){return false}, clickBubble:false">&#9432;</button><span class="fmr-hint-pop"><b data-bind="text:t('fmrYtdPlan')"></b><span data-bind="text:t('fmrHintPlan')"></span></span></span></div>
+                <!-- ko if: (fmrOverall()||{}).hasPlan==='Y' -->
+                <div class="bk-v mono" data-bind="text:buNum((fmrOverall()||{}).plan), attr:{title:money((fmrOverall()||{}).plan)}"></div>
+                <div class="bk-sub" data-bind="text:t('spPlanVsBudget')+' '+spPct((fmrOverall()||{}).planVsBudgetPct)"></div>
+                <!-- /ko -->
+                <!-- ko ifnot: (fmrOverall()||{}).hasPlan==='Y' -->
+                <div class="bk-v mono muted" data-bind="text:t('fmrNoPlan')"></div>
+                <!-- /ko -->
+              </div></div>
+              <div class="bk bk-click" data-bind="click:function(){fmrOpenKpiDrill('actualvsplan')}"><div class="bk-body"><div class="bk-k"><span data-bind="text:t('spActVsPlanPct')"></span><span class="fmr-hint"><button type="button" class="fmr-hint-b" data-bind="click:function(){return false}, clickBubble:false">&#9432;</button><span class="fmr-hint-pop"><b data-bind="text:t('spActVsPlanPct')"></b><span data-bind="text:t('fmrHintActPlan')"></span></span></span></div>
+                <div class="bk-v mono" data-bind="text:spPct((fmrOverall()||{}).actualVsPlanPct)"></div></div></div>
+              <div class="bk bk-click" data-bind="click:function(){fmrOpenKpiDrill('fundsavailable')}"><div class="bk-body"><div class="bk-k"><span data-bind="text:t('spFundsAvail')"></span><span class="fmr-hint"><button type="button" class="fmr-hint-b" data-bind="click:function(){return false}, clickBubble:false">&#9432;</button><span class="fmr-hint-pop"><b data-bind="text:t('spFundsAvail')"></b><span data-bind="text:t('fmrHintFunds')"></span></span></span></div>
+                <div class="bk-v mono" data-bind="text:buNum((fmrOverall()||{}).fundsAvailable), attr:{title:money((fmrOverall()||{}).fundsAvailable)}"></div></div></div>
+            </div>
+            <div class="sp-note" data-bind="text:t('fmrPlanPartialNote')"></div>
+
+            <div class="sp-gauges" data-bind="foreach:fmrEntities">
+              <div class="sp-gauge">
+                <div class="sp-gauge-ico" aria-hidden="true" data-bind="html:$root.fmrEntIcon(code)"></div>
+                <div class="sp-gauge-t"><span data-bind="text:$root.fmrEntName(code)"></span><span class="fmr-hint"><button type="button" class="fmr-hint-b" data-bind="click:function(){return false}, clickBubble:false">&#9432;</button><span class="fmr-hint-pop"><b data-bind="text:$root.fmrEntName(code)"></b><span data-bind="text:$root.t('fmrHintGauge')"></span></span></span></div>
+                <svg viewBox="0 0 200 110" class="sp-gauge-svg" aria-hidden="true">
+                  <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--sp-gauge-bg)" stroke-width="18" stroke-linecap="round"></path>
+                  <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--sp-gauge-fg)" stroke-width="18" stroke-linecap="round"
+                        data-bind="attr:{'stroke-dasharray':$root.spGaugeDash($data.actualVsBudgetPct)}"></path>
+                </svg>
+                <div class="sp-gauge-v" data-bind="text:'['+$root.spPct($data.actualVsBudgetPct)+']'"></div>
+                <div class="sp-gauge-k" data-bind="text:$root.t('spActVsBudget')"></div>
+                <div class="sp-gauge-chips">
+                  <span><b data-bind="text:$root.buNum(budget)"></b><i data-bind="text:$root.t('spBudget')"></i></span>
+                  <span><b data-bind="text:$root.buNum(actual)"></b><i data-bind="text:$root.t('spActual')"></i></span>
+                  <span><b data-bind="text:hasPlan==='Y'?$root.buNum(plan):'—'"></b><i data-bind="text:$root.t('fmrYtdPlan')"></i></span>
+                </div>
+              </div>
+            </div>
+            <div class="sp-note" data-bind="text:t('fmrUnclassifiedNote')"></div>
+
+            <div class="sp-chart">
+              <div class="sp-hd"><svg class="sp-hd-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10h3.6v10H4zm6.2 0V4h3.6v16h-3.6zm6.2 0v-7H20v7h-3.6z"/></svg><span class="sp-hd-t" data-bind="text:t('fmrTrend')"></span><span class="fmr-hint"><button type="button" class="fmr-hint-b" data-bind="click:function(){return false}, clickBubble:false">&#9432;</button><span class="fmr-hint-pop fmr-hint-pop--start"><b data-bind="text:t('fmrTrend')"></b><span data-bind="text:t('fmrHintTrend')"></span></span></span></div>
+              <div class="sp-legend">
+                <span><i class="sp-sw sp-sw--bud"></i><span data-bind="text:t('spBudget')"></span></span>
+                <span><i class="sp-sw sp-sw--act"></i><span data-bind="text:t('spActual')"></span></span>
+                <span><i class="sp-sw sp-sw--pln"></i><span data-bind="text:t('fmrYtdPlan')"></span></span>
+              </div>
+              <div class="sp-cols" data-bind="foreach:fmrTrend">
+                <div class="sp-col">
+                  <div class="sp-col-bars">
+                    <i class="sp-b sp-b--bud" tabindex="0" data-bind="style:{height:$root.fmrBarH(budget),cursor:'pointer'}, click:function(){$root.fmrOpenTrendDrill($data,'budget')}">
+                      <b class="sp-b-val" data-bind="text:$root.buNum(budget)"></b>
+                      <span class="sp-b-tip"><b data-bind="text:$root.money(budget)"></b><i data-bind="text:name+' · '+$root.t('spBudget')"></i></span>
+                    </i>
+                    <i class="sp-b sp-b--act" tabindex="0" data-bind="style:{height:$root.fmrBarH(actual),cursor:'pointer'}, click:function(){$root.fmrOpenTrendDrill($data,'actual')}">
+                      <b class="sp-b-val" data-bind="text:$root.buNum(actual)"></b>
+                      <span class="sp-b-tip"><b data-bind="text:$root.money(actual)"></b><i data-bind="text:name+' · '+$root.t('spActual')"></i></span>
+                    </i>
+                    <i class="sp-b sp-b--pln" tabindex="0" data-bind="style:{height:$root.fmrBarH(plan),cursor:'pointer'}, click:function(){$root.fmrOpenTrendDrill($data,'plan')}">
+                      <b class="sp-b-val" data-bind="text:$root.buNum(plan)"></b>
+                      <span class="sp-b-tip"><b data-bind="text:$root.money(plan)"></b><i data-bind="text:name+' · '+$root.t('fmrYtdPlan')"></i></span>
+                    </i>
+                  </div>
+                  <div class="sp-col-x" data-bind="text:name"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────── Current Month / Expected Variances ─────────────── -->
+        <div class="sp-two">
+          <div class="bu-sec">
+            <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('fmrCurrentVariance')"></span></div>
+            <div class="bu-sec-b">
+              <textarea class="inp" rows="4" data-bind="value:fmrNoteCurrentText, attr:{placeholder:t('fmrNotePlaceholder')}"></textarea>
+              <div class="page-actions" style="margin-top:8px">
+                <span class="chip muted" data-bind="visible:fmrNoteCurrentMeta(), text:fmrNoteCurrentMeta()"></span>
+                <button class="btn btn-sm btn-primary" data-bind="click:function(){fmrSaveNote('CURRENT_VARIANCE')}, text:t('fmrNoteSave')"></button>
+              </div>
+            </div>
+          </div>
+          <div class="bu-sec">
+            <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('fmrExpectedVariance')"></span></div>
+            <div class="bu-sec-b">
+              <textarea class="inp" rows="4" data-bind="value:fmrNoteExpectedText, attr:{placeholder:t('fmrNotePlaceholder')}"></textarea>
+              <div class="page-actions" style="margin-top:8px">
+                <span class="chip muted" data-bind="visible:fmrNoteExpectedMeta(), text:fmrNoteExpectedMeta()"></span>
+                <button class="btn btn-sm btn-primary" data-bind="click:function(){fmrSaveNote('EXPECTED_VARIANCE')}, text:t('fmrNoteSave')"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────── Sector Level ─────────────── -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('fmrSectorLevel')"></span><span class="fmr-hint"><button type="button" class="fmr-hint-b" data-bind="click:function(){return false}, clickBubble:false">&#9432;</button><span class="fmr-hint-pop fmr-hint-pop--start"><b data-bind="text:t('fmrSectorLevel')"></b><span data-bind="text:t('fmrHintSector')"></span></span></span></div>
+          <div class="bu-sec-b">
+            <div class="page-actions" style="justify-content:flex-start;flex-wrap:wrap">
+              <span class="chip muted" data-bind="text:t('fmrEntityFilter')+':'"></span>
+              <!-- ko foreach: fmrEntityFilterOpts -->
+              <button data-bind="click:function(){$root.fmrToggleEntityFilter(code); return true},
+                    css:{'btn':true,'btn-sm':true,'btn-primary':$root.fmrSectorEntitySel().indexOf(code)>=0,'btn-secondary':$root.fmrSectorEntitySel().indexOf(code)<0},
+                    text:$root.fmrEntName(code)"></button>
+              <!-- /ko -->
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr>
+                  <th data-bind="text:t('fmrSectorTbl')"></th>
+                  <th class="num" data-bind="text:t('spBudget')"></th>
+                  <th class="num" data-bind="text:t('spActual')"></th>
+                  <th class="num" data-bind="text:t('spActVsBudget')"></th>
+                  <th class="num" data-bind="text:t('fmrYtdPlan')"></th>
+                  <th class="num" data-bind="text:t('spActVsPlanPct')"></th>
+                  <th></th>
+                </tr></thead>
+                <tbody data-bind="foreach:fmrSectors">
+                  <tr>
+                    <td data-bind="text:name"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(budget), attr:{title:$root.money(budget)}"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(actual), attr:{title:$root.money(actual)}"></td>
+                    <td class="num mono" data-bind="text:$root.spPct($data.actualVsBudgetPct)"></td>
+                    <td class="num mono" data-bind="text:hasPlan==='Y'?$root.buNum(plan):'—'"></td>
+                    <td class="num mono" data-bind="text:hasPlan==='Y'?$root.spPct($data.actualVsPlanPct):'—'"></td>
+                    <td><button class="btn btn-sm btn-ghost" data-bind="click:function(){$root.fmrOpenSectorComments($data)}, text:$root.t('fmrComments')"></button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ FD Dashboard — Budget Status (user sketch → mockup A "Ring Bands", GL/db/42) ══════════ -->
+    <div id="pg-fd" data-bind="visible:view()==='fd'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('fdTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('fdSub')"></div></div>
+      </div>
+
+      <!-- Search: three criteria columns and Entity at left; compact Presentation and Show Summary at right. -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" role="button" tabindex="0" data-bind="click:toggleFdSec, css:{closed:!fdSecSearchOpen()}, attr:{'aria-expanded':fdSecSearchOpen()?'true':'false'}, event:{keydown:function(d,e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleFdSec();}return true;}}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecSearch')"></span>
+          <span class="bu-sec-sum" data-bind="text:fdSearchSummary()"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:fdSecSearchOpen">
+          <div class="filter-grid">
+            <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
+              <select class="inp" data-bind="options:fdYears, value:fdYear, attr:{'aria-label':t('fYearL')}"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('cmtPeriodL')"></label>
+              <select class="inp" data-bind="options:fdPeriods, optionsText:'label', optionsValue:'period', value:fdPeriod, attr:{'aria-label':t('cmtPeriodL')}"></select></div>
+            <div class="field fd-seg-field"><label class="lbl" data-bind="text:t('fdUnitL')"></label>
+              <div class="fd-seg" role="group">
+                <button type="button" data-bind="click:function(){fdSetEntity('ALL')}, css:{on:fdEntity()==='ALL'}, attr:{'aria-pressed':fdEntity()==='ALL'?'true':'false'}, text:t('fdAllUnits')"></button>
+                <!-- ko foreach: fdEntities -->
+                <button type="button" data-bind="click:function(){$root.fdSetEntity(code)}, css:{on:$root.fdEntity()===code}, attr:{'aria-pressed':$root.fdEntity()===code?'true':'false'}, text:$root.fdEntName(code)"></button>
+                <!-- /ko -->
+              </div></div>
+            <div class="field fd-unit-field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
+              <select class="inp" data-bind="options:buUnitOpts(), optionsText:'l', optionsValue:'v', value:buUnit, attr:{'aria-label':t('fUnitL')}"></select></div>
+            <div class="field fd-pres-field"><label class="lbl" data-bind="text:t('fdLayoutL')"></label>
+              <div class="fd-pres" role="radiogroup" data-bind="foreach:fdPresOpts(), attr:{'aria-label':t('fdLayoutL')}">
+                <div class="fd-pres-opt" data-bind="click:function(){$root.fdSetLayout(v)}, css:{on:$root.fdLayout()===v}, attr:{'data-v':v}">
+                  <input type="radio" name="fdPres" data-bind="checked:$root.fdLayout, checkedValue:v, attr:{'aria-label':l}">
+                  <span class="fd-pres-txt"><b data-bind="text:l"></b><small data-bind="text:d"></small></span>
+                </div>
+              </div>
+              <label class="fd-summary"><input type="checkbox" data-bind="checked:fdShowSummary"><span data-bind="text:t('fdShowSummary')"></span></label>
+            </div>
+            <div class="fd-pres-hint">
+              <span class="fd-hint-ico" aria-hidden="true">&#9432;</span>
+              <div class="fd-hint-txt"><b data-bind="text:fdPresHint().title"></b> <span data-bind="text:fdPresHint().body"></span><!-- ko if: fdPresHint().state --> <span class="fd-pres-state" data-bind="text:fdPresHint().state"></span><!-- /ko --></div>
+              <span class="fd-legend"><!-- ko ifnot: $root.fdIs('map') --><span class="sw"><i class="ca"></i><span data-bind="text:$root.t('fdActual')"></span></span><span class="sw"><i class="ce"></i><span data-bind="text:$root.t('fdEnc')"></span></span><span class="sw"><i class="cf"></i><span data-bind="text:$root.t('fdFund')"></span></span><!-- /ko --><!-- ko if: $root.fdIs('map') --><!-- ko foreach: $root.fdHeatBands --><span class="sw"><i data-bind="style:{background:c}"></i><span data-bind="text:l"></span></span><!-- /ko --><!-- /ko --></span>
+            </div>
+            <div class="field filter-actions">
+              <button class="btn btn-primary" data-bind="click:function(){runFd()}, css:{busy:fdBusy}, text:t('btnSearch')"></button>
+              <button class="btn" data-bind="click:fdReset, enable:!fdBusy(), text:t('btnReset')"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fd-print-bar">
+        <div class="gen" data-bind="css:{open:fdPrintOpen}, event:{keydown:function(d,e){if(e.key==='Escape')fdPrintOpen(false);return true;}}">
+          <button type="button" class="btn btn-sm btn-primary gen-btn" data-bind="click:toggleFdPrint, clickBubble:false, enable:fdHasData() && !fdBusy() && !fdError() && !fdPrintBusy(), text:fdPrintBusy()?t('genRunning'):t('fdPrint'), attr:{'aria-expanded':fdPrintOpen()?'true':'false'}"></button>
+          <!-- ko if: fdPrintOpen -->
+          <div class="gen-back" data-bind="click:function(){fdPrintOpen(false)}"></div>
+          <div class="gen-menu">
+            <button type="button" class="gen-item" data-bind="click:function(){runFdReport('PDF')}"><span class="gen-ic">📄</span><span class="gen-tx"><b>PDF</b><small data-bind="text:t('fdPrintPdf')"></small></span></button>
+            <button type="button" class="gen-item" data-bind="click:function(){runFdReport('PPTX')}"><span class="gen-ic">📑</span><span class="gen-tx"><b>PowerPoint</b><small data-bind="text:t('fdPrintPpt')"></small></span></button>
+          </div>
+          <!-- /ko -->
+        </div>
+      </div>
+
+      <!-- ko if: fdError -->
+      <div class="err" data-bind="text:fdError"></div>
+      <!-- /ko -->
+
+      <div class="sp-body">
+        <div class="bu-load-ov" data-bind="visible:fdBusy" aria-live="polite">
+          <div class="fmr-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+
+        <!-- Chapters FIRST (user, 2026-09-04): one band per chapter — Budget / Actual / Encumbrance rings + the Fund Available square; every figure drills (GL/db/43) -->
+        <div class="sp-note fd-drill-hint" data-bind="visible:fdHasData, text:t('fdDrillHint')+(fdShowSummary()?' · '+t('fdTrHint'):'')"></div>
+        <!-- ONE band template: the Total band (fdTotalBand, v1.111.0) + one band per chapter -->
+        <script type="text/html" id="fd-band-tpl">
+          <div class="fd-band" data-bind="attr:{'data-ch':code||'TOTAL'}, css:{'fd-band--total':!!$data.total}">
+            <div class="fd-lab"><span data-bind="text:name"></span><small data-bind="text:alt"></small></div>
+            <div class="fd-body">
+              <div class="fd-ring fd-ring--bud fd-click" role="button" tabindex="0" data-bind="click:function(){$root.fdOpenDrill($data,'budget')}, event:{keydown:function(d,e){if(e.key==='Enter'||e.key===' '){e.preventDefault();$root.fdOpenDrill($data,'budget');}return true;}, mouseenter:function(d,e){return $root.fdTrOver($data,'budget',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrOver($data,'budget',e)}, blur:$root.fdTrOut}, attr:{title:$root.money(budget)}">
+                <span class="fd-ringwrap"><svg viewBox="0 0 92 92" aria-hidden="true"><circle class="fd-track" cx="46" cy="46" r="38"></circle><circle class="fd-arc" cx="46" cy="46" r="38" data-bind="attr:{'stroke-dasharray':$root.fdRingDash(budget,budget)}"></circle></svg><span class="fd-ring-in" data-bind="text:(budget>0?100:0)+'%'"></span></span>
+                <div class="fd-ring-txt"><div class="fd-k" data-bind="text:$root.t('fdBudget')"></div><div class="fd-num mono" data-bind="text:$root.buNum(budget)"></div><div class="fd-pct" data-bind="text:$root.fdBudgetSubOf($data)"></div></div>
+              </div>
+              <div class="fd-ring fd-ring--act fd-click" role="button" tabindex="0" data-bind="click:function(){$root.fdOpenDrill($data,'actual')}, event:{keydown:function(d,e){if(e.key==='Enter'||e.key===' '){e.preventDefault();$root.fdOpenDrill($data,'actual');}return true;}, mouseenter:function(d,e){return $root.fdTrOver($data,'actual',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrOver($data,'actual',e)}, blur:$root.fdTrOut}, attr:{title:$root.money(actual)}">
+                <span class="fd-ringwrap"><svg viewBox="0 0 92 92" aria-hidden="true"><circle class="fd-track" cx="46" cy="46" r="38"></circle><circle class="fd-arc" cx="46" cy="46" r="38" data-bind="attr:{'stroke-dasharray':$root.fdRingDash(actual,budget)}"></circle></svg><span class="fd-ring-in" data-bind="text:$root.fdPct(actual,budget)+'%'"></span></span>
+                <div class="fd-ring-txt"><div class="fd-k" data-bind="text:$root.t('fdActual')"></div><div class="fd-num mono" data-bind="text:$root.buNum(actual)"></div><div class="fd-pct"><b data-bind="text:$root.fdPct(actual,budget)+'%'"></b> <span data-bind="text:$root.t('fdActualSub')"></span></div></div>
+              </div>
+              <div class="fd-ring fd-ring--enc fd-click" role="button" tabindex="0" data-bind="click:function(){$root.fdOpenDrill($data,'encumbrance')}, event:{keydown:function(d,e){if(e.key==='Enter'||e.key===' '){e.preventDefault();$root.fdOpenDrill($data,'encumbrance');}return true;}, mouseenter:function(d,e){return $root.fdTrOver($data,'encumbrance',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrOver($data,'encumbrance',e)}, blur:$root.fdTrOut}, attr:{title:$root.money(encumbrance)}">
+                <span class="fd-ringwrap"><svg viewBox="0 0 92 92" aria-hidden="true"><circle class="fd-track" cx="46" cy="46" r="38"></circle><circle class="fd-arc" cx="46" cy="46" r="38" data-bind="attr:{'stroke-dasharray':$root.fdRingDash(encumbrance,budget)}"></circle></svg><span class="fd-ring-in" data-bind="text:$root.fdPct(encumbrance,budget)+'%'"></span></span>
+                <div class="fd-ring-txt"><div class="fd-k" data-bind="text:$root.t('fdEnc')"></div><div class="fd-num mono" data-bind="text:$root.buNum(encumbrance)"></div><div class="fd-pct"><b data-bind="text:$root.fdPct(encumbrance,budget)+'%'"></b> <span data-bind="text:$root.t('fdEncSub')"></span></div></div>
+              </div>
+              <div class="fd-fund fd-click" role="button" tabindex="0" data-bind="click:function(){$root.fdOpenDrill($data,'fundsavailable')}, event:{keydown:function(d,e){if(e.key==='Enter'||e.key===' '){e.preventDefault();$root.fdOpenDrill($data,'fundsavailable');}return true;}, mouseenter:function(d,e){return $root.fdTrOver($data,'fundsavailable',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrOver($data,'fundsavailable',e)}, blur:$root.fdTrOut}, css:{neg:fundsAvailable<0}, attr:{title:$root.money(fundsAvailable)}">
+                <div class="fd-k" data-bind="text:$root.t('fdFund')"></div>
+                <div class="fd-num mono" data-bind="text:$root.buNum(fundsAvailable)"></div>
+                <div class="fd-pct" data-bind="text:$root.fdFundSub($data)"></div>
+              </div>
+            </div>
+          </div>
+        </script>
+        <div class="fd-bands">
+          <!-- ko with: fdTotalBand --><!-- ko template: 'fd-band-tpl' --><!-- /ko --><!-- /ko -->
+          <!-- ko template: {name:'fd-band-tpl', foreach: fdChapters} --><!-- /ko -->
+        </div>
+
+        <!-- Sectors — multi-select any-of (none picked = all) in the presentation picked in Search
+             (v1.105.0): tiles (composition cards) · rows (ledger, one shared scale) · map (treemap) -->
+        <div class="bu-sec">
+          <div class="bu-sec-h">
+            <span class="bu-sec-t" data-bind="text:t('fdSectors')"></span>
+            <span class="fd-sec-acts">
+              <!-- ko ifnot: fdIs('map','sectors') -->
+              <select class="fd-sort" data-bind="options:fdSortOpts(), optionsText:'l', optionsValue:'v', value:fdSecSort, attr:{'aria-label':t('fdSortL')}"></select>
+              <!-- /ko -->
+              <!-- ko if: fdIs('tiles','sectors') && fdSel().length -->
+              <span class="fd-chips" data-bind="foreach:fdSelChips">
+                <span class="fd-chip"><span data-bind="text:$root.fdSectorName($data)"></span><button type="button" data-bind="click:function(){$root.fdToggleSector(code)}, clickBubble:false, attr:{'aria-label':$root.t('fdClear')+' · '+$root.fdSectorName($data)}">×</button></span>
+              </span>
+              <!-- /ko -->
+              <!-- ko ifnot: fdIs('tiles','sectors') && fdSel().length -->
+              <span data-bind="text:fdSelSummary()"></span>
+              <!-- /ko -->
+              <!-- ko if: fdSel().length -->
+              <button type="button" class="btn btn-sm" data-bind="click:fdClearSectors, clickBubble:false, text:t('fdClear')"></button>
+              <!-- /ko -->
+            </span>
+          </div>
+          <div class="bu-sec-b">
+            <div class="sp-note" data-bind="visible:fdNoBudget('sectors'), text:t('fdNoBudgetNotice')"></div>
+            <div class="fd-hint">
+              <span class="fd-hint-ico" aria-hidden="true">&#9432;</span>
+              <div class="fd-hint-txt"><b data-bind="text:t('fdHintSecLead')"></b> <span data-bind="text:t('fdHintSecBody')"></span> <span class="fd-hint-tip" data-bind="visible:fdShowSummary, text:t('fdTrCardHint')"></span> <span class="fd-hint-tip" data-bind="text:fdHintTip()"></span><!-- ko if: fdSecSort()==='budget' --> <span class="fd-hint-tip" data-bind="text:t('fdHintSorted')"></span><!-- /ko --></div>
+              <span class="fd-legend"><!-- ko ifnot: $root.fdIs('map','sectors') --><span class="sw"><i class="ca"></i><span data-bind="text:$root.t('fdActual')"></span></span><span class="sw"><i class="ce"></i><span data-bind="text:$root.t('fdEnc')"></span></span><span class="sw"><i class="cf"></i><span data-bind="text:$root.t('fdFund')"></span></span><!-- /ko --><!-- ko if: $root.fdIs('map','sectors') --><!-- ko foreach: $root.fdHeatBands --><span class="sw"><i data-bind="style:{background:c}"></i><span data-bind="text:l"></span></span><!-- /ko --><!-- /ko --></span>
+            </div>
+            <!-- ko if: fdIs('tiles','sectors') -->
+            <div class="fd-cards" data-bind="foreach:fdSectorsSorted">
+              <button type="button" class="fd-card fd-tile" data-bind="click:function(){$root.fdToggleSector(code)}, css:{on:$root.fdIsSel(code), dim:$root.fdSel().length&&!$root.fdIsSel(code)}, event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrCard('sector',$data,'',e)}, blur:$root.fdTrOut}, attr:{'aria-pressed':$root.fdIsSel(code)?'true':'false', 'data-sector':code}">
+                <span class="fd-top"><span class="fd-ico" aria-hidden="true" data-bind="html:$root.fdSectorIcon(code)"></span><span class="fd-nm" data-bind="text:$root.fdSectorName($data)"></span><span class="fd-tick" aria-hidden="true"></span></span>
+                <span class="fd-bud"><b class="fd-big fd-fm" data-bind="text:$root.fdBig(budget), event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'budget',e)}}"></b><small data-bind="text:$root.fdShare(budget,$root.fdScopeBudget())+' '+$root.t('fdOfTotal')"></small></span>
+                <span class="fd-cbar" data-bind="css:{over:$root.fdSeg($data).over}"><i class="ca" data-bind="style:{width:$root.fdSeg($data).a}"></i><i class="ce" data-bind="style:{width:$root.fdSeg($data).e}"></i><i class="cf" data-bind="style:{width:$root.fdSeg($data).f}"></i></span>
+                <span class="fd-tfoot"><span><span class="fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'actual',e)}}"><b data-bind="text:$root.fdPct(actual,budget)+'%'"></b> <span data-bind="text:$root.t('fdUsed')"></span></span> · <span class="fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'encumbrance',e)}}"><b data-bind="text:$root.fdPct(encumbrance,budget)+'%'"></b> <span data-bind="text:$root.t('fdCommitted')"></span></span></span></span>
+                <span class="fd-tfoot"><span class="fd-pill fd-fm" data-bind="css:$root.fdStateCss($data), text:$root.fdFreeTxt($data), attr:{title:$root.fdStateLabel($data)}, event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'fundsavailable',e)}}"></span><span class="fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'fundsavailable',e)}}"><span data-bind="text:$root.t('fdFundShort')"></span> <b data-bind="text:$root.fdBig(fundsAvailable), css:{danger:fundsAvailable<0}"></b></span></span>
+              </button>
+            </div>
+            <!-- /ko -->
+            <!-- ko if: fdIs('rows','sectors') -->
+            <div class="fd-lg-wrap">
+              <div class="fd-lg fd-lg-head"><span></span><span></span><span data-bind="text:t('fdSector')"></span><span data-bind="text:t('fdColScale')"></span><span class="r" data-bind="text:t('fdBudget')"></span><span class="r" data-bind="text:t('fdActual')"></span><span class="r" data-bind="text:t('fdEnc')"></span><span class="r" data-bind="text:t('fdFund')"></span></div>
+              <div data-bind="foreach:fdSectorsSorted">
+              <button type="button" class="fd-lg fd-lg-row" data-bind="click:function(){$root.fdToggleSector(code)}, css:{on:$root.fdIsSel(code), dim:$root.fdSel().length&&!$root.fdIsSel(code)}, event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrCard('sector',$data,'',e)}, blur:$root.fdTrOut}, attr:{'aria-pressed':$root.fdIsSel(code)?'true':'false', 'data-sector':code}">
+                <span class="fd-tick" aria-hidden="true"></span>
+                <span class="fd-ico" aria-hidden="true" data-bind="html:$root.fdSectorIcon(code)"></span>
+                <span class="fd-lg-nm"><span class="fd-nm" data-bind="text:$root.fdSectorName($data)"></span><small data-bind="text:$root.fdShare(budget,$root.fdScopeBudget())+' '+$root.t('fdOfTotal')+' · '+$root.fdPct(actual,budget)+'% '+$root.t('fdUsed')"></small></span>
+                <span class="fd-lg-share"><span class="fd-cbar fd-cbar--lg" data-bind="style:{width:$root.fdRowW($data,false)}, css:{over:$root.fdSeg($data).over}"><i class="ca" data-bind="style:{width:$root.fdSeg($data).a}"></i><i class="ce" data-bind="style:{width:$root.fdSeg($data).e}"></i><i class="cf" data-bind="style:{width:$root.fdSeg($data).f}"></i></span></span>
+                <span class="fd-fig fd-fig--bud fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'budget',e)}}"><span data-bind="text:$root.fdBig(budget)"></span><small class="mono" data-bind="text:$root.money(budget)"></small></span>
+                <span class="fd-fig fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'actual',e)}}"><span data-bind="text:$root.fdBig(actual)"></span><small data-bind="text:$root.fdPct(actual,budget)+'% '+$root.t('fdOfBudget')"></small></span>
+                <span class="fd-fig fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'encumbrance',e)}}"><span data-bind="text:$root.fdBig(encumbrance)"></span><small data-bind="text:$root.fdPct(encumbrance,budget)+'% '+$root.t('fdOfBudget')"></small></span>
+                <span class="fd-fig fd-fm" data-bind="css:{neg:fundsAvailable<0}, event:{mouseenter:function(d,e){return $root.fdTrCard('sector',$data,'fundsavailable',e)}}"><span data-bind="text:$root.fdBig(fundsAvailable)"></span><small data-bind="text:$root.fdPct(fundsAvailable,budget)+'% '+$root.t('fdOfBudget')"></small></span>
+              </button>
+              </div>
+            </div>
+            <!-- /ko -->
+            <!-- ko if: fdIs('map','sectors') -->
+            <div class="fd-tm-wrap" data-bind="fdMeasure:true, style:{height:fdMapH.sectors+'px'}, foreach:fdSectorTiles">
+              <button type="button" class="fd-tm" data-bind="click:function(){$root.fdToggleSector(r.code)}, css:{on:$root.fdIsSel(r.code), dim:$root.fdSel().length&&!$root.fdIsSel(r.code), darkt:dark}, event:{mouseenter:function(d,e){return $root.fdTrCard('sector',r,'',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrCard('sector',r,'',e)}, blur:$root.fdTrOut}, attr:{style:$root.fdTileStyle($data), 'aria-pressed':$root.fdIsSel(r.code)?'true':'false', 'data-sector':r.code}">
+                <!-- ko if: big -->
+                <span class="fd-tm-nm" data-bind="text:$root.fdSectorName(r)"></span><span class="fd-tm-fg fd-fm" data-bind="text:$root.fdBig(r.budget), event:{mouseenter:function(d,e){return $root.fdTrCard('sector',r,'budget',e)}}"></span><span class="fd-tm-sub" data-bind="text:$root.fdPct(r.actual,r.budget)+'% '+$root.t('fdUsed')+' · '+$root.fdPct(r.encumbrance,r.budget)+'% '+$root.t('fdCommitted')"></span>
+                <!-- /ko -->
+                <!-- ko if: mid -->
+                <span class="fd-tm-nm" data-bind="text:$root.fdSectorName(r)"></span><!-- ko if: sub --><span class="fd-tm-sub" data-bind="text:$root.fdBig(r.budget)"></span><!-- /ko -->
+                <!-- /ko -->
+              </button>
+            </div>
+            <!-- /ko -->
+            <!-- ko if: fdLoaded() && !fdHasData() -->
+            <div class="fd-empty" data-bind="text:t('fdNoData')"></div>
+            <!-- /ko -->
+          </div>
+        </div>
+
+        <!-- Departments (cost centres) of the picked sectors — same presentation, multi-select any-of;
+             rows/tiles show the top N with "Show all", the map always draws every department -->
+        <div class="bu-sec">
+          <div class="bu-sec-h">
+            <span class="bu-sec-t" data-bind="text:t('fdDepts')"></span>
+            <span class="fd-sec-acts">
+              <input class="fd-dept-q" type="search" data-bind="textInput:fdDeptQ, attr:{placeholder:t('fdDeptSearch'), 'aria-label':t('fdDeptSearch')}">
+              <!-- ko ifnot: fdIs('map','departments') -->
+              <select class="fd-sort" data-bind="options:fdSortOpts(), optionsText:'l', optionsValue:'v', value:fdDeptSort, attr:{'aria-label':t('fdSortL')}"></select>
+              <!-- /ko -->
+              <span data-bind="text:fdDeptCountTxt()"></span>
+              <!-- ko if: fdCcSel().length -->
+              <button type="button" class="btn btn-sm" data-bind="click:fdClearDepts, clickBubble:false, text:t('fdClear')"></button>
+              <!-- /ko -->
+            </span>
+          </div>
+          <div class="bu-sec-b">
+            <div class="sp-note" data-bind="visible:fdNoBudget('departments'), text:t('fdNoBudgetNotice')"></div>
+            <div class="fd-hint">
+              <span class="fd-hint-ico" aria-hidden="true">&#9432;</span>
+              <div class="fd-hint-txt"><b data-bind="text:t('fdHintDeptLead')"></b> <span data-bind="text:t('fdHintDeptBody')"></span> <span class="fd-hint-tip" data-bind="visible:fdShowSummary, text:t('fdTrCardHint')"></span> <span class="fd-hint-tip" data-bind="text:fdHintTip()"></span><!-- ko if: fdDeptSort()==='budget' --> <span class="fd-hint-tip" data-bind="text:t('fdHintSorted')"></span><!-- /ko --><!-- ko if: fdDeptTopTxt() --> <span class="fd-hint-tip" data-bind="text:fdDeptTopTxt()"></span><!-- /ko --></div>
+              <span class="fd-legend"><!-- ko ifnot: $root.fdIs('map','departments') --><span class="sw"><i class="ca"></i><span data-bind="text:$root.t('fdActual')"></span></span><span class="sw"><i class="ce"></i><span data-bind="text:$root.t('fdEnc')"></span></span><span class="sw"><i class="cf"></i><span data-bind="text:$root.t('fdFund')"></span></span><!-- /ko --><!-- ko if: $root.fdIs('map','departments') --><!-- ko foreach: $root.fdHeatBands --><span class="sw"><i data-bind="style:{background:c}"></i><span data-bind="text:l"></span></span><!-- /ko --><!-- /ko --></span>
+            </div>
+            <!-- ko if: fdIs('tiles','departments') -->
+            <div class="fd-cards fd-cards--dept" data-bind="foreach:fdDeptsShown">
+              <button type="button" class="fd-card fd-tile fd-tile--d" data-bind="click:function(){$root.fdToggleDept(code)}, css:{on:$root.fdIsDeptSel(code), dim:$root.fdCcSel().length&&!$root.fdIsDeptSel(code)}, event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrCard('dept',$data,'',e)}, blur:$root.fdTrOut}, attr:{'aria-pressed':$root.fdIsDeptSel(code)?'true':'false', 'data-cc':code}">
+                <span class="fd-card-code mono"><span data-bind="text:code"></span><span class="fd-stag" data-bind="text:$root.fdSectorNameOf(sector)"></span><span class="fd-tick" aria-hidden="true"></span></span>
+                <span class="fd-nm" data-bind="text:name"></span>
+                <span class="fd-row"><b class="fd-big fd-fm" data-bind="text:$root.fdBig(budget), event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'budget',e)}}"></b><span class="fd-cbar" data-bind="css:{over:$root.fdSeg($data).over}"><i class="ca" data-bind="style:{width:$root.fdSeg($data).a}"></i><i class="ce" data-bind="style:{width:$root.fdSeg($data).e}"></i><i class="cf" data-bind="style:{width:$root.fdSeg($data).f}"></i></span></span>
+                <span class="fd-tfoot"><span><span class="fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'actual',e)}}"><b data-bind="text:$root.fdPct(actual,budget)+'%'"></b> <span data-bind="text:$root.t('fdUsed')"></span></span> · <span class="fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'encumbrance',e)}}"><b data-bind="text:$root.fdPct(encumbrance,budget)+'%'"></b> <span data-bind="text:$root.t('fdCommitted')"></span></span></span><span class="fd-pill fd-fm" data-bind="css:$root.fdStateCss($data), text:$root.fdFreeTxt($data), attr:{title:$root.fdStateLabel($data)}, event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'fundsavailable',e)}}"></span></span>
+              </button>
+            </div>
+            <!-- /ko -->
+            <!-- ko if: fdIs('rows','departments') -->
+            <div class="fd-lg-wrap">
+              <div class="fd-lg fd-lg-head"><span></span><span></span><span data-bind="text:t('fdDept')"></span><span data-bind="text:t('fdColScale')"></span><span class="r" data-bind="text:t('fdBudget')"></span><span class="r" data-bind="text:t('fdActual')"></span><span class="r" data-bind="text:t('fdEnc')"></span><span class="r" data-bind="text:t('fdFund')"></span></div>
+              <div data-bind="foreach:fdDeptsShown">
+              <button type="button" class="fd-lg fd-lg-row" data-bind="click:function(){$root.fdToggleDept(code)}, css:{on:$root.fdIsDeptSel(code), dim:$root.fdCcSel().length&&!$root.fdIsDeptSel(code)}, event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrCard('dept',$data,'',e)}, blur:$root.fdTrOut}, attr:{'aria-pressed':$root.fdIsDeptSel(code)?'true':'false', 'data-cc':code}">
+                <span class="fd-tick" aria-hidden="true"></span>
+                <span class="fd-ico" aria-hidden="true" data-bind="html:$root.fdSectorIcon(sector)"></span>
+                <span class="fd-lg-nm"><span class="fd-nm" data-bind="text:name"></span><small><span class="mono" data-bind="text:code"></span> · <span data-bind="text:$root.fdSectorNameOf(sector)"></span></small></span>
+                <span class="fd-lg-share"><span class="fd-cbar fd-cbar--lg" data-bind="style:{width:$root.fdRowW($data,true)}, css:{over:$root.fdSeg($data).over}"><i class="ca" data-bind="style:{width:$root.fdSeg($data).a}"></i><i class="ce" data-bind="style:{width:$root.fdSeg($data).e}"></i><i class="cf" data-bind="style:{width:$root.fdSeg($data).f}"></i></span></span>
+                <span class="fd-fig fd-fig--bud fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'budget',e)}}"><span data-bind="text:$root.fdBig(budget)"></span><small class="mono" data-bind="text:$root.money(budget)"></small></span>
+                <span class="fd-fig fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'actual',e)}}"><span data-bind="text:$root.fdBig(actual)"></span><small data-bind="text:$root.fdPct(actual,budget)+'% '+$root.t('fdOfBudget')"></small></span>
+                <span class="fd-fig fd-fm" data-bind="event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'encumbrance',e)}}"><span data-bind="text:$root.fdBig(encumbrance)"></span><small data-bind="text:$root.fdPct(encumbrance,budget)+'% '+$root.t('fdOfBudget')"></small></span>
+                <span class="fd-fig fd-fm" data-bind="css:{neg:fundsAvailable<0}, event:{mouseenter:function(d,e){return $root.fdTrCard('dept',$data,'fundsavailable',e)}}"><span data-bind="text:$root.fdBig(fundsAvailable)"></span><small data-bind="text:$root.fdPct(fundsAvailable,budget)+'% '+$root.t('fdOfBudget')"></small></span>
+              </button>
+              </div>
+            </div>
+            <!-- /ko -->
+            <!-- ko if: fdIs('map','departments') -->
+            <div class="fd-tm-wrap" data-bind="style:{height:fdMapH.depts+'px'}">
+              <!-- ko foreach: fdDeptGroups -->
+              <div class="fd-tm-grp" data-bind="attr:{style:$root.fdGrpStyle($data), 'data-grp':code}"><!-- ko if: strip --><span class="fd-tm-gl" data-bind="text:name"></span><!-- /ko --></div>
+              <!-- ko foreach: tiles -->
+              <button type="button" class="fd-tm" data-bind="click:function(){$root.fdToggleDept(r.code)}, css:{on:$root.fdIsDeptSel(r.code), dim:$root.fdCcSel().length&&!$root.fdIsDeptSel(r.code), darkt:dark}, event:{mouseenter:function(d,e){return $root.fdTrCard('dept',r,'',e)}, mouseleave:$root.fdTrOut, focus:function(d,e){return $root.fdTrCard('dept',r,'',e)}, blur:$root.fdTrOut}, attr:{style:$root.fdTileStyle($data), 'aria-pressed':$root.fdIsDeptSel(r.code)?'true':'false', 'data-cc':r.code}">
+                <!-- ko if: big -->
+                <!-- ko if: code --><span class="fd-tm-cd mono" data-bind="text:r.code"></span><!-- /ko -->
+                <span class="fd-tm-nm" data-bind="text:r.name"></span><span class="fd-tm-fg fd-fm" data-bind="text:$root.fdBig(r.budget), event:{mouseenter:function(d,e){return $root.fdTrCard('dept',r,'budget',e)}}"></span><span class="fd-tm-sub" data-bind="text:$root.fdPct(r.actual,r.budget)+'% '+$root.t('fdUsed')+' · '+$root.fdPct(r.encumbrance,r.budget)+'% '+$root.t('fdCommitted')"></span>
+                <!-- /ko -->
+                <!-- ko if: mid -->
+                <span class="fd-tm-nm" data-bind="text:$root.fdShortName(r)"></span><!-- ko if: sub --><span class="fd-tm-sub" data-bind="text:$root.fdBig(r.budget)"></span><!-- /ko -->
+                <!-- /ko -->
+              </button>
+              <!-- /ko -->
+              <!-- /ko -->
+            </div>
+            <!-- /ko -->
+            <!-- ko if: fdDeptHasMore -->
+            <button type="button" class="fd-more" data-bind="click:fdToggleDeptAll, text:fdDeptMoreTxt()"></button>
+            <!-- /ko -->
+            <!-- ko if: fdLoaded() && !fdDeptsShown().length -->
+            <div class="fd-empty" data-bind="text:t('fdNoDepts')"></div>
+            <!-- /ko -->
+          </div>
+        </div>
+
+        <!-- ko if: fdLoaded -->
+        <div class="fd-foot">
+          <span><span data-bind="text:t('fdFootScope')"></span>
+            <!-- ko if: fdExcluded() && (fdExcluded().budget || fdExcluded().actual) -->
+            <span data-bind="text:t('fdFootExcluded')"></span> <b data-bind="text:t('fdBudget')+' '+buNum(fdExcluded().budget)"></b> · <b data-bind="text:t('fdActual')+' '+buNum(fdExcluded().actual)"></b>
+            <!-- /ko -->
+          </span>
+          <span class="fd-grand"><span data-bind="text:t('fdGrand')"></span> · <span data-bind="text:t('fdBudget')"></span> <b data-bind="text:buNum(fdTotals().budget)"></b> · <span data-bind="text:t('fdFund')"></span> <b data-bind="text:buNum(fdTotals().fundsAvailable), css:{danger:fdTotals().fundsAvailable<0}"></b></span>
+        </div>
+        <!-- /ko -->
+
+        <!-- monthly-movement hint (Mockup 2, v1.107.0): fixed popover fed by fdTrend() under the band's own scope -->
+        <div class="fd-trend" data-bind="visible:fdTrShow, style:{left:fdTrX()+'px', top:fdTrY()+'px'}, attr:{'data-m':fdTrData()?fdTrData().metric:''}" style="display:none">
+          <!-- ko with: fdTrData -->
+          <div class="fd-tr-h"><span data-bind="text:title"></span><b data-bind="text:chapter"></b></div>
+          <div class="fd-tr-sub" data-bind="text:sub"></div>
+          <!-- ko if: $data.metrics -->
+          <div class="fd-tr-mx" data-bind="foreach:metrics"><span data-bind="css:{on:on}, attr:{'data-m':m}"><small data-bind="text:l"></small><b data-bind="text:v"></b></span></div>
+          <!-- /ko -->
+          <!-- ko if: rows.length -->
+          <div class="fd-tr-rows" data-bind="foreach:rows">
+            <span class="m" data-bind="text:label, css:{cur:cur}"></span>
+            <span class="bar"><i class="bf" data-bind="style:{width:bfW+'%'}"></i><i class="mv" data-bind="attr:{style:'inset-inline-start:'+movStart+'%;width:'+movW+'%'}, css:{neg:neg}"></i></span>
+            <span class="v" data-bind="css:{cur:cur}"><span data-bind="text:movTxt"></span><small data-bind="text:ytdTxt"></small></span>
+          </div>
+          <!-- /ko -->
+          <!-- ko ifnot: rows.length -->
+          <div class="fd-tr-none" data-bind="text:$root.t('fdTrNone')"></div>
+          <!-- /ko -->
+          <div class="fd-tr-lg"><span><i class="mv"></i><span data-bind="text:$root.t('fdTrMove')"></span></span><span><i class="bf"></i><span data-bind="text:$root.t('fdTrBf')"></span></span><span><span data-bind="text:$root.t('fdTrAvg')"></span>: <b data-bind="text:avgTxt"></b></span></div>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+
     <div id="pg-cashflow" data-bind="visible:view()==='cashflow'">
       <div class="page-head">
         <div>
@@ -3421,6 +3918,50 @@
       </div>
     </div>
 
+    <!-- ── TERMS AND KEY DEFINITIONS (report intro content, Settings) ── -->
+    <div id="pg-terms" data-bind="visible:view()==='terms'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('tkTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('tkSub')"></div></div>
+        <div class="page-actions">
+          <button class="btn btn-sm btn-primary" data-bind="click:tkNew, text:t('tkNew')"></button>
+        </div>
+      </div>
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('tkTitle')"></span></div>
+        <div class="bu-sec-b" style="position:relative">
+          <div class="tk-note muted" data-bind="text:t('tkNote')"></div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr>
+                <th data-bind="text:t('tkColTitle')"></th>
+                <th data-bind="text:t('tkAppliedTo')"></th>
+                <th data-bind="text:t('tkStart')"></th>
+                <th data-bind="text:t('tkEnd')"></th>
+                <th data-bind="text:t('tkStatus')"></th>
+                <th data-bind="text:t('tkUpdated')"></th>
+              </tr></thead>
+              <tbody data-bind="foreach:tkRows">
+                <tr class="el-row" data-bind="click:function(){$root.tkOpen($data)}">
+                  <td><b data-bind="text:title"></b></td>
+                  <td data-bind="text:appliedToName"></td>
+                  <td class="mono" data-bind="text:startDate"></td>
+                  <td class="mono" data-bind="text:endDate||'—'"></td>
+                  <td><span class="st" data-bind="css:status==='ACTIVE'?'st--ok':'st--mute', text:status==='ACTIVE'?$root.t('tkActive'):$root.t('tkInactive')"></span></td>
+                  <td><span data-bind="text:updatedAt"></span> <small class="muted" data-bind="text:updatedBy"></small></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="empty" data-bind="visible:tkLoaded() && tkRows().length===0, text:t('tkNoRows')"></div>
+          <div class="ldr sm" data-bind="visible:tkBusy()">
+            <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+            <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   <div class="pfoot"><span class="diamond"></span><span data-bind="text:t('footOrg')"></span><span class="grow"></span>
     <span data-bind="text:t('footNote')"></span></div>
 </div>
@@ -3428,7 +3969,7 @@
 <!-- ═══════════ VALUE MODAL ═══════════ -->
 <div class="ov" data-bind="visible:rcCategoryModal" style="display:none"><div class="modal"><div class="modal-h"><h3 data-bind="text:t('rcCategory')"></h3><button class="btn btn-sm" data-bind="click:function(){rcCategoryModal(false)},text:t('cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:rcSaveCategory,text:t('save')"></button></div><div class="modal-b"><div class="grid2"><div class="field"><label class="lbl"><span data-bind="text:t('rcLevel')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcCatLevel"><option value="MAIN" data-bind="text:t('rcMain')"></option><option value="SUB" data-bind="text:t('rcSubcat')"></option></select></div><div class="field" data-bind="visible:rcCatLevel()==='SUB'"><label class="lbl"><span data-bind="text:t('rcParent')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcMainCategories,optionsText:function(c){return $root.rcName(c)},optionsValue:'categoryId',value:rcCatParent,optionsCaption:t('pickValue')"></select></div><div class="field"><label class="lbl"><span data-bind="text:t('code')"></span><i class="req">*</i></label><input class="inp mono" data-bind="value:rcCatCode"></div><div class="field"><label class="lbl"><span data-bind="text:t('rcSource')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcCatSource"><option value="AR_TRANSACTION">AR Transaction</option><option value="MISC_RECEIPT">Misc. Receipt</option><option value="BOTH">Both</option></select></div><div class="field full"><label class="lbl"><span data-bind="text:t('nameEn')"></span><i class="req">*</i></label><input class="inp" data-bind="value:rcCatNameEn"></div><div class="field full"><label class="lbl" data-bind="text:t('nameAr')"></label><input class="inp" dir="rtl" data-bind="value:rcCatNameAr"></div><div class="field"><label class="lbl"><span data-bind="text:t('priority')"></span><i class="req">*</i></label><input class="inp" type="number" data-bind="value:rcCatPriority"></div><div class="field"><label class="lbl"><span data-bind="text:t('active')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcCatActive"><option value="Y" data-bind="text:t('yes')"></option><option value="N" data-bind="text:t('no')"></option></select></div><div class="field full"><label class="lbl" data-bind="text:t('description')"></label><input class="inp" data-bind="value:rcCatDescription"></div></div><div class="rc-note" data-bind="text:t('rcHierarchyRule')"></div><div class="rc-audit" data-bind="visible:rcCatId"><b data-bind="text:t('rcTracking')"></b><dl><div><dt data-bind="text:t('rcCreatedBy')"></dt><dd data-bind="text:rcCatCreatedBy"></dd></div><div><dt data-bind="text:t('rcCreatedOn')"></dt><dd data-bind="text:rcCatCreatedOn"></dd></div><div><dt data-bind="text:t('rcUpdatedBy')"></dt><dd data-bind="text:rcCatUpdatedBy"></dd></div><div><dt data-bind="text:t('rcUpdatedOn')"></dt><dd data-bind="text:rcCatUpdatedOn"></dd></div></dl></div><button class="btn danger" data-bind="visible:rcCatId,click:rcDeleteCategory,text:t('delete')"></button></div></div></div>
 
-<div class="ov" data-bind="visible:rcRuleModal" style="display:none"><div class="modal wide"><div class="modal-h"><h3 data-bind="text:t('rcNewRule')"></h3><button class="btn btn-sm" data-bind="click:function(){rcRuleModal(false)},text:t('cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:rcSaveRule,text:t('save')"></button></div><div class="modal-b"><div class="rc-note" data-bind="text:t('rcAllHelp')"></div><div class="grid2"><div class="field"><label class="lbl"><span data-bind="text:t('rcCategory')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcSubCategories,optionsText:function(c){return $root.rcPath(c)},optionsValue:'categoryId',value:rcRuleCategory,optionsCaption:t('pickValue')"></select></div><div class="field"><label class="lbl"><span data-bind="text:t('rcSource')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcRuleSource"><option value="AR_TRANSACTION">AR Transaction</option><option value="MISC_RECEIPT">Misc. Receipt</option></select></div><div class="field"><label class="lbl"><span data-bind="text:t('priority')"></span><i class="req">*</i></label><input class="inp" type="number" data-bind="value:rcRulePriority"></div><!-- ko foreach:rcDimensions --><div class="field"><label class="lbl" data-bind="text:$root.t(label)"></label><input class="inp" data-bind="value:$root.rcRuleValues[key],attr:{placeholder:'ALL'}"></div><!-- /ko --></div></div></div></div>
+<div class="ov" data-bind="visible:rcRuleModal" style="display:none"><div class="modal wide"><div class="modal-h"><h3 data-bind="text:t('rcNewRule')"></h3><button class="btn btn-sm" data-bind="click:function(){rcCloseLov();rcRuleModal(false)},text:t('cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:rcSaveRule,text:t('save')"></button></div><div class="modal-b"><div class="rc-note" data-bind="text:t('rcAllHelp')"></div><div class="grid2"><div class="field"><label class="lbl"><span data-bind="text:t('rcCategory')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcSubCategories,optionsText:function(c){return $root.rcPath(c)},optionsValue:'categoryId',value:rcRuleCategory,optionsCaption:t('pickValue')"></select></div><div class="field"><label class="lbl"><span data-bind="text:t('rcSource')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcRuleSource"><option value="AR_TRANSACTION">AR Transaction</option><option value="MISC_RECEIPT">Misc. Receipt</option></select></div><div class="field"><label class="lbl"><span data-bind="text:t('priority')"></span><i class="req">*</i></label><input class="inp" type="number" data-bind="value:rcRulePriority"></div><!-- ko foreach:rcDimensions --><div class="field rc-lov-field"><label class="lbl" data-bind="text:$root.t(label)"></label><button type="button" class="inp rc-lov-trigger" data-bind="click:function(){ $root.rcToggleLov($data) },disable:$root.rcLovDisabled($data),css:{disabled:$root.rcLovDisabled($data)}"><span data-bind="text:$root.rcLovSelectedLabel($data)"></span><span class="rc-lov-chevron">⌄</span></button><!-- ko if:$root.rcLovOpen()===key --><div class="rc-lov-menu"><input class="inp rc-lov-search" type="search" autocomplete="off" placeholder="Search…" data-bind="textInput:$root.rcLovQuery,event:{input:$root.rcLovSearch.bind(null,$data)}"><div class="rc-lov-results" data-bind="foreach:$root.rcLovItems"><button type="button" class="rc-lov-option" data-bind="click:function(){ $root.rcLovPick($parent,$data) },css:{selected:value===$root.rcRuleValues[$parent.key]()}"><span data-bind="text:label"></span><small data-bind="visible:detail,text:detail"></small></button></div><div class="rc-lov-empty" data-bind="visible:$root.rcLovBusy,text:'Loading…'"></div><div class="rc-lov-empty" data-bind="visible:!$root.rcLovBusy()&&!$root.rcLovItems().length,text:$root.t('rcEmpty')"></div></div><!-- /ko --></div><!-- /ko --></div></div></div></div>
 
 <div class="ov" data-bind="visible:rcAccessModal" style="display:none"><div class="modal"><div class="modal-h"><h3 data-bind="text:t('rcNewAccess')"></h3><button class="btn btn-sm" data-bind="click:function(){rcAccessModal(false)},text:t('cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:rcSaveAccess,text:t('save')"></button></div><div class="modal-b"><div class="grid2"><div class="field"><label class="lbl"><span data-bind="text:t('rcType')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcAccessType"><option value="ROLE">Role</option><option value="USER">User</option></select></div><div class="field"><label class="lbl"><span data-bind="text:t('rcPrincipal')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcAccessType()==='ROLE'?rcRoles:rcUsers,optionsText:'name',optionsValue:'id',value:rcAccessPrincipal,optionsCaption:t('pickValue')"></select></div><div class="field full"><label class="lbl"><span data-bind="text:t('rcCategory')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcCategories,optionsText:function(c){return $root.rcPath(c)},optionsValue:'categoryId',value:rcAccessCategory,optionsCaption:t('pickValue')"></select></div><label class="field full rc-check"><input type="checkbox" data-bind="checked:rcAccessChildren,enable:rcAccessSelectedIsMain"><span data-bind="text:t('rcIncludeChildren')"></span></label></div></div></div></div>
 
@@ -3455,6 +3996,9 @@
         <div class="field"><label class="lbl" data-bind="text:t('order')"></label><input class="inp mono" type="number" data-bind="value:vOrder"></div>
         <div class="field"><label class="lbl" data-bind="text:t('active')"></label>
           <select class="inp" data-bind="value:vActive"><option value="Y" data-bind="text:t('yes')"></option><option value="N" data-bind="text:t('no')"></option></select></div>
+        <div class="field full" data-bind="visible:vType()==='ENTITY'"><label class="lbl" data-bind="text:t('defaultValue')"></label>
+          <select class="inp" data-bind="value:vDefault"><option value="N" data-bind="text:t('no')"></option><option value="Y" data-bind="text:t('yes')"></option></select>
+          <small style="color:var(--muted)" data-bind="text:t('defaultValueHint')"></small></div>
       </div>
     </div>
   </div>
@@ -3470,6 +4014,7 @@
       <div class="err" data-bind="visible:modalErr, text:modalErr"></div>
       <div class="grid2">
         <div class="field"><label class="lbl" data-bind="text:t('dimension')"></label><input class="inp" disabled data-bind="value:mType"></div>
+        <div class="field" data-bind="visible:mapType()==='ENTITY'"><label class="lbl" data-bind="text:t('segmentKey')"></label><input class="inp" disabled data-bind="value:$root.segNameOf(mapSegKey())"></div>
         <div class="field"><label class="lbl" data-bind="text:t('segment')"></label><input class="inp mono" disabled data-bind="value:mSegment"></div>
         <div class="field full"><label class="lbl" data-bind="text:t('classValue')"></label>
           <select class="inp" data-bind="options:mapValueOpts, optionsText:'nameEn', optionsValue:'classValueId', value:mValue, optionsCaption:t('pickValue')"></select></div>
@@ -3963,6 +4508,7 @@
   </header>
   <div class="dw-b">
     <div class="dw-ctx" data-bind="text:t('clsDrillCtx')"></div>
+    <div class="dw-ctx cls-ent-hint" data-bind="visible:clsIsEntity, text:t('entityRuleHint')"></div>
     <div class="dw-err" data-bind="visible:clsDrawerErr(), text:clsDrawerErr"></div>
     <div class="ldr sm" data-bind="visible:clsDrillLoading()">
       <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
@@ -3972,6 +4518,7 @@
     <div class="tbl-wrap" data-bind="visible:clsRows().length>0">
       <table class="tbl clsdw-tbl">
         <thead><tr>
+          <th data-bind="visible:clsIsEntity, text:t('segmentKey')"></th>
           <th data-bind="text:t('segment')"></th>
           <th data-bind="text:t('descriptionL')"></th>
           <th data-bind="text:t('startDate')"></th>
@@ -3983,6 +4530,12 @@
         <tbody>
           <!-- ko foreach: clsRows -->
           <tr>
+            <td class="cls-segkey" data-bind="visible:$root.clsIsEntity()">
+              <!-- ko if: isNew -->
+              <select class="inp" data-bind="options:$root.segments, optionsText:function(g){return $root.segName(g)}, optionsValue:'key', value:segmentKey"></select>
+              <!-- /ko -->
+              <!-- ko ifnot: isNew --><span data-bind="text:segmentKeyName||segmentKey()"></span><!-- /ko -->
+            </td>
             <td class="mono">
               <!-- ko if: isNew -->
               <input class="inp" list="cls-seg-dl" data-bind="value:segmentValue, valueUpdate:'change'" placeholder="000000">
@@ -4573,6 +5126,60 @@
   <td class="cmt-cell cmt-cell-agg"><div class="agg-cmt"><button class="cmt-btn" data-bind="click:function(d){$root.openCmtGroup(d)}, clickBubble:false, attr:{title:$root.t('chCmtGrp')}, css:{has:$data.hasCmt==='Y'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="cmt-n" data-bind="visible:($data.cmtCount||0)>0, text:$data.cmtCount"></span></button><div class="cmt-txt-clamp" data-bind="text:$data.commentsText||'', attr:{title:$data.commentsText||''}"></div></div></td>
 </script>
 
+<!-- ═══════════ TERMS AND KEY DEFINITIONS DRAWER (rich-text editor) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:tkDrawer}, click:function(){tkDrawer(false)}" style="display:none"></div>
+<aside class="dw-drawer dw-tk" data-bind="css:{show:tkDrawer}" role="dialog" aria-modal="true">
+  <!-- ko if: tkEdit -->
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:tkEdit().termId?t('tkEditTitle'):t('tkNew')"></div>
+      <div class="dw-title" data-bind="text:tkEdit().title()||t('tkTitle')"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm danger" data-bind="visible:tkEdit().termId, click:tkDelete, text:t('delete')"></button>
+      <button class="btn btn-sm btn-primary" data-bind="click:tkSave, disable:tkSaving, text:t('save')"></button>
+      <button class="btn btn-sm" data-bind="click:function(){tkDrawer(false)}, text:t('close')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="form-grid">
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label"><span data-bind="text:t('tkColTitle')"></span> <i class="req">*</i></label>
+        <input type="text" class="form-control" data-bind="value:tkEdit().title">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('tkAppliedTo')"></label>
+        <select class="form-control" data-bind="options:tkAppliedLov, optionsText:$root.tkLovLabel, optionsValue:'code', value:tkEdit().appliedTo"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('tkStatus')"></label>
+        <select class="form-control" data-bind="options:tkStatusLov, optionsText:$root.tkLovLabel, optionsValue:'code', value:tkEdit().status"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text:t('tkStart')"></span> <i class="req">*</i></label>
+        <input type="date" class="form-control" data-bind="value:tkEdit().startDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('tkEnd')"></label>
+        <input type="date" class="form-control" data-bind="value:tkEdit().endDate">
+        <small class="muted" data-bind="text:t('tkEndHint')"></small>
+      </div>
+    </div>
+    <div class="section-heading-row">
+      <span class="section-heading" data-bind="text:t('tkContent')"></span>
+    </div>
+    <div class="tk-ed-hint muted" data-bind="text:t('tkContentHint')"></div>
+    <!-- ko if: tkQuillOk -->
+    <div class="tk-editor"><div id="tk-quill"></div></div>
+    <!-- /ko -->
+    <!-- ko ifnot: tkQuillOk -->
+    <textarea class="form-control tk-raw" data-bind="value:tkEdit().contentHtml" rows="14"></textarea>
+    <!-- /ko -->
+    <div class="tk-meta muted" data-bind="visible:tkEdit().termId, text:t('tkCreated')+': '+(tkEdit().createdBy||'')+' · '+(tkEdit().createdAt||'')"></div>
+  </div>
+  <!-- /ko -->
+</aside>
+
 <!-- ═══════════ BUDGET UTILIZATION COMMENTS DRAWER (thread + add/reply + attachments) ═══════════
      LAST drawer in the DOM on purpose: all drawers share z-index 71, so DOM
      order decides stacking and this one must open ABOVE the drill drawer
@@ -4799,10 +5406,13 @@
         function (e) { window._irLoadError = String(e && e.message || e); bootApp(); });
     } catch (e) { window._irLoadError = String(e); bootApp(); }
   }
-  // 1. fusionLinks (UMD, before requirejs), then 2. require.js, then 3. the rest
-  loadScript('/shared/js/fusionLinks.js?v=' + APP,
-    function () { loadScript(CDN + '/3rdparty/require/require.js', afterRequire, bootApp); },
-    function () { loadScript(CDN + '/3rdparty/require/require.js', afterRequire, bootApp); });
+  // 1. UMD scripts (fusionLinks, then Quill — the Terms rich-text editor) load
+  //    BEFORE requirejs or their anonymous define() collides with it, then
+  //    2. require.js, then 3. the rest. A Quill load failure still boots the
+  //    app (the Terms drawer falls back to a plain textarea on raw HTML).
+  function loadRequire() { loadScript(CDN + '/3rdparty/require/require.js', afterRequire, bootApp); }
+  function loadQuill() { loadScript('lib/quill/quill.js?v=' + APP, loadRequire, loadRequire); }
+  loadScript('/shared/js/fusionLinks.js?v=' + APP, loadQuill, loadQuill);
 })();
 </script>
 </body>

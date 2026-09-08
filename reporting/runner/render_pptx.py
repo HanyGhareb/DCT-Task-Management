@@ -1083,12 +1083,171 @@ def _budget_util_deck(prs, sections, ctx, meta):
 
 
 # ── entry point ──────────────────────────────────────────────────────────────
+# ── GL Financial Performance Report deck (GL_FMR_REPORT) ─────────────────────
+GL_GREEN = RGBColor(0x3F, 0x6F, 0x5F)
+GL_GREEN_D = RGBColor(0x2C, 0x50, 0x44)
+GL_SAGE = RGBColor(0x8F, 0xB3, 0xA6)
+
+
+def _fmr_mn(v):
+    return f"{_num(v) / 1_000_000:,.1f}M"
+
+
+def _fmr_pc(v):
+    return "—" if v is None else f"{v:,.1f}%"
+
+
+def _fmr_cover(prs, ctx, O):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _rect(slide.shapes, 0, 0, SW, Inches(2.35), GL_GREEN)
+    _rect(slide.shapes, 0, Inches(2.35), SW, Emu(int(0.08 * EMU_IN)), GOLD)
+    _rect(slide.shapes, 0, Inches(7.18), SW, Inches(0.32), GL_GREEN_D)
+    p = ctx.get("params") or {}
+    _txt(slide.shapes, Inches(0.7), Inches(0.55), Inches(12), Inches(0.4),
+         "i-Finance · Reporting Platform", size=14, bold=True, color=RGBColor(0xD5, 0xE6, 0xDF))
+    _txt(slide.shapes, Inches(0.7), Inches(1.0), Inches(12), Inches(1.2),
+         "Financial Performance Report", size=42, bold=True, color=WHITE)
+    _txt(slide.shapes, Inches(0.7), Inches(2.6), Inches(12), Inches(0.5),
+         f"Budget Overview  —  period {p.get('period', '')} (figures YTD)",
+         size=20, bold=True, color=GL_GREEN_D)
+    scope = "Scope:  Budget Group 1 · Chapters 1–3 (Payroll / Opex / Capex)"
+    if p.get("entity"):
+        scope += f" · entity {p['entity']}"
+    _txt(slide.shapes, Inches(0.7), Inches(3.25), Inches(12), Inches(0.5),
+         scope, size=13, color=MUTE)
+    tiles = [
+        ("Budget", _fmr_mn(O.get("budget"))),
+        ("Actual", _fmr_mn(O.get("actual"))),
+        ("YTD Plan", _fmr_mn(O.get("ytd_plan")) if O.get("has_plan") == "Y" else "—"),
+        ("Actual vs Plan", _fmr_pc(O.get("actual_vs_plan_pct"))),
+        ("Funds Available", _fmr_mn(O.get("funds_available"))),
+    ]
+    n = len(tiles)
+    gap = Inches(0.2)
+    tw = (SW - Inches(1.4) - gap * (n - 1)) / n
+    x = Inches(0.7)
+    for i, (lbl, val) in enumerate(tiles):
+        _rect(slide.shapes, x, Inches(4.15), tw, Inches(1.35), SOFT, line=LINE)
+        _rect(slide.shapes, x, Inches(4.15), tw, Emu(int(0.06 * EMU_IN)),
+              GOLD if lbl in ("YTD Plan", "Actual vs Plan") else GL_GREEN)
+        _txt(slide.shapes, x, Inches(4.32), tw, Inches(0.35),
+             lbl.upper(), size=10, bold=True, color=MUTE, align=PP_ALIGN.CENTER)
+        _txt(slide.shapes, x, Inches(4.7), tw, Inches(0.7),
+             val, size=22, bold=True, color=GL_GREEN_D, align=PP_ALIGN.CENTER,
+             anchor=MSO_ANCHOR.MIDDLE)
+        x += tw + gap
+    _txt(slide.shapes, Inches(0.7), Inches(6.1), Inches(9), Inches(0.7),
+         "Prepared by Financial Planning and Budgeting\nFinance Department",
+         size=13, bold=True, color=INK)
+    _txt(slide.shapes, Inches(0.7), Inches(7.2), Inches(12), Inches(0.28),
+         f"Generated {ctx.get('generated_at', '')} GST (UTC+04:00), Asia/Dubai   ·   "
+         f"{ctx.get('report_code', '')}",
+         size=9, color=RGBColor(0xD5, 0xE6, 0xDF), anchor=MSO_ANCHOR.MIDDLE)
+
+
+def _fmr_deck(prs, sections, ctx, meta):
+    """GL Financial Performance Report — Budget Overview (FMR_Dashboard layout):
+    cover · entity level (table + comparison chart) · YTD trend by type ·
+    sector level · variance commentary."""
+    S = _sections_by_key(sections)
+    O = (_data(S.get("overall")) or [{}])[0]
+    ENT = _data(S.get("entities"))
+    TRD = _data(S.get("trend"))
+    SEC = _data(S.get("sectors"))
+    NOTES = _data(S.get("notes"))
+
+    _fmr_cover(prs, ctx, O)
+
+    # ── Entity Level: figures table + Budget/Actual/Plan comparison chart ──
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _band(slide, "01", "Budget Overview — Entity Level", brand=GL_GREEN)
+    rows = [[e.get("entity"), _fmr_mn(e.get("budget")), _fmr_mn(e.get("actual")),
+             _fmr_pc(e.get("actual_vs_budget_pct")),
+             _fmr_mn(e.get("ytd_plan")) if e.get("has_plan") == "Y" else "—",
+             _fmr_pc(e.get("actual_vs_plan_pct")) if e.get("has_plan") == "Y" else "—",
+             _fmr_mn(e.get("funds_available"))] for e in ENT]
+    _add_table(slide, Inches(0.5), Inches(1.25), Inches(12.33),
+               ["Entity", "Budget", "Actual", "Actual vs Budget", "YTD Plan",
+                "Actual vs Plan", "Funds Available"],
+               rows, col_w=[2.2, 1.6, 1.6, 1.7, 1.6, 1.7, 1.7],
+               aligns=[PP_ALIGN.LEFT] + [PP_ALIGN.RIGHT] * 6)
+    if ENT:
+        _chart(slide, XL_CHART_TYPE.COLUMN_CLUSTERED,
+               Inches(0.5), Inches(3.35), Inches(12.33), Inches(3.6),
+               [e.get("entity") for e in ENT],
+               [("Budget", [round(_num(e.get("budget")) / 1e6, 1) for e in ENT]),
+                ("Actual", [round(_num(e.get("actual")) / 1e6, 1) for e in ENT]),
+                ("YTD Plan", [round(_num(e.get("ytd_plan")) / 1e6, 1) for e in ENT])],
+               colors=[GL_GREEN, GOLD, GL_SAGE], data_labels=True,
+               number_format='#,##0.0"M"')
+    _foot(slide, meta)
+
+    # ── YTD Trend: Payroll / Opex / Capex ──
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _band(slide, "02", "YTD Trend — Payroll / Opex / Capex", brand=GL_GREEN)
+    if TRD:
+        _chart(slide, XL_CHART_TYPE.COLUMN_CLUSTERED,
+               Inches(0.5), Inches(1.25), Inches(12.33), Inches(3.9),
+               [t.get("type") for t in TRD],
+               [("Budget", [round(_num(t.get("budget")) / 1e6, 1) for t in TRD]),
+                ("Actual", [round(_num(t.get("actual")) / 1e6, 1) for t in TRD]),
+                ("YTD Plan", [round(_num(t.get("ytd_plan")) / 1e6, 1) for t in TRD])],
+               colors=[GL_GREEN, GOLD, GL_SAGE], data_labels=True,
+               number_format='#,##0.0"M"')
+    rows = [[t.get("type"), money(t.get("budget")), money(t.get("actual")),
+             _fmr_pc(t.get("actual_vs_budget_pct")),
+             money(t.get("ytd_plan")) if t.get("has_plan") == "Y" else "—"]
+            for t in TRD]
+    _add_table(slide, Inches(0.5), Inches(5.4), Inches(12.33),
+               ["Type", "Budget (AED)", "Actual (AED)", "Actual vs Budget", "YTD Plan (AED)"],
+               rows, col_w=[2.0, 2.6, 2.6, 2.0, 2.6],
+               aligns=[PP_ALIGN.LEFT] + [PP_ALIGN.RIGHT] * 4)
+    _foot(slide, meta)
+
+    # ── Sector Level (ranked by Actual vs Plan, the page's ordering) ──
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _band(slide, "03", "Budget Overview — Sector Level", brand=GL_GREEN)
+    top = SEC[:14]
+    rows = [[s.get("sector"), _fmr_mn(s.get("budget")), _fmr_mn(s.get("actual")),
+             _fmr_pc(s.get("actual_vs_budget_pct")),
+             _fmr_mn(s.get("ytd_plan")) if s.get("has_plan") == "Y" else "—",
+             _fmr_pc(s.get("actual_vs_plan_pct")) if s.get("has_plan") == "Y" else "—"]
+            for s in top]
+    _add_table(slide, Inches(0.5), Inches(1.25), Inches(12.33),
+               ["Sector", "Budget", "Actual", "Actual vs Budget", "YTD Plan", "Actual vs Plan"],
+               rows, col_w=[4.0, 1.6, 1.6, 1.7, 1.6, 1.7],
+               aligns=[PP_ALIGN.LEFT] + [PP_ALIGN.RIGHT] * 5, height=Inches(0.26 * (len(top) + 1)))
+    if len(SEC) > len(top):
+        _txt(slide.shapes, Inches(0.5), Inches(6.75), Inches(12), Inches(0.3),
+             f"Top {len(top)} of {len(SEC)} sectors by Actual vs Plan — the Excel "
+             "workbook carries the full list.", size=10, color=MUTE)
+    _foot(slide, meta)
+
+    # ── Commentary (only when notes exist) ──
+    if NOTES:
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        _band(slide, "04", "Variance Commentary", brand=GL_GREEN)
+        y = Inches(1.35)
+        for n_row in NOTES:
+            _rect(slide.shapes, Inches(0.5), y, Inches(12.33), Inches(2.4), SOFT, line=LINE)
+            _txt(slide.shapes, Inches(0.75), y + Inches(0.15), Inches(11.8), Inches(0.35),
+                 str(n_row.get("commentary") or ""), size=14, bold=True, color=GL_GREEN_D)
+            _txt(slide.shapes, Inches(0.75), y + Inches(0.55), Inches(11.8), Inches(1.4),
+                 str(n_row.get("note") or "—"), size=12, color=INK)
+            _txt(slide.shapes, Inches(0.75), y + Inches(2.0), Inches(11.8), Inches(0.3),
+                 f"{n_row.get('updated_by') or ''} · {n_row.get('updated_on') or ''}",
+                 size=9, color=MUTE)
+            y += Inches(2.65)
+        _foot(slide, meta)
+
+
 def build_deck(sections, ctx):
     """Build an executive .pptx deck from a MULTI report's sections.
 
-    Dispatches on the report code: ENC_PENDING_BOOK → the pending-approval deck;
-    everything else falls back to the Budget Utilization deck (the two share the
-    same design language and slide helpers).
+    Dispatches on the report code: GL_FMR_REPORT → the Financial Performance
+    Report deck; ENC_PENDING_BOOK → the pending-approval deck; everything else
+    falls back to the Budget Utilization deck (all three share the same design
+    language and slide helpers).
     """
     # content-slide footer suppressed per review (no bottom meta / GST line);
     # the cover keeps its generation stamp. Empty meta => _foot draws nothing.
@@ -1099,7 +1258,12 @@ def build_deck(sections, ctx):
 
     code = (ctx.get("report_code") or "").upper()
     keys = {(s or {}).get("key") for s in (sections or [])}
-    if code == "ENC_PENDING_BOOK" or ("approvers" in keys and "pr_register" in keys):
+    if code == "GL_BUDGET_STATUS":
+        from render_fd import build_deck as build_fd_deck
+        return build_fd_deck(dict(ctx, sections=sections))
+    if code == "GL_FMR_REPORT" or ("entities" in keys and "trend" in keys):
+        _fmr_deck(prs, sections, ctx, meta)
+    elif code == "ENC_PENDING_BOOK" or ("approvers" in keys and "pr_register" in keys):
         _enc_pending_deck(prs, sections, ctx, meta)
     else:
         _budget_util_deck(prs, sections, ctx, meta)

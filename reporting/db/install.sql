@@ -13,6 +13,7 @@ SET SQLBLANKLINES ON
 @@03_rpt_pkg.sql
 @@04_rpt_ords.sql
 @@05_rpt_sched_sync.sql
+@@44_rpt_storage_ords.sql
 @@06_rpt_native_pkg.sql
 @@07_rpt_seed.sql
 -- (08/08a/08b Budget-Util-by-Sector pack, 09/09a workers layer and the

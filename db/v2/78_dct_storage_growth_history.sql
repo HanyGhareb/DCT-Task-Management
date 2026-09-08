@@ -183,7 +183,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_storage_history_pkg AS
         prod.dct_notify.send(u.user_id,'WARNING','Unusual database growth',
           'The PROD schema grew by '||TO_CHAR(l_growth_mb)||' MB since the previous daily snapshot. '||
           'The configured warning level is '||TO_CHAR(l_alert_mb)||' MB.',
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
     END IF;
     COMMIT;

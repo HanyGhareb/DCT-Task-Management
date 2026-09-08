@@ -180,7 +180,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_sql_perf_pkg AS
         prod.dct_notify.send(u.user_id,'WARNING','Slow database SQL detected',
           l_slow||' PROD SQL statement(s) average at least '||l_alert||
           ' seconds after '||l_min||' executions. Slowest average: '||l_top||' seconds.',
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
     END IF;
 

@@ -8,7 +8,7 @@ SET SERVEROUTPUT ON SIZE UNLIMITED
 
 BEGIN
   MERGE INTO prod.dct_system_settings s USING (
-    SELECT 'OPS_SCHEMA_WARNING_MB' k,'2048' v,'Forecast schema capacity against this warning level.' d FROM dual UNION ALL
+    SELECT 'OPS_SCHEMA_WARNING_MB' k,'8192' v,'Warn when the PROD schema approaches the conservative 8 GB application allocation within DATA.' d FROM dual UNION ALL
     SELECT 'OPS_API_SLOW_MS','2000','Warn when an ORDS endpoint averages this many database milliseconds.' FROM dual UNION ALL
     SELECT 'OPS_API_ERROR_RATE_PCT','5','Warn when an ORDS endpoint error rate reaches this percentage.' FROM dual UNION ALL
     SELECT 'OPS_ACTUALS_STALE_HOURS','2','Warn when the actuals snapshot has no success within this many hours.' FROM dual UNION ALL
@@ -183,7 +183,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ops_api AS
         prod.dct_notify.send(u.user_id,'WARNING','Operations attention required',l_count||' persistent operational issue(s): '||
           l_jobs||' scheduler, '||l_api||' API, '||l_actual||' actuals refresh, '||l_other||' database.'||
           CASE WHEN l_detail IS NOT NULL THEN ' Slow API: '||l_detail||'.' END,
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
     END IF;
     MERGE INTO prod.dct_ops_state s USING(SELECT 1 state_id FROM dual)x ON(s.state_id=x.state_id)
@@ -237,7 +237,7 @@ BEGIN
     p_source_type=>ORDS.source_type_plsql,p_source=>q'!
 DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;l_state prod.dct_ops_state%ROWTYPE;
   l_latest DATE;l_mb NUMBER;l_lob NUMBER;l_base_date DATE;l_base_mb NUMBER;l_base_lob NUMBER;
-  l_rate NUMBER:=0;l_lob_rate NUMBER:=0;l_schema_limit NUMBER:=2048;l_lob_limit NUMBER:=1024;
+  l_rate NUMBER:=0;l_lob_rate NUMBER:=0;l_schema_limit NUMBER:=8192;l_lob_limit NUMBER:=1024;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Only SYS_ADMIN may view operations');RETURN;END IF;

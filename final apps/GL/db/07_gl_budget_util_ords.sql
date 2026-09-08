@@ -441,7 +441,7 @@ BEGIN
   IF l_metric = 'ap' THEN
     APEX_JSON.open_array('columns');
     IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
-    col('invoice','Invoice #','text'); col('line','Line','text'); col('date','Invoice date','date'); col('vendor','Vendor','text');
+    col('invoice','Invoice #','text'); col('line','Line','text'); col('dtype','Type','text'); col('date','Invoice date','date'); col('vendor','Vendor','text');
     col('currency','Cur','text'); col('invAmount','Invoice amount','money'); col('amount','Distribution (AED)','money');
     col('validation','Validation','text'); col('payment','Payment','text'); col('description','Description','text');
     APEX_JSON.close_array;
@@ -470,7 +470,9 @@ BEGIN
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END) tkey,
-             i.invoice_id, i.invoice_number, d.line_number line_no, TO_CHAR(i.invoice_date,'YYYY-MM-DD') idate, se.supplier_name,
+             i.invoice_id, i.invoice_number, d.line_number line_no,
+             CASE d.distribution_type WHEN 'Tax rate variance' THEN 'TRV' WHEN 'Invoice price variance' THEN 'IPV' WHEN 'Conversion rate variance' THEN 'CRV' WHEN 'Retainage' THEN 'RET' ELSE NVL(d.distribution_type,'') END dtype,
+             TO_CHAR(i.invoice_date,'YYYY-MM-DD') idate, se.supplier_name,
              NVL(i.invoice_currency,'AED') cur, i.invoice_amount inv_amt,
              NVL(d.distribution_amount_functi, d.distribution_amount) amt_aed,
              i.validation_status, d.distribution_description descr,
@@ -485,7 +487,13 @@ BEGIN
       JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
       LEFT JOIN proj pj ON pj.project_id = d.project_id
       LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
-      WHERE d.po_number IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y' AND d.project_id IS NOT NULL
+      -- Variance rule (2026-09-02): PO-matched variance dists (TRV/IPV/CRV/RET)
+      -- count in the AP actual ONLY when the charge account IS the line's
+      -- expense account (db/v2/37 f_ap, same predicate) -- drill must reconcile
+      WHERE (d.po_number IS NULL
+             OR (d.distribution_type IN ('Tax rate variance','Invoice price variance','Conversion rate variance','Retainage')
+                 AND cid.account_code = REGEXP_SUBSTR(d.expenditure_type, '^[0-9]{6}')))
+        AND NVL(d.reversal_indicator,'N') <> 'Y' AND d.project_id IS NOT NULL
         AND i.validation_status IN ('Validated','Unpaid','Available')
         AND NVL(NVL(d.distribution_amount_functi, d.distribution_amount),0) <> 0
         AND EXTRACT(YEAR FROM d.accounting_date) = l_year
@@ -500,6 +508,7 @@ BEGIN
       IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
       APEX_JSON.write('invoice', NVL(r.invoice_number,'')); APEX_JSON.write('invoiceId', r.invoice_id);
       APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
+      APEX_JSON.write('dtype', NVL(r.dtype,''));
       APEX_JSON.write('date', NVL(r.idate,''));
       APEX_JSON.write('vendor', NVL(r.supplier_name,'')); APEX_JSON.write('currency', NVL(r.cur,''));
       APEX_JSON.write('invAmount', r.inv_amt); APEX_JSON.write('amount', r.amt_aed);
@@ -560,12 +569,16 @@ BEGIN
                             WITHIN GROUP (ORDER BY ih.invoice_number || '~' || TO_CHAR(ih.invoice_id)) related_pairs
                    FROM prod.ap_invoice_distributions d
                    LEFT JOIN (SELECT invoice_id, MAX(invoice_number) invoice_number FROM prod.ap_invoices GROUP BY invoice_id) ih ON ih.invoice_id = d.invoice_id
+                   LEFT JOIN (SELECT invoice_id, invoice_line_number, MAX(po_number) po_number, MAX(po_line_number) po_line_number, MAX(po_distribution) po_distribution
+                              FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+                              GROUP BY invoice_id, invoice_line_number) lp
+                     ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
                    JOIN (SELECT ph2.order_number po_number, pl2.line po_line, pod.distribution_number po_dist_line, MAX(pod.po_distribution_id) po_distribution_id
                          FROM prod.po_distributions pod
                          JOIN prod.po_lines pl2 ON pl2.po_header_id = pod.po_header_id AND pl2.po_line_id = pod.po_line_id
                          JOIN prod.po_headers ph2 ON ph2.po_header_id = pod.po_header_id
                          GROUP BY ph2.order_number, pl2.line, pod.distribution_number) pk
-                     ON pk.po_number = d.po_number AND pk.po_line = d.po_line AND pk.po_dist_line = d.po_distribution_line
+                     ON pk.po_number = COALESCE(lp.po_number, d.po_number) AND pk.po_line = COALESCE(lp.po_line_number, d.po_line) AND pk.po_dist_line = COALESCE(lp.po_distribution, d.po_distribution_line)
                    WHERE NVL(d.reversal_indicator,'N') <> 'Y'
                      AND EXTRACT(YEAR FROM d.accounting_date) = l_year
                      AND (l_end IS NULL OR d.accounting_date < l_end + 1)

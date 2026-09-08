@@ -42,11 +42,17 @@ def main():
                 P = "[%s] " % lang
                 # spinner MUST be visible during the initial load (filters + summary)
                 pg.wait_for_function("ko.dataFor(document.body).rcBusy()===true", timeout=10000)
-                ov = pg.locator(".bu-body.rc-loading .bu-load-ov")
-                bb = ov.bounding_box()
-                ck(P + "spinner overlay visible on initial load",
-                   ov.is_visible() and bb is not None and bb["height"] > 50,
-                   "(h=%s)" % (round(bb["height"]) if bb else None))
+                # rcBusy flips true BEFORE the page container is laid out (KO view switch), so an
+                # instant bounding_box() reads None -- wait for the overlay to actually lay out
+                # (probe 2026-09-06: visible for ~2 s at ~340 px on the initial load)
+                try:
+                    pg.wait_for_function("(function(){var el=document.querySelector('.bu-body.rc-loading .bu-load-ov');"
+                                         "return !!el && el.getBoundingClientRect().height > 50})()", timeout=10000)
+                    seen_h = pg.evaluate("document.querySelector('.bu-body.rc-loading .bu-load-ov').getBoundingClientRect().height")
+                except Exception:
+                    seen_h = None
+                ck(P + "spinner overlay visible on initial load", seen_h is not None and seen_h > 50,
+                   "(h=%s)" % (round(seen_h) if seen_h else None))
                 ck(P + "spinner has progress circle", pg.locator(".bu-body.rc-loading .ojpc").count() == 1)
                 # wait for summary to load (rcSummary set)
                 pg.wait_for_function("ko.dataFor(document.body).rcSummary()!=null", timeout=45000)
@@ -70,7 +76,7 @@ def main():
                 if dl.count():
                     dl.click()
                     pg.wait_for_function("ko.dataFor(document.body).drillDrawer()===true", timeout=20000)
-                    pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=30000)
+                    pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=150000)  # 5,000-row drawer render ~35 s on the dev VM (2026-09-06)
                     drows = pg.evaluate("ko.dataFor(document.body).drillRows().length")
                     ck(P + "drill drawer shows source rows", drows > 0, "(%d)" % drows)
                     pg.evaluate("ko.dataFor(document.body).closeDrawer && ko.dataFor(document.body).closeDrawer()")
@@ -81,7 +87,7 @@ def main():
                 if kpi.count():
                     kpi.click()
                     pg.wait_for_function("ko.dataFor(document.body).drillDrawer()===true", timeout=20000)
-                    pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=30000)
+                    pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=150000)  # 5,000-row drawer render ~35 s on the dev VM (2026-09-06)
                     krows = pg.evaluate("ko.dataFor(document.body).drillRows().length")
                     kcols = pg.evaluate("ko.dataFor(document.body).drillCols().map(c=>c.key).join(',')")
                     ck(P + "KPI coverage(matched) drill shows rows", krows > 0, "(%d)" % krows)
@@ -96,7 +102,7 @@ def main():
                 bd = pg.locator(".rc-tile--budget .rc-dl").first
                 if bd.count():
                     bd.click()
-                    pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=30000)
+                    pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=150000)  # 5,000-row drawer render ~35 s on the dev VM (2026-09-06)
                     ck(P + "Budget tile drill shows lines", pg.evaluate("ko.dataFor(document.body).drillRows().length") > 0)
                     pg.evaluate("ko.dataFor(document.body).closeDrawer && ko.dataFor(document.body).closeDrawer()")
                 else:

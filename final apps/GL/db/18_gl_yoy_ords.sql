@@ -25,6 +25,8 @@
 --   GET  /gl/ebs-balances/yoy/xlsx/[COLON]id       poll status
 --   GET  /gl/ebs-balances/yoy/xlsx/[COLON]id/file  download workbook
 -- Gates   : reads GL_VIEW_EBS_MAPPING (NULL legacy = any valid session).
+-- 2026-09-06: BOTH legs scoped to expense accounts (4xxxxx) -- PLATFORM RULE
+--           'budget = expense side only' (funding-side 3270xx + revenue never budget).
 -- =============================================================================
 
 SET DEFINE OFF
@@ -136,6 +138,10 @@ BEGIN
       FROM prod.dct_ebs_balance_mapped_v e
       JOIN fy ON fy.period_year = e.period_year
       WHERE e.account_mapped = 'Y'
+        -- PLATFORM RULE 2026-09-06 (user): budget = EXPENSE accounts (4xxxxx) only;
+        -- the funding side (3270xx Treasury contributions, dropped at the base
+        -- views) and revenue budgets are never a budget figure. Both legs scoped.
+        AND e.fusion_account LIKE '4%'
         AND e.period_year <= 2025
         AND e.period_year IN (NVL(l_y1,-1), NVL(l_y2,-1), NVL(l_y3,-1),
                               NVL(l_y4,-1), NVL(l_y5,-1), NVL(l_y6,-1))
@@ -156,6 +162,7 @@ BEGIN
              SUM(f.encumbrance) AS enc
       FROM prod.dct_gl_dof_fact_v f
       WHERE f.period_year >= 2026
+        AND f.account_code LIKE '4%'   -- PLATFORM RULE 2026-09-06: expense accounts only
         AND f.period_year IN (NVL(l_y1,-1), NVL(l_y2,-1), NVL(l_y3,-1),
                               NVL(l_y4,-1), NVL(l_y5,-1), NVL(l_y6,-1))
         AND (l_month = 0 OR f.period_month <= l_month)

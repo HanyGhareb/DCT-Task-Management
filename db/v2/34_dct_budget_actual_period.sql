@@ -156,13 +156,24 @@ SELECT
   NVL(ap.ap_actual,0)           AS ap_direct_actual_ytd,
   NVL(gl.budget,0) - NVL(po.open_obligation,0) - NVL(pr.pr_open_commitment_ytd,0)
                    - NVL(grn.grn_actual,0) - NVL(ap.ap_actual,0) AS funds_available_calc_ytd,
-  NVL(gl.budget,0) - NVL(gl.gl_actual,0) AS variance_ytd
+  NVL(gl.budget,0) - NVL(gl.gl_actual,0) AS variance_ytd,
+  -- Entity classification (GL/db/47, 2026-09-06): rules on any GL segment,
+  -- resolved in the COA snapshot (NULL = Unclassified). KEPT LAST.
+  coa.entity_class_code,
+  coa.entity_class_name
 FROM keys k
 LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = k.cc_string
 LEFT JOIN gl_ytd  gl  ON gl.cc_string  = k.cc_string AND gl.period_name  = k.period_name
 LEFT JOIN grn_ytd grn ON grn.cc_string = k.cc_string AND grn.period_name = k.period_name
 LEFT JOIN ap_ytd  ap  ON ap.cc_string  = k.cc_string AND ap.period_name  = k.period_name
 LEFT JOIN po_ytd  po  ON po.cc_string  = k.cc_string AND po.period_name  = k.period_name
-LEFT JOIN prod.dct_pr_commitment_period_v pr ON pr.cc_string = k.cc_string AND pr.period_name = k.period_name;
+LEFT JOIN prod.dct_pr_commitment_period_v pr ON pr.cc_string = k.cc_string AND pr.period_name = k.period_name
+-- PLATFORM RULE 2026-09-06 (user): BUDGET = THE EXPENSE SIDE ONLY. Every
+-- budget-vs-actual figure counts 4xxxxx expense accounts alone -- the funding
+-- side (3270xx Treasury contributions, already dropped in GL_BALANCES_CC) and
+-- revenue budgets (321xxx licences, 324xxx entrance fees ... 656M in 2026,
+-- Actual always 0 in budgetary control) are never a budget figure here.
+-- Revenue surfaces read GL_BALANCES_CC directly (db/v2/123 + GL/db/24).
+WHERE NVL(SUBSTR(REGEXP_SUBSTR(k.cc_string, '[^.]+', 1, 5), 1, 1), '4') = '4';
 
 PROMPT DCT_BUDGET_ACTUAL_PERIOD_V created (3-figure Commitment/Obligation + Open Encumbrance + Funds calc).

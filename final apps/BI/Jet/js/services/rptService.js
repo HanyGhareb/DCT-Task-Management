@@ -60,6 +60,7 @@ define(['services/api'], function (api) {
     deleteRecipient: function (id)     { return api.delete('/recipients/' + id); },
 
     /* workers (Python engine processes + DCT_RPT_* scheduler jobs) */
+    getStorage:    function ()            { return api.get('/storage'); },
     getWorkers:    function ()            { return api.get('/workers/'); },
     workerCommand: function (id, command) { return api.post('/workers/command', { workerId: id, command: command }); },
     workerRemove:  function (id)          { return api.post('/workers/remove', { workerId: id }); },

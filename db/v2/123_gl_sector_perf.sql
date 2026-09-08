@@ -367,25 +367,46 @@ SELECT b.budget_year,
        b.task_organization,
        b.expenditure_type,
        b.budget_combination,
-       NVL(b.budget_annual, 0)                           AS budget_annual,
-       NVL(b.budget, 0)                                  AS budget_ytd,
-       NVL(b.actual_ap, 0)                               AS actual_ap,
-       NVL(b.actual_grn, 0)                              AS actual_grn,
-       NVL(b.actual_ap, 0) + NVL(b.actual_grn, 0)        AS actual_ytd,
+       -- COSTADJ PARITY (2026-09-02): the Budget Utilization PAGE folds the
+       -- APPROVED Projects Costing Adjustments into its figures BY DEFAULT
+       -- (GL/db/25/35, costadj=Y), while DCT_BUDGET_UTILIZATION_V itself is
+       -- deliberately raw. This report sits NEXT TO that page, so its figures
+       -- carry the same fold -- otherwise the two tabs disagree by the
+       -- approved-adjustment total (3.12M live when this landed). Components
+       -- ship separately so a consumer can always un-fold.
+       NVL(b.budget_annual, 0) + NVL(ca.budget_ovr_annual, 0) AS budget_annual,
+       NVL(b.budget, 0) + NVL(ca.budget_ovr_aed, 0)           AS budget_ytd,
+       NVL(b.actual_ap, 0) + NVL(ca.cost_adj_aed, 0)          AS actual_ap,
+       NVL(b.actual_grn, 0)                                   AS actual_grn,
+       NVL(b.actual_ap, 0) + NVL(b.actual_grn, 0)
+         + NVL(ca.cost_adj_aed, 0)                            AS actual_ytd,
        NVL(b.commitment_pr, 0)                           AS commitment_pr,
        NVL(b.obligation_po, 0)                           AS obligation_po,
        NVL(b.commitment_pr, 0) + NVL(b.obligation_po, 0) AS encumbrance,
-       b.fund_available,
+       b.fund_available + NVL(ca.budget_ovr_aed, 0)
+         - NVL(ca.cost_adj_aed, 0)                            AS fund_available,
+       NVL(b.actual_ap, 0)                               AS actual_ap_raw,
+       NVL(b.budget_annual, 0)                           AS budget_annual_raw,
+       b.fund_available                                  AS fund_available_raw,
+       NVL(ca.cost_adj_aed, 0)                           AS cost_adj_amount,
+       NVL(ca.budget_ovr_aed, 0)                         AS budget_ovr_ytd,
+       NVL(ca.budget_ovr_annual, 0)                      AS budget_ovr_annual,
+       NVL(ca.adj_count, 0)                              AS cost_adj_count,
        NVL(p.plan_annual, 0)                             AS plan_annual,
        NVL(p.plan_ytd, 0)                                AS plan_ytd,
        NVL(p.plan_rev_annual, 0)                         AS plan_rev_annual,
        NVL(p.plan_rev_ytd, 0)                            AS plan_rev_ytd,
-       NVL(b.actual_ap, 0) + NVL(b.actual_grn, 0)
+       NVL(b.actual_ap, 0) + NVL(b.actual_grn, 0) + NVL(ca.cost_adj_aed, 0)
          - NVL(p.plan_ytd, 0)                            AS actual_vs_plan_amount
 FROM prod.dct_budget_utilization_v b
 LEFT JOIN prod.dct_gl_class_value cv
        ON cv.class_type_code = 'CHAPTER'
       AND cv.name_en = b.chapter
+LEFT JOIN prod.dct_pa_cost_adj_butil_v ca
+       ON ca.budget_year      = b.budget_year
+      AND ca.project_number   = b.project_number
+      AND ca.task_number      = b.task_number
+      AND ca.expenditure_type = b.expenditure_type
 LEFT JOIN prod.dct_sector_plan_v p
        ON p.budget_year      = b.budget_year
       AND p.project_number   = b.project_number
@@ -436,7 +457,22 @@ m_ap AS (
   JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
   LEFT JOIN proj pj ON pj.project_id = d.project_id
   LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
-  WHERE d.po_number IS NULL
+  WHERE (d.po_number IS NULL
+         -- TRV rule (2026-09-02, user): a PO-matched "Tax rate variance"
+         -- distribution is a REAL project cost the GRN leg never carries --
+         -- the receipt is valued at PO price and the tax-rate delta exists
+         -- only AP-side -- so it joins the AP actual. Other PO-matched types
+         -- (Accrual / Item) stay excluded: the GRN accrual already counts
+         -- them and admitting them here would double-count.
+         -- Widened 2026-09-02 (user): the sibling PO-matched variance types
+         -- count too, but ONLY when the distribution's charge account IS the
+         -- line's expense account (the expenditure type's 6-digit prefix).
+         -- Live 2026 data: IPV posts on the expense account (counts);
+         -- Conversion-rate posts to 360620 FX and Retainage to 230210
+         -- liability (excluded by the account test, not by name).
+         OR (d.distribution_type IN ('Tax rate variance','Invoice price variance',
+                                     'Conversion rate variance','Retainage')
+             AND cid.account_code = REGEXP_SUBSTR(d.expenditure_type, '^[0-9]{6}')))
     AND NVL(d.reversal_indicator, 'N') <> 'Y'
     AND d.project_id IS NOT NULL
     AND i.validation_status IN ('Validated', 'Unpaid', 'Available')
@@ -898,14 +934,32 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_gl_plan_sample_pkg AS
     END generate_revenue_plan;
 
     PROCEDURE generate_all (p_year IN NUMBER, p_batch IN VARCHAR2 DEFAULT NULL) IS
-        l_e NUMBER; l_m NUMBER; l_r NUMBER;
+        l_e NUMBER := 0; l_m NUMBER := 0; l_r NUMBER := 0;
+        l_skip VARCHAR2(500);
     BEGIN
+        -- each part independently: once Finance uploads the REAL plan for one
+        -- side, that side refuses (-20001, lock 2) but the others may still be
+        -- demonstrable (live 2026-09-02: the real expenditure plan exists, the
+        -- revenue plan does not)
         generate_revenue_cat_map(p_batch, l_m);
-        generate_expenditure_plan(p_year, p_batch, 'APPROVED', l_e);
-        generate_revenue_plan(p_year, p_batch, 'APPROVED', l_r);
+        BEGIN
+            generate_expenditure_plan(p_year, p_batch, 'APPROVED', l_e);
+        EXCEPTION WHEN OTHERS THEN
+            IF SQLCODE = -20001 THEN
+                l_skip := l_skip || ' expenditure=REFUSED(real data present)';
+            ELSE RAISE; END IF;
+        END;
+        BEGIN
+            generate_revenue_plan(p_year, p_batch, 'APPROVED', l_r);
+        EXCEPTION WHEN OTHERS THEN
+            IF SQLCODE = -20001 THEN
+                l_skip := l_skip || ' revenue=REFUSED(real data present)';
+            ELSE RAISE; END IF;
+        END;
         DBMS_OUTPUT.put_line('sample plan generated for ' || p_year ||
                              ' -- expenditure ' || l_e || ' rows, revenue ' || l_r ||
-                             ' rows, category map ' || l_m || ' rows.');
+                             ' rows, category map ' || l_m || ' rows.' ||
+                             CASE WHEN l_skip IS NOT NULL THEN ' skipped:' || l_skip END);
     END generate_all;
 
     PROCEDURE purge (p_year     IN  NUMBER   DEFAULT NULL,

@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ report_name }}</title>
+{#- ── helpers ─────────────────────────────────────────────────────────── -#}
+{%- set S = {} -%}
+{%- for s in sections %}{% set _ = S.update({s.key: s}) %}{% endfor -%}
+{%- set O = (S.overview.data[0] if S.overview and S.overview.data else {}) -%}
+{%- set SEC = S.by_sector.data if S.by_sector else [] -%}
+{%- set PRS = S.pressure.data if S.pressure else [] -%}
+{%- set AP  = S.ap_lines.data if S.ap_lines else [] -%}
+{%- set GRN = S.grn_lines.data if S.grn_lines else [] -%}
+{%- set PO  = S.open_po.data if S.open_po else [] -%}
+{%- set PR  = S.open_pr.data if S.open_pr else [] -%}
+{%- set POV = (S.pend_ov.data[0] if S.pend_ov and S.pend_ov.data else {}) -%}
+{%- set PAG = S.pend_aging.data if S.pend_aging else [] -%}
+{%- set PAP = S.pend_approvers.data if S.pend_approvers else [] -%}
+{%- set PLS = S.plan_sector.data if S.plan_sector else [] -%}
+{%- set PLD = S.plan_dev.data if S.plan_dev else [] -%}
+{%- set PCV = (S.plan_cov.data[0] if S.plan_cov and S.plan_cov.data else {}) -%}
+{%- set TRM = S.terms.data if S.terms else [] -%}
+{%- set X = (S.sp_extra.data[0] if S.sp_extra and S.sp_extra.data else {}) -%}
+{%- set DEP = S.sp_dept.data if S.sp_dept else [] -%}
+{%- set KND = S.sp_kind.data if S.sp_kind else [] -%}
+{%- set T10 = S.sp_top10.data if S.sp_top10 else [] -%}
+{%- set DKND = S.sp_dkind.data if S.sp_dkind else [] -%}
+{%- set DPRJ = S.sp_dproj.data if S.sp_dproj else [] -%}
+{%- set kinds = KND|rejectattr('kind','equalto','Total')|map(attribute='kind')|list -%}
+{%- set tot_lbl = ('Total ' ~ kinds|join(' + ')) if kinds and kinds|length <= 2 else 'Total' -%}
+{#- applied report scope — mirrors the GL Budget Utilization page filters -#}
+{%- set flt = [] -%}
+{%- if params.period %}{% set _ = flt.append('YTD through ' ~ params.period) %}{% endif -%}
+{%- if params.sector %}{% set _ = flt.append('Sector: ' ~ params.sector) %}{% endif -%}
+{%- if params.chapter %}{% set _ = flt.append('Chapters: ' ~ params.chapter|replace('|', ', ')) %}{% else %}{% set _ = flt.append('Opex + Capex chapters (default)') %}{% endif -%}
+{%- if params.projecttype %}{% set _ = flt.append('Project type: ' ~ params.projecttype) %}{% endif -%}
+{%- if params.costcenter %}{% set _ = flt.append('Cost centre: ' ~ params.costcenter) %}{% endif -%}
+{%- if params.project %}{% set _ = flt.append('Project: ' ~ params.project) %}{% endif -%}
+{%- if params.task %}{% set _ = flt.append('Task: ' ~ params.task) %}{% endif -%}
+{%- if params.etype %}{% set _ = flt.append('Expenditure type: ' ~ params.etype) %}{% endif -%}
+{%- if params.search %}{% set _ = flt.append('Search: ' ~ params.search) %}{% endif -%}
+{%- if params.bu %}{% set _ = flt.append('Business unit: ' ~ params.bu|replace('|', ', ')) %}{% endif -%}
+{%- set scopeline = flt|join(' · ') if flt else 'Whole organisation · Full year' -%}
+{%- macro money(v) -%}
+  {%- if v is none %}&mdash;
+  {%- elif v|abs >= 1000000000 %}{{ (v/1000000000)|round(2)|fmt }}&nbsp;B
+  {%- elif v|abs >= 1000000 %}{{ (v/1000000)|round(1)|fmt }}&nbsp;M
+  {%- elif v|abs >= 1000 %}{{ (v/1000)|round(0)|int|fmt }}&nbsp;K
+  {%- else %}{{ v|round(0)|int|fmt }}{%- endif -%}
+{%- endmacro -%}
+{%- macro dt(v) -%}{%- if v %}{{ v.strftime('%Y-%m-%d') if v.strftime is defined else v }}{% else %}&mdash;{% endif -%}{%- endmacro -%}
+<style>
+  :root { --brand: {{ brand|default('#1F6F8B') }}; --brand-d: #17596F; --gold: #B58900;
+          --enc: #C25E10; --ok: #1E7B4D; --bad: #B3352B; --ink: #1F2933; --mut: #7B8794; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink);
+         margin: 0; font-size: 10px; }
+  @page { size: A4 landscape; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+
+  /* ── cover ─────────────────────────────────────────────────────────── */
+  .cover { height: 166mm; position: relative; overflow: hidden;
+           background: linear-gradient(135deg, #FFFFFF 55%, #F0F5F7 100%); }
+  .cv-band { position: absolute; top: 0; left: 0; right: 0; height: 14mm;
+             background: linear-gradient(90deg, var(--brand-d), var(--brand) 60%, #3E93AF); }
+  .cv-band2 { position: absolute; bottom: 0; left: 0; right: 0; height: 6mm;
+              background: linear-gradient(90deg, var(--gold), var(--enc)); }
+  .cv-org { margin: 26mm 0 0 18mm; font-size: 12px; letter-spacing: .22em;
+            text-transform: uppercase; color: var(--mut); }
+  .cv-title { margin: 6mm 0 0 18mm; font-size: 46px; line-height: 1.08; font-weight: 800;
+              color: var(--brand-d); }
+  .cv-sub { margin: 4mm 0 0 18mm; font-size: 18px; color: var(--gold); font-weight: 700;
+            letter-spacing: .04em; }
+  .cv-sector { margin: 3mm 0 0 18mm; font-size: 14px; color: var(--brand-d); font-weight: 600; }
+  .cv-scope { margin: 1.5mm 0 0 18mm; font-size: 11px; color: #5A6B73; font-weight: 600; }
+  .cv-scope { margin: 10mm 0 0 18mm; display: flex; gap: 8px; flex-wrap: wrap; max-width: 200mm; }
+  .cv-scope span { background: #fff; border: 1px solid #D3E0E5; border-left: 4px solid var(--brand);
+                   border-radius: 3px; padding: 5px 12px; font-size: 11px; color: #33525E; }
+  .cv-scope b { color: var(--brand-d); }
+  .cv-desc { margin: 8mm 0 0 18mm; max-width: 150mm; font-size: 11px; line-height: 1.65;
+             color: #52606D; }
+  .cv-prep { position: absolute; bottom: 12mm; left: 18mm; background: #fff;
+             border: 1px solid #D8E2E7; border-left: 5px solid var(--brand);
+             border-radius: 5px; padding: 10px 20px 11px 14px;
+             box-shadow: 0 2px 10px rgba(23,89,111,.12); }
+  .cv-prep .pb-eyebrow { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase;
+                         color: var(--mut); font-weight: 700; }
+  .cv-prep b { display: block; font-size: 16.5px; color: var(--brand-d); margin-top: 3px;
+               line-height: 1.2; }
+  .cv-prep i { display: block; font-style: normal; font-size: 11px; color: #52606D; margin-top: 3px; }
+  .cv-date { position: absolute; bottom: 12mm; right: 18mm; text-align: right;
+             font-size: 10px; color: var(--mut); }
+  .cv-date b { display: block; font-size: 12.5px; color: var(--ink); margin-top: 1px; }
+
+  /* ── table of contents ─────────────────────────────────────────────── */
+  .toc-h { border-bottom: 3px solid var(--brand); padding-bottom: 8px; margin-bottom: 12px; }
+  .toc-h h2 { margin: 0; font-size: 22px; color: var(--brand-d); }
+  .toc { width: 100%; border-collapse: collapse; }
+  .toc td { padding: 9px 10px; border-bottom: 1px solid #E4E7EB; vertical-align: top; }
+  .toc .no { width: 52px; font-size: 17px; font-weight: 800; color: var(--brand);
+             font-variant-numeric: tabular-nums; }
+  .toc .no span { display: inline-flex; align-items: center; justify-content: center;
+                  width: 30px; height: 30px; border-radius: 50%; background: var(--brand);
+                  color: #fff; font-size: 13px; font-weight: 800; }
+  .toc .t { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .toc .d { font-size: 10px; color: var(--mut); margin-top: 2px; }
+  .toc .n { width: 130px; text-align: right; font-size: 10px; color: #52606D;
+            font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── terms & key definitions (rich text from the GL editor) ─────── */
+  .terms-doc { margin: 6mm 2mm 0; font-size: 11px; line-height: 1.75; color: #2A3439; }
+  .terms-doc h1, .terms-doc h2, .terms-doc h3 { color: var(--brand-d); margin: 4mm 0 2mm; }
+  .terms-doc h1 { font-size: 15px; } .terms-doc h2 { font-size: 13px; } .terms-doc h3 { font-size: 12px; }
+  .terms-doc p { margin: 0 0 2.2mm; }
+  .terms-doc ul, .terms-doc ol { margin: 1mm 0 3mm; padding-inline-start: 7mm; }
+  .terms-doc li { margin: 0 0 1.8mm; }
+  .terms-doc strong { color: var(--brand-d); }
+  .terms-doc blockquote { border-inline-start: 3px solid var(--gold); margin: 2mm 0; padding: 1mm 4mm; color: #5A6B73; }
+  .terms-doc .ql-align-center { text-align: center; }
+  .terms-doc .ql-align-right { text-align: right; }
+  .terms-doc .ql-align-justify { text-align: justify; }
+  .terms-doc .ql-direction-rtl { direction: rtl; text-align: right; }
+  .terms-doc .ql-indent-1 { padding-inline-start: 8mm; }
+  .terms-doc .ql-indent-2 { padding-inline-start: 16mm; }
+  .terms-doc .ql-indent-3 { padding-inline-start: 24mm; }
+  .terms-doc .ql-size-small { font-size: 9px; }
+  .terms-doc .ql-size-large { font-size: 14px; }
+  .terms-doc .ql-size-huge { font-size: 18px; }
+  /* ── overview table cards (Sector Overview + By Department) ─────── */
+  .chart table.data { margin-top: 2mm; }
+  .chart .data th { text-align: center; }
+  .dep-bars .hb-lbl { flex: 0 0 230px; white-space: normal; line-height: 1.15; font-size: 8px; }
+  .sup-bars .hb-lbl { flex: 0 0 420px; white-space: normal; line-height: 1.15; }
+  .sup-bars .hb-val { flex: 0 0 132px; }
+  .hb-paid { height: 100%; background: var(--ok); border-radius: 2px 0 0 2px; min-width: 0; }
+  .ch-t small { font-weight: 400; color: var(--mut); }
+  .tbl-note { margin-top: 4px; font-size: 8px; color: #7A8794; }
+  .data tr.tot td { font-weight: 700; background: #EFF5F2; border-top: 1.5px solid var(--brand); }
+  /* ── part banner + section furniture ───────────────────────────────── */
+  .pt-band { display: flex; align-items: center; gap: 12px; background:
+             linear-gradient(90deg, var(--brand-d), var(--brand)); color: #fff;
+             border-radius: 4px; padding: 8px 14px; margin-bottom: 10px; }
+  .pt-no { display: flex; align-items: center; justify-content: center; flex: 0 0 34px;
+           width: 34px; height: 34px; border-radius: 50%; background: #fff;
+           color: var(--brand-d); font-size: 15px; font-weight: 800; }
+  .pt-t { font-size: 16px; font-weight: 700; }
+  .pt-s { margin-left: auto; font-size: 9.5px; opacity: .85; text-align: right; }
+  .sub-h { border-left: 4px solid var(--brand); background: #F0F5F7; padding: 4px 8px;
+           font-size: 11.5px; font-weight: 700; color: #24404B; margin: 12px 0 6px; }
+  .sub-h small { font-weight: 400; color: var(--mut); }
+
+  /* ── KPI tiles ─────────────────────────────────────────────────────── */
+  .kpis { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+  .kpi { flex: 1 1 100px; border: 1px solid #D8E2E7; border-top: 3px solid var(--brand);
+         border-radius: 4px; padding: 6px 9px; background: #FBFDFE; }
+  .kpi.k-act { border-top-color: var(--gold); }
+  .kpi.k-enc { border-top-color: var(--enc); }
+  .kpi.k-ok { border-top-color: var(--ok); }
+  .kpi.k-bad { border-top-color: var(--bad); }
+  .k-lbl { font-size: 8px; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+  .k-val { font-size: 15px; font-weight: 800; margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .k-sub { font-size: 8.5px; color: var(--mut); margin-top: 1px; }
+  .neg { color: var(--bad); }
+
+  /* ── charts (pure CSS/HTML — deterministic in print) ───────────────── */
+  .charts { display: flex; gap: 14px; align-items: flex-start; }
+  .chart { flex: 1 1 0; border: 1px solid #E0E8EC; border-radius: 4px; padding: 8px 10px;
+           background: #fff; }
+  .ch-t { font-size: 10px; font-weight: 700; color: #24404B; margin-bottom: 6px; }
+  .hb-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  .hb-lbl { flex: 0 0 118px; font-size: 8.5px; color: #3E4C59; text-align: right;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hb-track { flex: 1 1 0; background: #EEF2F5; border-radius: 2px; height: 9px; }
+  .hb-bar { height: 9px; border-radius: 2px; background: var(--brand); min-width: 1px; }
+  .hb-bar.warn { background: var(--enc); } .hb-bar.bad { background: var(--bad); }
+  .hb-bar.gold { background: var(--gold); } .hb-bar.ok { background: var(--ok); }
+  .hb-val { flex: 0 0 64px; font-size: 8.5px; color: #33525E; font-variant-numeric: tabular-nums;
+            white-space: nowrap; }
+  /* stacked composition bar */
+  .stack { display: flex; height: 20px; border-radius: 3px; overflow: hidden; margin: 4px 0 6px; }
+  .stack div { height: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  /* composition card stretched to the height of its neighbour (user 2026-09-06) */
+  .charts.eq { align-items: stretch; }
+  .chart.comp { display: flex; flex-direction: column; }
+  .chart.comp .stack { flex: 1 1 auto; height: auto; min-height: 20px; }
+  .chart.comp .stack div { height: auto; }
+  .stack span { font-size: 8px; font-weight: 700; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.3); }
+  .stack span.dk { color: #44565F; text-shadow: none; }
+  .lg { display: flex; gap: 12px; flex-wrap: wrap; font-size: 8.5px; color: #3E4C59; }
+  .lg i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+  /* monthly column chart */
+  .cols { display: flex; align-items: flex-end; gap: 8px; height: 110px; padding-top: 4px; }
+  .col-g { flex: 1 1 0; display: flex; align-items: flex-end; gap: 2px; height: 100px;
+           border-bottom: 2px solid #CBD2D9; }
+  .col-g div { flex: 1 1 0; border-radius: 2px 2px 0 0; }
+  .col-ap { background: var(--brand); } .col-grn { background: var(--gold); }
+  .col-lbl { font-size: 7.5px; color: var(--mut); text-align: center; margin-top: 3px; }
+
+  /* ── data tables ───────────────────────────────────────────────────── */
+  table.data { border-collapse: collapse; width: 100%; }
+  table.data thead th { background: var(--brand); color: #fff; font-weight: 600; text-align: left;
+                        padding: 4px 6px; font-size: 8.5px; border: 1px solid var(--brand-d); }
+  table.data tbody td { padding: 3px 6px; border: 1px solid #E4E7EB; vertical-align: top;
+                        font-size: 8.5px; }
+  table.data tbody tr:nth-child(even) td { background: #F5F7FA; }
+  td.num, tfoot td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.data tfoot td { padding: 4px 6px; border: 1px solid #CBD2D9; background: #E3ECEF;
+                        font-weight: 700; color: #24404B; font-size: 8.5px; }
+  .empty { padding: 16px; text-align: center; color: var(--mut); font-style: italic;
+           border: 1px dashed #D3DCE2; }
+  .pill { display: inline-block; border-radius: 8px; padding: 0 6px; font-size: 8px; }
+  .pill.paid { background: #E1F3E8; color: var(--ok); }
+  .pill.part { background: #FCF0DE; color: #8A5E00; }
+  .pill.unp  { background: #FBE4E1; color: var(--bad); }
+
+  /* ── insights ──────────────────────────────────────────────────────── */
+  .ins { border: 1px solid #E0E8EC; border-left: 4px solid var(--brand); border-radius: 4px;
+         background: #FBFDFE; padding: 9px 12px; margin-bottom: 8px; }
+  .ins .i-t { font-size: 11px; font-weight: 700; color: var(--brand-d); margin-bottom: 2px; }
+  .ins .i-b { font-size: 10px; line-height: 1.55; color: #3E4C59; }
+  .ins b { color: var(--ink); }
+  .i-good { color: var(--ok) !important; font-weight: 700; }
+  .i-bad { color: var(--bad) !important; font-weight: 700; }
+  .meth { margin-top: 12px; border: 1px dashed #C9D6DC; border-radius: 4px; padding: 9px 12px;
+          background: #F7FAFB; }
+  .meth h4 { margin: 0 0 5px; font-size: 10px; color: var(--brand-d); text-transform: uppercase;
+             letter-spacing: .08em; }
+  .meth div { font-size: 9px; color: #52606D; line-height: 1.6; }
+  .meth b { color: #33525E; }
+  .foot { margin-top: 10px; font-size: 8px; color: #9AA5B1; text-align: center; }
+</style>
+</head>
+<body>
+
+{#- ── per-page chrome (Sector Performance Report) ─────────────────────────
+    render_pdf.py extracts these two <template> blocks and hands them to
+    Chromium's displayHeaderFooter, so the DCT logo (top right) and the
+    copyright line repeat on EVERY printed page, drawn inside the page
+    margins where flowing content can never overlap them. data-margin sets
+    that side's page margin to make the room. -#}
+<template id="pdf-header" data-margin="24mm">
+  <div style="width:100%; box-sizing:border-box; padding:2mm 12mm 0; display:flex; justify-content:flex-end;">
+    <img src="data:image/png;base64,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" style="height:13mm; width:auto;">
+  </div>
+</template>
+<template id="pdf-footer" data-margin="16mm">
+  <div style="width:100%; box-sizing:border-box; padding:0 12mm 4mm; text-align:center; font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:7.5px; color:#9AA5B1;">
+    &copy; {{ generated_at[:4] }} Department of Culture and Tourism &mdash; Abu Dhabi. All rights reserved. Confidential &mdash; for internal use only.
+  </div>
+</template>
+
+
+{#- ═══ COVER ═══════════════════════════════════════════════════════════ -#}
+<div class="page cover">
+  <div class="cv-band"></div>
+  <div class="cv-org">Oracle Fusion i-Finance &middot; Reporting Platform</div>
+  <div class="cv-title">Sector Performance Report</div>
+  <div class="cv-sub">{% if params.period %}YTD {{ params.period }}{% else %}Budget Year {{ params.year }}{% endif %}</div>
+  <div class="cv-sector">Sector: {{ params.sector|replace('|', ', ') if params.sector else 'All Sectors' }}</div>
+  <div class="cv-scope">Scope: {{ kinds|join(' + ') if kinds else 'Opex + Capex' }}</div>
+  <div class="cv-prep">
+    <div class="pb-eyebrow">Prepared by</div>
+    <b>Financial Planning and Reporting</b>
+    <i>Finance Department</i>
+  </div>
+  <div class="cv-band2"></div>
+</div>
+
+{#- ═══ INDEX ═══════════════════════════════════════════════════════════ -#}
+<div class="page">
+  <div class="toc-h"><h2>Contents</h2></div>
+  <table class="toc">
+    <tr><td class="no"><span>01</span></td>
+        <td><div class="t">Terms and Key definitions</div>
+            <div class="d">Definitions of the key figures and terms used throughout this report — YTD budget, actual, plan, encumbrance, fund available and the utilization ratios.</div></td>
+        <td class="n">&nbsp;</td></tr>
+    <tr><td class="no"><span>02</span></td>
+        <td><div class="t">Budget Utilization Overview</div>
+            <div class="d">Key indicators for the year, budget composition, department utilization and the sector overview by expenditure kind.</div></td>
+        <td class="n">{{ DEP|length }} departments &middot; {{ O.budget_lines|fmt if O.budget_lines is not none else '—' }} budget lines</td></tr>
+    <tr><td class="no"><span>03</span></td>
+        <td><div class="t">Top 10 Projects Budget</div>
+            <div class="d">The ten largest task budget lines in scope by annual budget, with plan, actual, encumbrance, remaining funds and the utilization ratios.</div></td>
+        <td class="n">{{ T10|length }} budget lines</td></tr>
+    <tr><td class="no"><span>04</span></td>
+        <td><div class="t">Top 5 Projects Budget by Department</div>
+            <div class="d">One page per department: its budget-utilization overview with the five largest projects by budget — utilization bars and the project figures.</div></td>
+        <td class="n">{{ DEP|length }} departments</td></tr>
+    <tr><td class="no"><span>05</span></td>
+        <td><div class="t">Actuals — Supplier Invoices &amp; Goods Receipts</div>
+            <div class="d">Every actual charged to the budget: direct AP invoices (not PO-matched) and GRN goods receipts, with paid coverage and supplier concentration.</div></td>
+        <td class="n">{{ AP|length|fmt }} invoices &middot; {{ GRN|length|fmt }} receipt lines</td></tr>
+    <tr><td class="no"><span>06</span></td>
+        <td><div class="t">Open Obligations — Purchase Orders</div>
+            <div class="d">Funds-reserved purchase-order lines net of goods received: what remains contractually committed to suppliers.</div></td>
+        <td class="n">{{ PO|length|fmt }} PO lines</td></tr>
+    <tr><td class="no"><span>07</span></td>
+        <td><div class="t">Open Commitments — Purchase Requisitions</div>
+            <div class="d">Funds-reserved requisition lines not yet converted to purchase orders: demand in the pipeline.</div></td>
+        <td class="n">{{ PR|length|fmt }} PR lines</td></tr>
+    <tr><td class="no"><span>08</span></td>
+        <td><div class="t">Pending Approvals — PR &amp; PO Queue</div>
+            <div class="d">Demand still waiting in the Fusion approval queue (funds-reserved): how much, how long it has been waiting, and who is holding it — tomorrow's encumbrance movements.</div></td>
+        <td class="n">{{ POV.docs|fmt if POV.docs is not none else '—' }} documents &middot; {{ (POV.amt_total/1000000)|round(1)|fmt if POV.amt_total else '—' }} M AED</td></tr>
+    <tr><td class="no"><span>09</span></td>
+        <td><div class="t">Expenditure Plan Performance</div>
+            <div class="d">Actual spending measured against the uploaded expenditure plan (plan vs actual by department) and how much of the annual budget the plan covers.</div></td>
+        <td class="n">{{ PCV.exec_pct|fmt if PCV.exec_pct is not none else '—' }}% of plan &middot; {{ PCV.coverage_pct|fmt if PCV.coverage_pct is not none else '—' }}% coverage</td></tr>
+    <tr><td class="no"><span>A</span></td>
+        <td><div class="t">Appendix — Detailed Registers</div>
+            <div class="d">The full line-level registers behind Parts 05–07: direct AP invoices and goods receipts (with paid %), open purchase-order lines and open purchase-requisition lines.</div></td>
+        <td class="n">{{ AP|length|fmt }} invoices &middot; {{ GRN|length|fmt }} receipts &middot; {{ PO|length|fmt }} PO &middot; {{ PR|length|fmt }} PR lines</td></tr>
+  </table>
+  <div class="foot">{{ meta }} &middot; times in GST (UTC+04:00, Asia/Dubai)</div>
+</div>
+
+{#- ═══ PART 1 — TERMS AND KEY DEFINITIONS ═══════════════════════ -#}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">01</span><span class="pt-t">Terms and Key definitions</span>
+    <span class="pt-s">{% if params.period %}In force at YTD {{ params.period }}{% else %}Budget year {{ params.year }}{% endif %}</span></div>
+  {% if TRM %}
+  {% for r in TRM %}
+  <div class="terms-doc">{{ r.content_html|safe if r.content_html else '' }}</div>
+  {% endfor %}
+  {% else %}
+  <div class="empty">No active Terms and Key definitions document for this reporting period.</div>
+  {% endif %}
+  <div class="foot">Part 1 &middot; Sector Performance Report &middot; {{ params.year }}</div>
+</div>
+
+{#- ═══ PART 2 — OVERVIEW ═══════════════════════════════════════════════ -#}
+{% set spent = (O.actual_total or 0) + (O.obligation_po or 0) + (O.commitment_pr or 0) %}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">02</span><span class="pt-t">Budget Utilization Overview</span>
+    <span class="pt-s">Budget year {{ params.year }} &middot; {{ scopeline|truncate(150) }}</span></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k-lbl">{{ 'YTD Budget' if params.period else 'Approved Budget' }}</div><div class="k-val">{{ money(O.budget) }}</div><div class="k-sub">AED &middot; {% if O.budget_annual is not none and O.budget_annual != O.budget %}Annual {{ money(O.budget_annual) }} &middot; {% endif %}{{ O.budget_lines|fmt }} lines</div></div>
+    <div class="kpi"><div class="k-lbl">{{ 'YTD Plan' if params.period else 'Expenditure Plan' }}</div><div class="k-val">{{ money(O.plan_approved_ytd) }}</div><div class="k-sub">AED{% if O.plan_approved_annual is not none and O.plan_approved_annual != O.plan_approved_ytd %} &middot; Annual {{ money(O.plan_approved_annual) }}{% endif %}{% if O.plan_revised_annual %} &middot; Revised {{ money(O.plan_revised_ytd) }}{% endif %}{% if X.get('actual_vs_plan_pct') is not none %} &middot; <b style="white-space:nowrap">Actual vs Plan {{ X.get('actual_vs_plan_pct')|fmt }}%</b>{% endif %}</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Actual — AP</div><div class="k-val">{{ money(O.actual_ap) }}</div><div class="k-sub">{{ AP|length|fmt }} invoices{% if X.get('ap_paid_pct') is not none %} &middot; <b>{{ X.get('ap_paid_pct')|fmt }}% paid</b>{% endif %}</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Actual — GRN</div><div class="k-val">{{ money(O.actual_grn) }}</div><div class="k-sub">{{ GRN|length|fmt }} receipt lines{% if X.get('grn_paid_pct') is not none %} &middot; <b>{{ X.get('grn_paid_pct')|fmt }}% paid</b>{% endif %}</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Open Obligation (PO)</div><div class="k-val">{{ money(O.obligation_po) }}</div><div class="k-sub">{{ PO|length|fmt }} PO lines</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Open Commitment (PR)</div><div class="k-val">{{ money(O.commitment_pr) }}</div><div class="k-sub">{{ PR|length|fmt }} PR lines</div></div>
+    <div class="kpi {{ 'k-bad' if O.fund_available is not none and O.fund_available < 0 else 'k-ok' }}">
+      <div class="k-lbl">Fund Available</div><div class="k-val {{ 'neg' if O.fund_available is not none and O.fund_available < 0 }}">{{ money(O.fund_available) }}</div>
+      <div class="k-sub">{{ O.over_budget_lines|fmt }} lines over budget</div></div>
+    <div class="kpi {{ 'k-bad' if X.get('actual_budget_pct') is not none and X.get('actual_budget_pct') > 100 else '' }}">
+      <div class="k-lbl">Actual/Budget %</div><div class="k-val">{{ X.get('actual_budget_pct')|fmt if X.get('actual_budget_pct') is not none else '—' }}%</div>
+      <div class="k-sub">YTD actual &divide; annual budget</div></div>
+  </div>
+
+  <div class="charts eq">
+    <div class="chart comp" style="flex: 1.2 1 0">
+      <div class="ch-t">Budget composition — where the {{ money(O.budget) }} stands</div>
+      {% set B = O.budget or 0 %}
+      {% if B > 0 %}
+      {% set w_ap  = (100 * (O.actual_ap or 0) / B)|round(2) %}
+      {% set w_grn = (100 * (O.actual_grn or 0) / B)|round(2) %}
+      {% set w_po  = (100 * (O.obligation_po or 0) / B)|round(2) %}
+      {% set w_pr  = (100 * (O.commitment_pr or 0) / B)|round(2) %}
+      {% set w_fd  = 100 - w_ap - w_grn - w_po - w_pr %}
+      <div class="stack">
+        <div style="width:{{ [w_ap,0]|max }}%; background: var(--brand);">{% if w_ap >= 5.5 %}<span>{{ w_ap|round(1) }}%</span>{% endif %}</div>
+        <div style="width:{{ [w_grn,0]|max }}%; background: var(--gold);">{% if w_grn >= 5.5 %}<span>{{ w_grn|round(1) }}%</span>{% endif %}</div>
+        <div style="width:{{ [w_po,0]|max }}%; background: var(--enc);">{% if w_po >= 5.5 %}<span>{{ w_po|round(1) }}%</span>{% endif %}</div>
+        <div style="width:{{ [w_pr,0]|max }}%; background: #D98E2B;">{% if w_pr >= 5.5 %}<span>{{ w_pr|round(1) }}%</span>{% endif %}</div>
+        <div style="width:{{ [w_fd,0]|max }}%; background: #DDE7EB;">{% if w_fd >= 5.5 %}<span class="dk">{{ w_fd|round(1) }}%</span>{% endif %}</div>
+      </div>
+      <div class="lg">
+        <span><i style="background:var(--brand)"></i>AP {{ w_ap }}%</span>
+        <span><i style="background:var(--gold)"></i>GRN {{ w_grn }}%</span>
+        <span><i style="background:var(--enc)"></i>Open PO {{ w_po }}%</span>
+        <span><i style="background:#D98E2B"></i>Open PR {{ w_pr }}%</span>
+        <span><i style="background:#DDE7EB"></i>Available {{ w_fd|round(2) }}%</span>
+      </div>
+      {% else %}<div class="empty">No approved budget in scope.</div>{% endif %}
+    </div>
+    <div class="chart dep-bars">
+      <div class="ch-t">Utilization by Department &mdash; Actual/Budget %, largest budget first{% if DEP|length > 10 %} (top 10 of {{ DEP|length }}){% endif %}</div>
+      {% for r in DEP[:10] %}
+      {% set u = r.actual_budget_pct or 0 %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.department or '—' }}{% if r.get('cost_centre') and r.cost_centre != '-' %} ({{ r.cost_centre }}){% endif %}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if u > 100 else 'warn' if u > 85 else '' }}"
+             style="width:{{ [u, 100]|min|round(1) }}%"></div></div>
+        <div class="hb-val">{{ u|fmt }}%</div></div>
+      {% endfor %}
+      {% if not DEP %}<div class="empty">No department data.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="ch-t">Sector Overview &mdash; {{ kinds|join(' / ') if kinds else 'Opex / Capex' }}</div>
+      {% if KND %}
+      <table class="data">
+        <thead><tr><th></th><th class="num">Annual Budget</th><th class="num">YTD Actual</th><th class="num">YTD Plan</th><th class="num">Actual/Budget %</th><th class="num">Actual/Plan %</th></tr></thead>
+        <tbody>
+          {% for r in KND %}
+          <tr{% if r.kind == 'Total' %} class="tot"{% endif %}><td>{{ tot_lbl if r.kind == 'Total' else r.kind }}</td>
+            <td class="num">{{ money(r.budget_annual) }}</td><td class="num">{{ money(r.actual_ytd) }}</td>
+            <td class="num">{{ money(r.plan_ytd) }}</td>
+            <td class="num">{{ (r.actual_budget_pct|fmt ~ '%') if r.actual_budget_pct is not none else '—' }}</td>
+            <td class="num">{{ (r.actual_plan_pct|fmt ~ '%') if r.actual_plan_pct is not none else '—' }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% set ktot_ba = KND|selectattr('kind','equalto','Total')|map(attribute='budget_annual')|select('number')|sum %}
+      {% set kexcl = (O.budget_annual or 0) - ktot_ba %}
+      {% if kexcl|abs > 0.005 %}<div class="tbl-note">A further {{ money(kexcl) }} of the {{ money(O.budget_annual) }} annual budget is not attributed to an expenditure kind in this table.</div>{% endif %}
+      {% else %}<div class="empty">No Opex/Capex budget lines in scope.</div>{% endif %}
+    </div>
+    <div class="chart" style="flex: 1.35 1 0">
+      <div class="ch-t">Budget overview by Department{% if DEP|length > 12 %} &mdash; top 12 of {{ DEP|length }} by budget{% endif %}</div>
+      {% if DEP %}
+      <table class="data">
+        <thead><tr><th>Department</th><th class="num">Annual Budget</th><th class="num">Actual</th><th class="num">Encumbrance</th><th class="num">Fund Available</th><th class="num">Actual/Budget %</th><th class="num">Actual/Plan %</th></tr></thead>
+        <tbody>
+          {% for r in DEP[:12] %}
+          <tr><td>{{ r.department or '—' }}{% if r.get('cost_centre') and r.cost_centre != '-' %} ({{ r.cost_centre }}){% endif %}</td><td class="num">{{ money(r.budget_annual) }}</td>
+            <td class="num">{{ money(r.actual_total) }}</td><td class="num">{{ money(r.encumbrance) }}</td>
+            <td class="num {{ 'neg' if r.fund_available is not none and r.fund_available < 0 }}">{{ money(r.fund_available) }}</td>
+            <td class="num">{{ (r.actual_budget_pct|fmt ~ '%') if r.actual_budget_pct is not none else '—' }}</td>
+            <td class="num">{{ (r.actual_plan_pct|fmt ~ '%') if r.actual_plan_pct is not none else '—' }}</td></tr>
+          {% endfor %}
+        </tbody>
+        {% set d_ba = DEP|map(attribute='budget_annual')|select('number')|sum %}
+        {% set d_at = DEP|map(attribute='actual_total')|select('number')|sum %}
+        {% set d_en = DEP|map(attribute='encumbrance')|select('number')|sum %}
+        {% set d_fa = DEP|map(attribute='fund_available')|select('number')|sum %}
+        {% set d_pl = DEP|map(attribute='plan_ytd')|select('number')|sum %}
+        <tfoot><tr><td>Total &mdash; {{ DEP|length }} departments</td>
+          <td class="num">{{ money(d_ba) }}</td><td class="num">{{ money(d_at) }}</td>
+          <td class="num">{{ money(d_en) }}</td>
+          <td class="num {{ 'neg' if d_fa < 0 }}">{{ money(d_fa) }}</td>
+          <td class="num">{{ ((100*d_at/d_ba)|round(1)|fmt ~ '%') if d_ba else '—' }}</td>
+          <td class="num">{{ ((100*d_at/d_pl)|round(1)|fmt ~ '%') if d_pl else '—' }}</td></tr></tfoot>
+      </table>
+      {% else %}<div class="empty">No department data.</div>{% endif %}
+    </div>
+  </div>
+  <div class="foot">Part 2 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 3 — TOP 10 PROJECTS BUDGET ════════════════════════════════ -#}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">03</span><span class="pt-t">Top 10 Projects Budget</span>
+    <span class="pt-s">largest task budget lines by annual budget &middot; Budget year {{ params.year }}{% if params.period %} &middot; YTD through {{ params.period }}{% endif %}</span></div>
+  {% if T10 %}
+  <div class="charts"><div class="chart">
+    <div class="ch-t">Top {{ T10|length }} projects budget &mdash; all figures AED</div>
+    <table class="data">
+      <thead><tr><th>Project Number</th><th>Project Name</th><th>Task</th>
+        <th class="num">Annual Budget</th><th class="num">{{ 'YTD Plan' if params.period else 'Plan' }}</th>
+        <th class="num">Actual</th><th class="num">Encumbrance</th><th class="num">Fund Available</th>
+        <th class="num">Actual/Budget %</th><th class="num">Actual/Plan %</th></tr></thead>
+      <tbody>
+        {% for r in T10 %}
+        <tr><td>{{ r.project_number }}</td><td>{{ r.project_name or '—' }}</td><td>{{ r.task_disp or '—' }}</td>
+          <td class="num">{{ r.budget_annual|fmt }}</td><td class="num">{{ r.plan_ytd|fmt }}</td>
+          <td class="num">{{ r.actual_ytd|fmt }}</td><td class="num">{{ r.encumbrance|fmt }}</td>
+          <td class="num {{ 'neg' if r.fund_available is not none and r.fund_available < 0 }}">{{ r.fund_available|fmt }}</td>
+          <td class="num">{{ (r.actual_budget_pct|fmt ~ '%') if r.actual_budget_pct is not none else '—' }}</td>
+          <td class="num">{{ (r.actual_plan_pct|fmt ~ '%') if r.actual_plan_pct is not none else '—' }}</td></tr>
+        {% endfor %}
+      </tbody>
+      {% set t_ba = T10|map(attribute='budget_annual')|select('number')|sum %}
+      {% set t_pl = T10|map(attribute='plan_ytd')|select('number')|sum %}
+      {% set t_ac = T10|map(attribute='actual_ytd')|select('number')|sum %}
+      {% set t_en = T10|map(attribute='encumbrance')|select('number')|sum %}
+      {% set t_fa = T10|map(attribute='fund_available')|select('number')|sum %}
+      <tfoot><tr><td colspan="3">Total &mdash; top {{ T10|length }} budget lines</td>
+        <td class="num">{{ t_ba|fmt }}</td><td class="num">{{ t_pl|fmt }}</td>
+        <td class="num">{{ t_ac|fmt }}</td><td class="num">{{ t_en|fmt }}</td>
+        <td class="num {{ 'neg' if t_fa < 0 }}">{{ t_fa|fmt }}</td>
+        <td class="num">{{ ((100*t_ac/t_ba)|round(1)|fmt ~ '%') if t_ba else '—' }}</td>
+        <td class="num">{{ ((100*t_ac/t_pl)|round(1)|fmt ~ '%') if t_pl else '—' }}</td></tr></tfoot>
+    </table>
+    <div class="tbl-note">The {{ T10|length }} largest task budget lines in scope, ordered by annual budget. The Task column
+      shows the task number, or the task name where the task number is a plain sequence code; the Total row&rsquo;s ratios are
+      recomputed from the summed figures.</div>
+  </div></div>
+  {% else %}<div class="empty">No budget lines in scope.</div>{% endif %}
+  <div class="foot">Part 3 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 4 — TOP 5 PROJECTS BUDGET BY DEPARTMENT ═══════════════════ -#}
+{%- for d in DEP %}
+{%- set dcc = d.get('cost_centre') or '-' %}
+{%- set dprj = DPRJ|selectattr('cost_centre','equalto',dcc)|list %}
+{%- set dknd = DKND|selectattr('cost_centre','equalto',dcc)|list %}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">04</span><span class="pt-t">{{ d.department or '—' }}{% if dcc != '-' %} ({{ dcc }}){% endif %}</span>
+    <span class="pt-s">Top 5 Projects Budget by Department &middot; department {{ loop.index }} of {{ DEP|length }} &middot; Budget year {{ params.year }}{% if params.period %} &middot; YTD through {{ params.period }}{% endif %}</span></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k-lbl">{{ 'YTD Budget' if params.period else 'Approved Budget' }}</div><div class="k-val">{{ money(d.budget_ytd) }}</div><div class="k-sub">AED &middot; Annual {{ money(d.budget_annual) }} &middot; {{ d.budget_lines|fmt }} lines</div></div>
+    <div class="kpi"><div class="k-lbl">{{ 'YTD Plan' if params.period else 'Expenditure Plan' }}</div><div class="k-val">{{ money(d.plan_ytd) }}</div><div class="k-sub">AED{% if d.plan_annual is not none and d.plan_annual != d.plan_ytd %} &middot; Annual {{ money(d.plan_annual) }}{% endif %}{% if d.actual_plan_pct is not none %} &middot; <b style="white-space:nowrap">Actual vs Plan {{ d.actual_plan_pct|fmt }}%</b>{% endif %}</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Actual — AP</div><div class="k-val">{{ money(d.actual_ap) }}</div><div class="k-sub">AED</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Actual — GRN</div><div class="k-val">{{ money(d.actual_grn) }}</div><div class="k-sub">AED</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Open Obligation (PO)</div><div class="k-val">{{ money(d.obligation_po) }}</div><div class="k-sub">AED</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Open Commitment (PR)</div><div class="k-val">{{ money(d.commitment_pr) }}</div><div class="k-sub">AED</div></div>
+    <div class="kpi {{ 'k-bad' if d.fund_available is not none and d.fund_available < 0 else 'k-ok' }}">
+      <div class="k-lbl">Fund Available</div><div class="k-val {{ 'neg' if d.fund_available is not none and d.fund_available < 0 }}">{{ money(d.fund_available) }}</div>
+      <div class="k-sub">{{ d.over_budget_lines|fmt }} lines over budget</div></div>
+    <div class="kpi {{ 'k-bad' if d.actual_budget_pct is not none and d.actual_budget_pct > 100 else '' }}">
+      <div class="k-lbl">Actual/Budget %</div><div class="k-val">{{ d.actual_budget_pct|fmt if d.actual_budget_pct is not none else '—' }}%</div>
+      <div class="k-sub">YTD actual &divide; annual budget</div></div>
+  </div>
+
+  <div class="charts eq">
+    <div class="chart comp" style="flex: 1.2 1 0">
+      <div class="ch-t">Budget composition &mdash; where the {{ money(d.budget_ytd) }} stands</div>
+      {% set B = d.budget_ytd or 0 %}
+      {% if B > 0 %}
+      {% set w_ap  = (100 * (d.actual_ap or 0) / B)|round(2) %}
+      {% set w_grn = (100 * (d.actual_grn or 0) / B)|round(2) %}
+      {% set w_po  = (100 * (d.obligation_po or 0) / B)|round(2) %}
+      {% set w_pr  = (100 * (d.commitment_pr or 0) / B)|round(2) %}
+      {% set w_fd  = 100 - w_ap - w_grn - w_po - w_pr %}
+      <div class="stack">
+        <div style="width:{{ [w_ap,0]|max }}%; background: var(--brand);">{% if w_ap >= 5.5 %}<span>{{ w_ap|round(1) }}%</span>{% endif %}</div>
+        <div style="width:{{ [w_grn,0]|max }}%; background: var(--gold);">{% if w_grn >= 5.5 %}<span>{{ w_grn|round(1) }}%</span>{% endif %}</div>
+        <div style="width:{{ [w_po,0]|max }}%; background: var(--enc);">{% if w_po >= 5.5 %}<span>{{ w_po|round(1) }}%</span>{% endif %}</div>
+        <div style="width:{{ [w_pr,0]|max }}%; background: #D98E2B;">{% if w_pr >= 5.5 %}<span>{{ w_pr|round(1) }}%</span>{% endif %}</div>
+        <div style="width:{{ [w_fd,0]|max }}%; background: #DDE7EB;">{% if w_fd >= 5.5 %}<span class="dk">{{ w_fd|round(1) }}%</span>{% endif %}</div>
+      </div>
+      <div class="lg">
+        <span><i style="background:var(--brand)"></i>AP {{ w_ap }}%</span>
+        <span><i style="background:var(--gold)"></i>GRN {{ w_grn }}%</span>
+        <span><i style="background:var(--enc)"></i>Open PO {{ w_po }}%</span>
+        <span><i style="background:#D98E2B"></i>Open PR {{ w_pr }}%</span>
+        <span><i style="background:#DDE7EB"></i>Available {{ w_fd|round(2) }}%</span>
+      </div>
+      {% else %}<div class="empty">No approved budget in this department.</div>{% endif %}
+    </div>
+    <div class="chart dep-bars">
+      <div class="ch-t">Utilization by Project &mdash; Actual/Budget %, top {{ dprj|length }} by budget</div>
+      {% for p in dprj %}
+      {% set u = p.actual_budget_pct or 0 %}
+      <div class="hb-row"><div class="hb-lbl">{{ p.project_number }} &middot; {{ p.project_name or '—' }}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if u > 100 else 'warn' if u > 85 else '' }}"
+             style="width:{{ [u, 100]|min|round(1) }}%"></div></div>
+        <div class="hb-val">{{ u|fmt }}%</div></div>
+      {% endfor %}
+      {% if not dprj %}<div class="empty">No project data.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="ch-t">Department Overview &mdash; {{ kinds|join(' / ') if kinds else 'Opex / Capex' }}</div>
+      {% if dknd %}
+      <table class="data">
+        <thead><tr><th></th><th class="num">Annual Budget</th><th class="num">YTD Actual</th><th class="num">YTD Plan</th><th class="num">Actual/Budget %</th><th class="num">Actual/Plan %</th></tr></thead>
+        <tbody>
+          {% for r in dknd %}
+          <tr><td>{{ r.kind or 'Unclassified' }}</td>
+            <td class="num">{{ money(r.budget_annual) }}</td><td class="num">{{ money(r.actual_ytd) }}</td>
+            <td class="num">{{ money(r.plan_ytd) }}</td>
+            <td class="num">{{ (r.actual_budget_pct|fmt ~ '%') if r.actual_budget_pct is not none else '—' }}</td>
+            <td class="num">{{ (r.actual_plan_pct|fmt ~ '%') if r.actual_plan_pct is not none else '—' }}</td></tr>
+          {% endfor %}
+          <tr class="tot"><td>Total</td>
+            <td class="num">{{ money(d.budget_annual) }}</td><td class="num">{{ money(d.actual_total) }}</td>
+            <td class="num">{{ money(d.plan_ytd) }}</td>
+            <td class="num">{{ (d.actual_budget_pct|fmt ~ '%') if d.actual_budget_pct is not none else '—' }}</td>
+            <td class="num">{{ (d.actual_plan_pct|fmt ~ '%') if d.actual_plan_pct is not none else '—' }}</td></tr>
+        </tbody>
+      </table>
+      {% else %}<div class="empty">No expenditure-kind data.</div>{% endif %}
+    </div>
+    <div class="chart" style="flex: 1.35 1 0">
+      <div class="ch-t">Budget overview by Project &mdash; top {{ dprj|length }}{% if dprj and dprj[0].proj_count and dprj[0].proj_count > dprj|length %} of {{ dprj[0].proj_count|fmt }}{% endif %} by budget</div>
+      {% if dprj %}
+      <table class="data">
+        <thead><tr><th>Project</th><th class="num">Annual Budget</th><th class="num">Actual</th><th class="num">Encumbrance</th><th class="num">Fund Available</th><th class="num">Actual/Budget %</th><th class="num">Actual/Plan %</th></tr></thead>
+        <tbody>
+          {% for p in dprj %}
+          <tr><td>{{ p.project_number }} &middot; {{ p.project_name or '—' }}</td><td class="num">{{ money(p.budget_annual) }}</td>
+            <td class="num">{{ money(p.actual_total) }}</td><td class="num">{{ money(p.encumbrance) }}</td>
+            <td class="num {{ 'neg' if p.fund_available is not none and p.fund_available < 0 }}">{{ money(p.fund_available) }}</td>
+            <td class="num">{{ (p.actual_budget_pct|fmt ~ '%') if p.actual_budget_pct is not none else '—' }}</td>
+            <td class="num">{{ (p.actual_plan_pct|fmt ~ '%') if p.actual_plan_pct is not none else '—' }}</td></tr>
+          {% endfor %}
+        </tbody>
+        {% set p_ba = dprj|map(attribute='budget_annual')|select('number')|sum %}
+        {% set p_at = dprj|map(attribute='actual_total')|select('number')|sum %}
+        {% set p_en = dprj|map(attribute='encumbrance')|select('number')|sum %}
+        {% set p_fa = dprj|map(attribute='fund_available')|select('number')|sum %}
+        {% set p_pl = dprj|map(attribute='plan_ytd')|select('number')|sum %}
+        <tfoot><tr><td>Total &mdash; top {{ dprj|length }} projects</td>
+          <td class="num">{{ money(p_ba) }}</td><td class="num">{{ money(p_at) }}</td>
+          <td class="num">{{ money(p_en) }}</td>
+          <td class="num {{ 'neg' if p_fa < 0 }}">{{ money(p_fa) }}</td>
+          <td class="num">{{ ((100*p_at/p_ba)|round(1)|fmt ~ '%') if p_ba else '—' }}</td>
+          <td class="num">{{ ((100*p_at/p_pl)|round(1)|fmt ~ '%') if p_pl else '—' }}</td></tr></tfoot>
+      </table>
+      {% if dprj[0].proj_count and dprj[0].proj_count > dprj|length %}<div class="tbl-note">Top {{ dprj|length }} of {{ dprj[0].proj_count|fmt }} projects &mdash; a further {{ money((d.budget_annual or 0) - p_ba) }} of the department&rsquo;s {{ money(d.budget_annual) }} annual budget sits on the remaining {{ (dprj[0].proj_count - dprj|length)|fmt }} project(s).</div>{% endif %}
+      {% else %}<div class="empty">No project data.</div>{% endif %}
+    </div>
+  </div>
+  <div class="foot">Part 4 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+{%- endfor %}
+{%- if not DEP %}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">04</span><span class="pt-t">Top 5 Projects Budget by Department</span>
+    <span class="pt-s">Budget year {{ params.year }}</span></div>
+  <div class="empty">No department data in scope.</div>
+  <div class="foot">Part 4 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+{%- endif %}
+
+{#- ═══ PART 5 — ACTUALS ════════════════════════════════════════════════ -#}
+{#- supplier concentration computed from the line data; invoice counts from sp_supp -#}
+{%- set sup = namespace(d={}) -%}
+{%- for r in AP %}{% set k = r.supplier_name or '(Unknown supplier)' %}
+  {%- set _ = sup.d.update({k: sup.d.get(k, 0) + (r.matched_aed or 0)}) %}{% endfor -%}
+{%- for r in GRN %}{% set k = r.supplier_name or '(Unknown supplier)' %}
+  {%- set _ = sup.d.update({k: sup.d.get(k, 0) + (r.received_aed or 0)}) %}{% endfor -%}
+{%- set top_sup = sup.d.items()|sort(attribute='1', reverse=true) -%}
+{%- set ap_total = AP|map(attribute='matched_aed')|select('number')|sum -%}
+{%- set grn_total = GRN|map(attribute='received_aed')|select('number')|sum -%}
+{%- set SUPC = {} -%}
+{%- for r in (S.sp_supp.data if S.sp_supp else []) %}{% set _ = SUPC.update({r.supplier_name: r}) %}{% endfor -%}
+{%- set paid_total = (X.get('ap_paid_aed') or 0) + (X.get('grn_paid_aed') or 0) -%}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">05</span><span class="pt-t">Actuals — Supplier Invoices &amp; Goods Receipts</span>
+    <span class="pt-s">{{ AP|length|fmt }} AP invoices &middot; {{ GRN|length|fmt }} GRN lines</span></div>
+
+  <div class="kpis">
+    <div class="kpi k-act"><div class="k-lbl">Total Actual</div><div class="k-val">{{ money(O.actual_total) }}</div><div class="k-sub">{{ (100 * (O.actual_total or 0) / O.budget)|round(1) if O.budget else '—' }}% of budget</div></div>
+    <div class="kpi"><div class="k-lbl">AP Invoices (direct)</div><div class="k-val">{{ money(ap_total) }}</div><div class="k-sub">{{ AP|length|fmt }} invoices{% if X.get('ap_paid_pct') is not none %} &middot; <b>{{ X.get('ap_paid_pct')|fmt }}% paid</b>{% endif %}</div></div>
+    <div class="kpi k-act"><div class="k-lbl">GRN Receipts</div><div class="k-val">{{ money(grn_total) }}</div><div class="k-sub">{{ GRN|length|fmt }} receipt lines{% if X.get('grn_paid_pct') is not none %} &middot; <b>{{ X.get('grn_paid_pct')|fmt }}% paid</b>{% endif %}</div></div>
+    <div class="kpi"><div class="k-lbl">Active Suppliers</div><div class="k-val">{{ sup.d|length|fmt }}</div><div class="k-sub">across AP + GRN</div></div>
+    <div class="kpi k-ok"><div class="k-lbl">Paid</div><div class="k-val">{{ money(paid_total) }}</div>
+      <div class="k-sub">{% if X.get('actual_ytd') %}<b>{{ (100 * paid_total / X.get('actual_ytd'))|round(1)|fmt }}%</b> of the actual{% else %}AED paid to suppliers{% endif %}</div></div>
+    <div class="kpi"><div class="k-lbl">Top Supplier Share</div>
+      <div class="k-val">{{ (100 * top_sup[0][1] / (ap_total + grn_total))|round(1) if top_sup and (ap_total + grn_total) else '—' }}%</div>
+      <div class="k-sub">{{ top_sup[0][0] if top_sup else '—' }}</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart sup-bars">
+      <div class="ch-t">Top 10 suppliers by actual spend <small>&mdash; (invoices counted across direct AP and PO-matched)</small></div>
+      {% for name, amt in top_sup[:10] %}
+      {% set sr = SUPC.get(name) %}
+      {% set c = sr.inv_count if sr else 0 %}
+      {% set pp = sr.paid_pct if sr else none %}
+      <div class="hb-row"><div class="hb-lbl">{{ name }} ({{ c|fmt }} invoice{{ 's' if c != 1 }})</div>
+        <div class="hb-track"><div class="hb-bar gold" style="width:{{ (100 * amt / top_sup[0][1])|round(1) if top_sup[0][1] else 0 }}%">{% if pp is not none %}<div class="hb-paid" style="width:{{ [pp, 100]|min }}%"></div>{% endif %}</div></div>
+        <div class="hb-val">{{ money(amt) }}{% if pp is not none %} &middot; <b>{{ pp|fmt }}% paid</b>{% endif %}</div></div>
+      {% endfor %}
+      {% if top_sup %}
+      <div class="lg" style="margin-top: 6px;">
+        <span><i style="background:var(--ok)"></i>Paid</span>
+        <span><i style="background:var(--gold)"></i>Not yet paid</span>
+        <span style="color:var(--mut)">green fill = the paid share of what the supplier has billed</span>
+      </div>
+      {% endif %}
+      {% if not top_sup %}<div class="empty">No supplier activity.</div>{% endif %}
+    </div>
+  </div>
+  <div class="foot">Part 5 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+
+
+
+
+{#- ═══ PART 4 — OPEN OBLIGATIONS ═══════════════════════════════════════ -#}
+{%- set po_sup = namespace(d={}, p={}) -%}
+{%- for r in PO %}{% set k = r.supplier_name or '(Unknown supplier)' %}
+  {%- set _ = po_sup.d.update({k: po_sup.d.get(k, 0) + (r.open_aed or 0)}) %}
+  {%- set pd = po_sup.p.get(k, {}) %}{% set _ = pd.update({r.po_number: 1}) %}{% set _ = po_sup.p.update({k: pd}) %}{% endfor -%}
+{%- set po_top = po_sup.d.items()|sort(attribute='1', reverse=true) -%}
+{%- set po_total = PO|map(attribute='open_aed')|select('number')|sum -%}
+{%- set po_sorted = (PO|rejectattr('open_aed', 'none')|sort(attribute='open_aed', reverse=true)|list) + (PO|selectattr('open_aed', 'none')|list) -%}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">06</span><span class="pt-t">Open Obligations — Purchase Orders</span>
+    <span class="pt-s">{{ PO|length|fmt }} funds-reserved PO lines, net of goods received</span></div>
+
+  <div class="kpis">
+    <div class="kpi k-enc"><div class="k-lbl">Open Obligation</div><div class="k-val">{{ money(po_total) }}</div><div class="k-sub">{{ (100 * po_total / O.budget)|round(1) if O.budget else '—' }}% of budget</div></div>
+    <div class="kpi"><div class="k-lbl">PO Lines</div><div class="k-val">{{ PO|length|fmt }}</div><div class="k-sub">Reserved / Partially Liquidated</div></div>
+    <div class="kpi"><div class="k-lbl">Suppliers</div><div class="k-val">{{ po_sup.d|length|fmt }}</div><div class="k-sub">holding open orders</div></div>
+    <div class="kpi"><div class="k-lbl">Largest Single Line</div><div class="k-val">{{ money(po_sorted[0].open_aed) if po_sorted else '—' }}</div>
+      <div class="k-sub">the biggest single open PO line{% if po_sorted %} — PO {{ po_sorted[0].po_number }}/{{ po_sorted[0].po_line }} &middot; {{ po_sorted[0].supplier_name or '—' }}{% endif %}</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart dep-bars">
+      <div class="ch-t">Top 10 suppliers by open obligation <small>&mdash; (POs held &middot; share of the open obligation)</small></div>
+      {% for name, amt in po_top[:10] %}
+      {% set pcnt = po_sup.p.get(name, {})|length %}
+      <div class="hb-row"><div class="hb-lbl">{{ name }} ({{ pcnt|fmt }} PO{{ 's' if pcnt != 1 }} &middot; {{ ((100 * amt / po_total)|round(1)|fmt ~ '%') if po_total else '—' }})</div>
+        <div class="hb-track"><div class="hb-bar warn" style="width:{{ (100 * amt / po_top[0][1])|round(1) if po_top[0][1] else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(amt) }}</div></div>
+      {% endfor %}
+      {% if not po_top %}<div class="empty">No open purchase orders.</div>{% endif %}
+    </div>
+    <div class="chart dep-bars">
+      <div class="ch-t">Largest open PO lines <small>&mdash; sorted by open amount</small></div>
+      {% for r in po_sorted[:10] %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.po_number }}/{{ r.po_line }} &middot; {{ r.supplier_name or '—' }}</div>
+        <div class="hb-track"><div class="hb-bar" style="width:{{ (100 * (r.open_aed or 0) / po_sorted[0].open_aed)|round(1) if po_sorted and po_sorted[0].open_aed else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.open_aed) }}</div></div>
+      {% endfor %}
+      {% if not PO %}<div class="empty">No open purchase orders.</div>{% endif %}
+    </div>
+  </div>
+  <div class="tbl-note"><b>KPI guide</b> &mdash; <b>Largest Single Line</b>: the single biggest open purchase-order line &mdash; the largest amount still committed to a supplier on one PO line, net of goods already received. The full line register is in Appendix A.3.</div>
+  <div class="foot">Part 6 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+
+
+{#- ═══ PART 5 — OPEN COMMITMENTS ═══════════════════════════════════════ -#}
+{%- set pr_total = PR|map(attribute='amount_aed')|select('number')|sum -%}
+{%- set pr_sorted = (PR|rejectattr('amount_aed', 'none')|sort(attribute='amount_aed', reverse=true)|list) + (PR|selectattr('amount_aed', 'none')|list) -%}
+{%- set SPR = S.sp_pr.data if S.sp_pr else [] -%}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">07</span><span class="pt-t">Open Commitments — Purchase Requisitions</span>
+    <span class="pt-s">{{ PR|length|fmt }} funds-reserved PR lines awaiting purchase orders</span></div>
+
+  <div class="kpis">
+    <div class="kpi k-enc"><div class="k-lbl">Open Commitment</div><div class="k-val">{{ money(pr_total) }}</div><div class="k-sub">{{ (100 * pr_total / O.budget)|round(1) if O.budget else '—' }}% of budget</div></div>
+    <div class="kpi"><div class="k-lbl">PR Lines</div><div class="k-val">{{ PR|length|fmt }}</div><div class="k-sub">funds status Reserved</div></div>
+    <div class="kpi"><div class="k-lbl">Largest Single Line</div><div class="k-val">{{ money(SPR[0].amount_aed) if SPR else (money(pr_sorted[0].amount_aed) if pr_sorted else '—') }}</div>
+      <div class="k-sub">the biggest single open PR line{% if SPR %} — PR {{ SPR[0].pr_number }}{% if SPR[0].pr_line is not none %}({{ SPR[0].pr_line }}){% endif %} &middot; {{ SPR[0].requester or '—' }}{% elif pr_sorted %} — PR {{ pr_sorted[0].pr_number }}{% endif %}</div></div>
+    <div class="kpi"><div class="k-lbl">Pipeline (PO + PR)</div><div class="k-val">{{ money((O.obligation_po or 0) + (O.commitment_pr or 0)) }}</div><div class="k-sub">total open encumbrance</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart sup-bars">
+      <div class="ch-t">Largest open requisition lines <small>&mdash; PR number(Line) - Requester &middot; sorted by amount &middot; with days the funds have been reserved</small></div>
+      {% for r in SPR %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.pr_number }}{% if r.pr_line is not none %}({{ r.pr_line }}){% endif %} - {{ r.requester or '—' }}</div>
+        <div class="hb-track"><div class="hb-bar warn" style="width:{{ (100 * (r.amount_aed or 0) / SPR[0].amount_aed)|round(1) if SPR and SPR[0].amount_aed else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.amount_aed) }} &middot; {{ r.days_reserved|fmt }} days</div></div>
+      {% endfor %}
+      {% if not SPR %}<div class="empty">No open requisitions.</div>{% endif %}
+    </div>
+  </div>
+  <div class="tbl-note"><b>KPI guide</b> &mdash; <b>Largest Single Line</b>: the single biggest open requisition line &mdash; the largest amount still reserved on one PR line that has not yet become a purchase order. <b>Days</b> counts from the line&rsquo;s funds-reservation (budget) date to the report date. The full line register is in Appendix A.4.</div>
+  <div class="foot">Part 7 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+
+
+{#- ═══ PART 6 — PENDING APPROVALS (PR & PO QUEUE) ══════════════════════ -#}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">08</span><span class="pt-t">Pending Approvals — PR &amp; PO Queue</span>
+    <span class="pt-s">documents PENDING APPROVAL in Fusion &middot; funds-reserved, non-zero lines</span></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k-lbl">Pending Documents</div><div class="k-val">{{ POV.docs|fmt }}</div><div class="k-sub">{{ POV.lines|fmt }} budget lines</div></div>
+    <div class="kpi"><div class="k-lbl">Requisitions (PR)</div><div class="k-val">{{ POV.pr_docs|fmt }}</div><div class="k-sub">{{ money(POV.amt_pr) }} AED</div></div>
+    <div class="kpi"><div class="k-lbl">Purchase Orders (PO)</div><div class="k-val">{{ POV.po_docs|fmt }}</div><div class="k-sub">{{ money(POV.amt_po) }} AED</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Pending Value</div><div class="k-val">{{ money(POV.amt_total) }}</div><div class="k-sub">already inside the open-encumbrance figures</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Average Wait</div><div class="k-val">{{ POV.avg_days|fmt }}</div><div class="k-sub">days pending &middot; oldest {{ POV.max_days|fmt }}</div></div>
+    <div class="kpi {{ 'k-bad' if POV.over30_docs else 'k-ok' }}"><div class="k-lbl">Over 30 Days</div><div class="k-val {{ 'neg' if POV.over30_docs }}">{{ POV.over30_docs|fmt }}</div><div class="k-sub">documents &middot; {{ money(POV.over30_amt) }} AED</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="ch-t">Aging — pending value and documents by days waiting <small>&mdash; sorted by amount</small></div>
+      {% set PAGS = (PAG|rejectattr('amount_aed', 'none')|sort(attribute='amount_aed', reverse=true)|list) + (PAG|selectattr('amount_aed', 'none')|list) %}
+      {% set pagmax = (PAGS|map(attribute='amount_aed')|select('number')|max) if PAGS else 0 %}
+      {% for r in PAGS %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.bucket }} days</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if r.bucket == '31+' else 'warn' if r.bucket == '16-30' else '' }}"
+             style="width:{{ (100*(r.amount_aed or 0)/pagmax)|round(1) if pagmax else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.amount_aed) }} &middot; {{ r.docs|fmt }} docs</div></div>
+      {% endfor %}
+      {% if not PAG %}<div class="empty">No documents pending approval in scope.</div>{% endif %}
+    </div>
+    <div class="chart">
+      <div class="ch-t">Top pending approvers by value held <small>&mdash; sorted by amount</small></div>
+      {% set PAPS = (PAP|rejectattr('amount_aed', 'none')|sort(attribute='amount_aed', reverse=true)|list) + (PAP|selectattr('amount_aed', 'none')|list) %}
+      {% set papmax = (PAPS|map(attribute='amount_aed')|select('number')|max) if PAPS else 0 %}
+      {% for r in PAPS %}
+      <div class="hb-row"><div class="hb-lbl">{{ (r.pending_with or '(Unassigned)')|string|truncate(26) }}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if r.max_days and r.max_days > 30 else 'warn' }}"
+             style="width:{{ (100*(r.amount_aed or 0)/papmax)|round(1) if papmax else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.amount_aed) }} &middot; {{ r.docs|fmt }} docs</div></div>
+      {% endfor %}
+      {% if not PAP %}<div class="empty">No approver data.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="sub-h">8.1 &nbsp; Pending value per approver <small>&mdash; top {{ PAP|length }} by amount held; the full registers live in the Encumbrances Pending Approval Briefing Book</small></div>
+  {% if PAP %}
+  <table class="data">
+    <thead><tr><th>Pending With</th><th>Documents</th><th>Amount Held (AED)</th><th>Share of Pending Value</th><th>Longest Wait (days)</th><th>Oldest Submission</th></tr></thead>
+    <tbody>
+      {% for r in PAPS %}
+      <tr><td>{{ r.pending_with or '(Unassigned)' }}</td>
+        <td class="num">{{ r.docs|fmt }}</td>
+        <td class="num">{{ r.amount_aed|fmt }}</td>
+        <td class="num">{{ (100*(r.amount_aed or 0)/POV.amt_total)|round(1) if POV.amt_total else '—' }}%</td>
+        <td class="num {{ 'neg' if r.max_days and r.max_days > 30 }}">{{ r.max_days|fmt }}</td>
+        <td class="num">{{ dt(r.oldest_submitted) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No documents pending approval for the selected criteria.</div>{% endif %}
+  <div class="foot">Part 8 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 9 — EXPENDITURE PLAN PERFORMANCE (v1.88.0) ════════════════ -#}
+{%- set DPL = S.sp_dplan.data if S.sp_dplan else [] -%}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">09</span><span class="pt-t">Expenditure Plan Performance</span>
+    <span class="pt-s">actual spending vs the uploaded expenditure plan{{ ' &middot; YTD through ' ~ params.period if params.period else '' }}</span></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k-lbl">Plan Performance</div><div class="k-val">{{ PCV.exec_pct|fmt if PCV.exec_pct is not none else '—' }}%</div><div class="k-sub">actual {{ money(PCV.actual_total) }} vs plan {{ money(PCV.ytd_plan) }}</div></div>
+    <div class="kpi"><div class="k-lbl">YTD Plan</div><div class="k-val">{{ money(PCV.ytd_plan) }}</div><div class="k-sub">annual plan {{ money(PCV.annual_plan) }}</div></div>
+    <div class="kpi"><div class="k-lbl">% of Budget Planned</div><div class="k-val">{{ PCV.coverage_pct|fmt if PCV.coverage_pct is not none else '—' }}%</div><div class="k-sub">of the {{ money(PCV.annual_budget) }} annual budget</div></div>
+    <div class="kpi {{ 'k-bad' if PCV.lines_below else 'k-ok' }}"><div class="k-lbl">Below Plan</div><div class="k-val {{ 'neg' if PCV.lines_below }}">{{ PCV.lines_below|fmt }}</div><div class="k-sub">lines &middot; {{ money(PCV.below_amount) }} behind plan</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Ahead of Plan</div><div class="k-val">{{ PCV.lines_ahead|fmt }}</div><div class="k-sub">lines &middot; {{ money(PCV.ahead_amount) }} ahead</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Plan Gap</div><div class="k-val">{{ money(PCV.plan_gap) }}</div><div class="k-sub">{{ PCV.lines_under|fmt }} under-planned &middot; {{ PCV.lines_unplanned|fmt }} unplanned lines</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart dep-bars">
+      <div class="ch-t">Plan execution by Department — actual as % of the YTD plan (100% = on plan)</div>
+      {% for r in DPL %}{% if r.ytd_plan %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.department or '—' }}{% if r.get('cost_centre') and r.cost_centre != '-' %} ({{ r.cost_centre }}){% endif %}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if r.plan_status == 'Ahead of plan' else 'warn' if r.plan_status == 'Below plan' else '' }}"
+             style="width:{{ [((r.exec_pct or 0) / 1.4)|round(1), 100]|min }}%"></div></div>
+        <div class="hb-val">{{ r.exec_pct|fmt }}% &middot; {{ r.plan_status }}</div></div>
+      {% endif %}{% endfor %}
+      {% if not DPL %}<div class="empty">No expenditure plan uploaded for the selected scope.</div>{% endif %}
+    </div>
+    <div class="chart dep-bars">
+      <div class="ch-t">% of Budget Planned by Department — annual plan as % of the annual budget</div>
+      {% for r in DPL %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.department or '—' }}{% if r.get('cost_centre') and r.cost_centre != '-' %} ({{ r.cost_centre }}){% endif %}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'warn' if r.coverage_pct is not none and r.coverage_pct < 95 else '' }}"
+             style="width:{{ [((r.coverage_pct or 0) / 1.2)|round(1), 100]|min }}%"></div></div>
+        <div class="hb-val">{{ r.coverage_pct|fmt if r.coverage_pct is not none else '—' }}% &middot; plan {{ money(r.annual_plan) }}</div></div>
+      {% endfor %}
+      {% if not DPL %}<div class="empty">No expenditure plan uploaded for the selected scope.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="sub-h">9.1 &nbsp; Plan vs actual by Department</div>
+  {% if DPL %}
+  <table class="data">
+    <thead><tr><th>Department</th><th>YTD Plan (AED)</th><th>Actual (AED)</th><th>Execution %</th><th>Status</th><th>Annual Plan (AED)</th><th>Annual Budget (AED)</th><th>% of Budget Planned</th></tr></thead>
+    <tbody>
+      {% for r in DPL %}
+      <tr><td>{{ r.department or '—' }}{% if r.get('cost_centre') and r.cost_centre != '-' %} ({{ r.cost_centre }}){% endif %}</td>
+        <td class="num">{{ r.ytd_plan|fmt }}</td>
+        <td class="num">{{ r.actual_total|fmt }}</td>
+        <td class="num">{{ r.exec_pct|fmt if r.exec_pct is not none else '—' }}%</td>
+        <td class="{{ 'neg' if r.plan_status == 'Ahead of plan' }}">{{ r.plan_status }}</td>
+        <td class="num">{{ r.annual_plan|fmt }}</td>
+        <td class="num">{{ r.annual_budget|fmt }}</td>
+        <td class="num">{{ r.coverage_pct|fmt if r.coverage_pct is not none else '—' }}%</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No expenditure plan uploaded for the selected scope.</div>{% endif %}
+
+
+  <div class="foot">Part 9 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ APPENDIX — DETAILED REGISTERS ══════════════════════════════════ -#}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">A</span><span class="pt-t">Appendix — Detailed Registers</span>
+    <span class="pt-s">the full line-level registers behind Parts 05–07</span></div>
+  <div class="sub-h">A.1 &nbsp; AP invoices charged directly to the budget <small>&mdash; {{ AP|length|fmt }} invoices, not PO-matched</small></div>
+  {% if AP %}
+  <table class="data">
+    <thead><tr><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>Invoice #</th><th>Invoice Date</th><th>Supplier</th><th>Curr</th>
+      <th>Charged AED</th><th>Payment</th><th>Paid %</th></tr></thead>
+    <tbody>
+      {% for r in AP %}
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|string|truncate(38) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(30) }}</td>
+        <td>{{ r.invoice_number }}</td><td>{{ dt(r.invoice_date) }}</td>
+        <td>{{ (r.supplier_name or '—')|string|truncate(34) }}</td><td>{{ r.currency or 'AED' }}</td>
+        <td class="num">{{ r.matched_aed|fmt }}</td>
+        <td><span class="pill {{ 'paid' if r.payment_status == 'Paid' else 'part' if r.payment_status == 'Partially Paid' else 'unp' }}">{{ r.payment_status }}</span></td><td class="num">{{ (r.paid_pct|fmt ~ '%') if r.paid_pct is not none else '—' }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="8">Total — AP invoices</td><td class="num">{{ ap_total|fmt }}</td><td></td><td class="num"><b>{{ (X.get('ap_paid_pct')|fmt ~ '%') if X.get('ap_paid_pct') is not none else '' }}</b></td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No direct AP invoices for the selected criteria.</div>{% endif %}
+  <div class="foot">Appendix A.1 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+<div class="page">
+  <div class="sub-h">A.2 &nbsp; Goods receipts (GRN) <small>&mdash; {{ GRN|length|fmt }} receipt lines by purchase-order distribution</small></div>
+  {% if GRN %}
+  <table class="data">
+    <thead><tr><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>PO #</th><th>Line</th><th>Supplier</th><th>Last Receipt</th><th>Receipts</th>
+      <th>Received AED</th><th>Invoiced AED</th><th>Uninvoiced AED</th><th>Paid %</th></tr></thead>
+    <tbody>
+      {% for r in GRN %}
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|string|truncate(34) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(28) }}</td>
+        <td>{{ r.po_number }}</td><td class="num">{{ r.po_line }}</td>
+        <td>{{ (r.supplier_name or '—')|string|truncate(30) }}</td><td>{{ dt(r.last_receipt_date) }}</td>
+        <td class="num">{{ r.receipt_lines|fmt }}</td><td class="num">{{ r.received_aed|fmt }}</td>
+        <td class="num">{{ r.invoiced_aed|fmt }}</td><td class="num">{{ r.uninvoiced_aed|fmt }}</td><td class="num">{{ (r.paid_pct|fmt ~ '%') if r.paid_pct is not none else '—' }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="9">Total — goods receipts</td>
+      <td class="num">{{ grn_total|fmt }}</td>
+      <td class="num">{{ GRN|map(attribute='invoiced_aed')|select('number')|sum|fmt }}</td>
+      <td class="num">{{ GRN|map(attribute='uninvoiced_aed')|select('number')|sum|fmt }}</td><td class="num"><b>{{ (X.get('grn_paid_pct')|fmt ~ '%') if X.get('grn_paid_pct') is not none else '' }}</b></td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No goods receipts for the selected criteria.</div>{% endif %}
+  <div class="foot">Appendix A.2 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+<div class="page">
+  <div class="sub-h">A.3 &nbsp; Open purchase-order lines <small>&mdash; ordered by open amount, GRN-netted</small></div>
+  {% if PO %}
+  <table class="data">
+    <thead><tr><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>PO #</th><th>Line</th><th>Budget Date</th><th>Supplier</th><th>Funds Status</th>
+      <th>Line AED</th><th>Received AED</th><th>Open AED</th></tr></thead>
+    <tbody>
+      {% for r in po_sorted %}
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|string|truncate(32) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(28) }}</td>
+        <td>{{ r.po_number }}</td><td class="num">{{ r.po_line }}</td><td>{{ dt(r.budget_date) }}</td>
+        <td>{{ (r.supplier_name or '—')|string|truncate(30) }}</td><td>{{ r.funds_status }}</td>
+        <td class="num">{{ r.line_aed|fmt }}</td><td class="num">{{ r.received_aed|fmt }}</td>
+        <td class="num">{{ r.open_aed|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="9">Total — open obligations</td>
+      <td class="num">{{ PO|map(attribute='line_aed')|select('number')|sum|fmt }}</td>
+      <td class="num">{{ PO|map(attribute='received_aed')|select('number')|sum|fmt }}</td>
+      <td class="num">{{ po_total|fmt }}</td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No open purchase orders for the selected criteria.</div>{% endif %}
+  <div class="foot">Appendix A.3 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+<div class="page">
+  <div class="sub-h">A.4 &nbsp; Open purchase-requisition lines <small>&mdash; ordered by amount</small></div>
+  {% if PR %}
+  <table class="data">
+    <thead><tr><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>PR #</th><th>Description</th><th>Budget Date</th><th>Curr</th>
+      <th>Amount</th><th>Amount AED</th></tr></thead>
+    <tbody>
+      {% for r in pr_sorted %}
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|string|truncate(30) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(26) }}</td>
+        <td>{{ r.pr_number }}</td><td>{{ (r.description or '—')|string|truncate(46) }}</td>
+        <td>{{ dt(r.budget_date) }}</td><td>{{ r.currency or 'AED' }}</td>
+        <td class="num">{{ r.distribution_amount|fmt }}</td><td class="num">{{ r.amount_aed|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="9">Total — open commitments</td><td class="num">{{ pr_total|fmt }}</td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No open requisitions for the selected criteria.</div>{% endif %}
+  <div class="foot">Appendix A.4 &middot; Sector Performance Report &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+</body>
+</html>

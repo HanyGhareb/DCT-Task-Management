@@ -5,6 +5,327 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
 
 ## History (most recent first)
 
+## 2026-09-08 — MSS_BUTIL_REGISTER (NEW reporting/db/46): the MSS distribution copy of the butil register
+
+Sibling of FBP_BUTIL_REGISTER, per `docs/Reports/FMR/MSS Budget_Utilization_Register_2026.xlsx`
+(red = drop, green = add). Copy of BUDGET_UTIL_REGISTER patched **per section** — each section
+SQL extracted with `JSON_VALUE` (**JSON paths must be literals**: `'$.sections['||i||']'` =
+ORA-40597, use one static path per index), patched with **asserted REPLACEs** (missing pattern
+= RAISE -20001 naming the spot; caught the live section key `pending` vs the assumed `pend`)
+and written back with `JSON_TRANSFORM SET '$.sections[n].sql'`. Sheet 1 = fixed 26-column wrap
+(`MSS_FIXED_COLS`; Task Number kept + Task Name; 14 red columns dropped;
+`fund_movement_amount__pn` keeps the sign tint). **Requester added on sheets 2–6** from the
+verified sources: AP = the matched PO line's requester (user rule; rqmap CTE = the LINE-GRAIN
+PO RULE linkage → `po_distributions.requestor_name`, keyed **invoice_number + invoice_date**
+— number alone cross-attributed 3 collision rows), GRN = the existing `b` map +
+`MAX(requestor_name)`, Open PO = per (PO, line) LISTAGG DISTINCT, Open PR = per requisition
+(`pr_distributions.requester`, 100% filled), Pending = PR-line ∪ PO-line map COALESCEd; Task
+Name on sheets 4–5 via the tnm map. **2026-09-08 (2), same day:** Task Name extended to EVERY
+sheet with a Task Number (user request) — sheets 2 (both UNION legs), 3, 6, 7 via the tnm map,
+sheet 8 exposing the PBT line's native `task_name`; helpers/key-asserts extended to sections
+6–7 (`comments`/`budget_trx`); all EIGHT patched sections DBMS_SQL-parse-checked as PROD.
+**Re-run db/46 after any db/25 re-run.** XLSX only; SELF recipient; GL bridge = GL/db/53
+`POST /gl/butil/mssxlsx`. Verified live: 2.6MB workbook, sheet-by-sheet layout + fill asserts
+(`final apps/GL/tests/mss_register_api_smoke.py` 30/30).
+
+## 2026-09-07 — FBP_BUTIL_REGISTER (NEW reporting/db/45): the FBP distribution copy of the butil register
+
+Per the user's marked-up sample `docs/Reports/FMR/FBP-Budget_Utilization_Register_2026.xlsx`:
+definition **`FBP_BUTIL_REGISTER`** ("FBP - Projects Budget Utilization") = a verbatim copy of
+BUDGET_UTIL_REGISTER whose copied `bu_lines` section SQL is wrapped in a **FIXED 21-column
+projection** (Task Name in place of Task Number; the sample's 19 red-filled headers — EBS
+account, appropriation/program names, YTD budget, the vs-Budget trio, all 8 plan columns,
+utilization pct, the fund-movement pair — removed) via `JSON_TRANSFORM(source_ref, SET
+'$.sections[0].sql' = …)` with an `FBP_FIXED_COLS` marker. Baking the layout into the
+DEFINITION (not a `sheet_cols_bu_lines` run param) is deliberate: `dct_rpt_pkg.enqueue` does
+`NVL(p_params, l_params)` — run params REPLACE definition defaults — so a params-level default
+would not survive a BI run-drawer run; the SQL wrap holds on every entry point. Sheets 2–8 +
+params/param-spec stay verbatim copies ⇒ **re-run db/45 after any db/25 re-run** (the refresh
+restores the copy, then re-wraps — idempotent). XLSX only; SELF e-mail recipient like the
+register. Launched from the GL Budget Utilization page via the NEW GL/db/52 bridge
+`POST /gl/butil/fbpxlsx` (no sheetcols forwarding). Deployed via Linux SQLcl `prod_mcp`
+(no MERGE, UNISTR Arabic, block <10KB); wrapped SQL parse-checked via DBMS_SQL as PROD.
+Verified live: run #1103 → 8-sheet workbook, sheet 1 = exactly the 21 agreed columns in order
+(`final apps/GL/tests/fbp_register_api_smoke.py` 18/18).
+
+## 2026-09-06 — BI 1.16.0: report storage and cleanup
+
+User approved the first three storage recommendations: consolidate duplicate maintenance, add the BI storage panel and audit cleanup. Deployed BI-only release `/var/www/ifinance-releases/20260906120807`, previous `/var/www/ifinance-releases/20260906154050`, with baseline hash checks preserving concurrent GL/other work. No worker restart required.
+
+- Fresh ADMIN SQLcl ran `reporting/db/43_rpt_output_maintenance.sql` and `44_rpt_storage_ords.sql`. All objects compile. `PROD.DCT_RPT_CLEANUP_LOG` records start/end, retention/cutoff, deleted file count/bytes, status and errors. Deletions and success audit commit together; failures roll back deletion and record error. The 90-day setting is unchanged; 0 still keeps all files.
+- The existing **ADMIN.DCT_RPT_MAINT_JOB** is authoritative because BI Workers reads/manages the ADMIN schedule. Verified duplicate **PROD.DCT_RPT_MAINT_JOB** is disabled (definition retained). ADMIN ran the new audited procedure successfully at 16:08 Dubai. `05_rpt_sched_sync.sql` now includes canonical 43 instead of redefining the old procedure/recreating duplicates. After re-running 04, re-run **44** with the existing additive ORDS scripts.
+- `GET /rpt/storage` is read-only and SYS_ADMIN-only (401/403 verified). Summaries read output metadata; no file BLOB downloads/scans. Allocated space is nullable if dictionary access is unavailable. Largest reports limited to 10; history to latest 20. Added-in-period sizes count still-retained files, not net growth. Worker 10-second polling does not query storage; only entering the page or explicit refresh does.
+- BI → Workers → Report storage and cleanup: retained-file size/count, retention, eligible files/bytes, allocated storage, 7/30-day additions, largest report types, and cleanup audit with error/empty/loading states. EN/AR + narrow screens verified. No manual purge, per-report retention, archive or shrink added. Audit history is retained from deployment.
+- Validation: 21 browser checks, 10 live API/access checks, 11 database assertions, plus scheduled-job confirmation. Test fixtures removed; only one expired synthetic 16-byte output was deleted during testing. UAT workbook/Word/evidence: `final apps/BI/UAT/UAT_BI_round3-06-09-2026/`. Initial live UI samples include real aggregate report-storage metadata.
+
+Rollback: reverse only BI feature hunks if later releases exist; otherwise use the previous release. Procedure/job pre-change source snapshot is in UAT evidence. Preserve audit records. Do not re-enable the duplicate simply to roll back the UI.
+
+
+- **2026-09-06 — LINE-GRAIN PO RULE (platform-wide, user-approved Wave 1+2 after root-cause
+  review).** The −5,560 Uninvoiced on the Sector Perf A.2 register exposed a REAL data
+  defect: when Fusion corrects an invoice's PO match (AD Burger 40626-2: entered 10-Aug on
+  PO ...8430, corrected 24-Aug to ...8216), the correction lands on the invoice LINE while
+  the accounted DISTRIBUTIONS keep the original PO — 9 invoices / 157,059 AED mis-attributed
+  platform-wide. FIX: every AP-dist→PO join now keys on **COALESCE(invoice-line PO refs,
+  dist PO refs)** (see the CLAUDE.md rule block for the canonical lp fragment). Reporting
+  side: db/21 grn_lines + db/25 GRN sheet patched (deployed via python-oracledb `run_seed.py`
+  on vm180 — thin mode NEEDS config_dir+wallet_location or DPY-6000) + db/42 re-run (its
+  paid-column surgery RE-ANCHORED to a shorter pattern ending at `...distributions d` so it
+  survives the lp insertion in the copied db/21 text — all canaries OK). DB side: db/v2/32
+  (DCT_ACTUAL_V — its existing `l` lines join MOVED ABOVE pm, ANSI joins can't
+  forward-reference — + DCT_BUDGET_ACTUAL_V ap_eff), 39, 45, 46 (apd/aps/apl/inv_link/invpr;
+  inv_link+invpr also exclude tax dists so 0-amount tax rows don't ghost-list a corrected
+  invoice on its old PO), 47; live gl.rest butil/lines grn drill DEFINE_HANDLER-patched
+  (GL/db/07 file synced); AP/db/04+05 re-run. Verified: 0 mis-attributions remain,
+  DCT_ACTUAL_V AP total byte-identical (3,525,721,791 — only attribution moved),
+  PO_HEADER_V both AD Burger POs match Fusion exactly, run #1073 A.2 rows clean
+  (8430: 4,800/0 · 8216: 5,560/100% paid), /gl drill + /ap/dists smoke OK.
+- **2026-09-06 — SECTOR_PERF_BOOK: Part 10 REMOVED + "% of Budget Planned" rename
+  (TEMPLATE-ONLY).** User audit round: ① explained the NEGATIVE Uninvoiced AED on the A.2
+  register — traced AD BURGER PO 451102008430: one 4,800 receipt (31-Aug) vs TWO matched
+  invoices (4,800 + a 5,560 invoice dated 10-Aug with NO goods receipt recorded) —
+  uninvoiced = received − invoiced goes negative when a PO line is invoiced ahead of (or
+  without) its GRN; real data, flags a missing receipt. ② **Part 10 "Observations &
+  Insights" REMOVED ENTIRELY** (user picked "Remove entirely" — the only content point
+  never specified in their review rounds): the five auto-insight paragraphs, the
+  methodology block, its TOC row and the pre-compute block (elapsed/oldest_po etc.);
+  the report now ends on Appendix A.4, TOC = 01–09 + A. ③ **"Plan Coverage" renamed
+  "% of Budget Planned"** (user picked from 4 offered names): the Part 09 KPI tile, the
+  by-Department chart title and the 9.1 column header. Verified run #1072 (75 pages;
+  zero "Observations"/"Plan Coverage" strings anywhere).
+- **2026-09-06 — SECTOR_PERF_BOOK Part 08 sorted + Part 09 by-Department (db/42 re-run +
+  template).** Part 08 (Pending Approvals): the Aging bars, the Top-pending-approvers
+  chart AND the 8.1 table all iterate amount-DESC sorted lists (PAGS/PAPS — the aging
+  ladder keeps its bucket labels but rows order by pending value, per the user's "sort
+  all charts and table by Amount"). Part 09 (Expenditure Plan Performance) re-based to
+  DEPARTMENT: NEW injected section **sp_dplan** = the plan_sector logic re-grained to
+  cost_centre × department over dct_sector_perf_v (costadj + effective plan already
+  folded; exec/coverage % + the settings-driven plan status via the PLAN_EXEC_TOL th
+  join; ordered by annual budget DESC) — drives the "Plan execution by Department" +
+  "Plan coverage by Department" charts (labels = "Full Department Name (CC code)") and
+  the "9.1 Plan vs actual by Department" table. **REMOVED (user: "both")**: the 9.2
+  "Largest deviations from plan" table and the explanatory paragraph at the page bottom
+  (PLS/PLD header sets remain but are unused). TOC 09 description re-worded. Verified
+  run #1071 (rasterized both pages; sp_dplan 7 rows).
+- **2026-09-06 — SECTOR_PERF_BOOK Part 07 rework + NEW Appendix (db/42 re-run + template).**
+  ① Part 07 chart = NEW injected section **sp_pr** (the 12 largest funds-Reserved PR lines;
+  predicates are DCT_RESERVED_PR_LINES_V VERBATIM — the view carries neither pr_line nor
+  requester, so the section reads prod.pr_distributions + pr_lines directly — keep in
+  lock-step with db/v2/39): label **"PR number(Line) - Requester"** (requester =
+  `COALESCE(pl.requester_name, d.requester)` — the distribution's own `requester` is a
+  USERNAME/email, pr_lines.requester_name is the display name), amount-sorted, value =
+  "4.40 M · 41 days" (**days_reserved** = today − the funds-reservation budget_date); the
+  Largest-Single-Line KPI reads sp_pr[0] (PR#(line) · requester). ② **KPI-guide footnote**
+  at the bottom of BOTH Part 06 + Part 07 pages explaining Largest Single Line (and Days)
+  + pointing at the appendix register. ③ NEW content point **"A — Appendix — Detailed
+  Registers"** (circled "A" in TOC + band, placed AFTER Observations): the four register
+  pages MOVED out of parts 05/06/07 → **A.1** AP invoices (+ NEW **Paid % column**, tfoot
+  shows the overall X.ap_paid_pct), **A.2** GRN (+ **Paid % column** per receipt line =
+  paid/invoiced of its matched invoices, tfoot X.grn_paid_pct), **A.3** open PO lines,
+  **A.4** open PR lines; Observations' "(Part 5.2)" → "(Appendix A.2)". The Paid%
+  columns come from **surgery on the COPIED ap_lines/grn_lines sections** (3 targeted
+  REPLACEs run BEFORE the sp_* prepend so patterns match only the db/21 copy; grn's
+  inner "a" subquery grows the ap_invoices header-ratio join). GOTCHA (self-inflicted):
+  a python splice that edits with stale indexes corrupted the template — restored from
+  the fleet copy (/opt/rpt-worker/templates/ = last deployed state); the redo asserts
+  every pattern and writes only when all pass. Verified runs #1069 + #1070 (76 pages;
+  requester names not usernames, Appendix A.1-A.4 present, A.1 tfoot 46% paid).
+- **2026-09-06 — SECTOR_PERF_BOOK Part 06 Open Obligations round + Part 07 same-bug fix
+  (TEMPLATE-ONLY).** The user asked "what is the Largest Single Line KPI?" — it is the
+  single biggest open PO line, and it was showing a bogus **3 K** because the open_po
+  section is ordered by project/task (db/21), so `PO[0]` was merely the first project's
+  line; the "Largest open PO lines" chart divided every bar by that 3 K (bars overflowing
+  at full width, K-scale values). FIX: `po_sorted` = PO amount-DESC in the template —
+  KPI now reads the true largest (8.80 M) **with a self-explaining sub-line** ("the
+  biggest single open PO line — PO 451102004891/1 · supplier"), the right chart iterates
+  po_sorted (proper proportional bars, FULL supplier names, "sorted by open amount"
+  note) and the 6.1 register finally honours its own "ordered by open amount" label.
+  Left chart = FULL supplier name + **"(N POs · share%)"** bracket (distinct PO numbers
+  via a namespace dict; share = of the open-obligation total; `.dep-bars` wrapping
+  labels). **Part 07 had the IDENTICAL latent bug** (`PR[0]`, project-ordered) — same
+  fix: pr_sorted drives the KPI (4.40 M + explanation), the chart and the 7.1 register.
+  Verified run #1068 (72 pages; Part 06 on p49, Part 07 on p60, both rasterized).
+- **2026-09-06 — SECTOR_PERF_BOOK Top-10 suppliers Paid% two-tone bars (user picked from 3
+  proposed styles; db/42 re-run + template).** Each supplier's spend bar splits into a
+  GREEN paid portion + gold unpaid remainder, and the value column reads
+  "25.20 M · 89.60% paid"; a legend line explains the tones ("green fill = the paid share
+  of what the supplier has billed"). Data: **sp_supp EXTENDED** with per-supplier
+  billed_aed / paid_aed / paid_pct — AP leg = counted AED weighted by each invoice
+  header's paid ratio (capped 0..1 ⇒ pct ≤ 100 by construction), GRN leg = the matched
+  invoices behind in-scope receipts at (po_distribution × invoice) grain joined to the
+  ap_invoices header ratio — summed over suppliers the legs equal the Paid KPI amounts,
+  so the chart and the tile can never disagree. Template: SUPC map now stores the whole
+  sp_supp row; `.hb-paid` nested div (height 100%, width = pct capped 100) inside the
+  gold `.hb-bar`; `.sup-bars .hb-val` widened to 132px. A supplier with no billed
+  invoices keeps a solid gold bar and no % label. Verified run #1067 (rasterized: 0%
+  solid gold / 100% solid green / 49.7% half-half, all 10 rows labelled).
+- **2026-09-06 — SECTOR_PERF_BOOK formatting round: circled part numbers + name-first
+  departments + composition-bar height (TEMPLATE-ONLY — no db/42 run).** ① Every content
+  point number sits in a **formatted circle**: the part-band `.pt-no` is now a 34px white
+  disc (brand-dark number) and each Contents-index number a 30px brand disc (`.toc .no
+  span` — the numbers are wrapped in spans; a bare td can't be circled). ② Every
+  department + cost-centre combination reads **"Full Department Name (CC code)"** — the
+  Part 04 band title, the Part 02 Utilization-by-Department bar labels and the
+  Budget-overview-by-Department first column (was "code · name"). ③ The **Budget
+  composition card stretches to its neighbour's height**: the composition `.charts` rows
+  (Parts 02 + 04) get `.eq { align-items: stretch }` and the card `.comp` becomes a flex
+  column whose `.stack` flex-grows (`height:auto`, segment divs `height:auto`), so the
+  bar fills whatever height the Utilization bars card sets — self-adjusting for the
+  10-bar Part 02 row AND the 5-bar department pages. Verified run #1066 (rasterized TOC /
+  Part 02 / department pages).
+- **2026-09-06 — SECTOR_PERF_BOOK Part 05 "Actuals" rework (user-annotated; db/42 re-run +
+  template).** ① "Monthly actuals — AP vs GRN" chart REMOVED (its `mo`/`months`/`mmax`
+  computation deleted; `.cols` CSS left in place); the Top-10-suppliers panel is now the
+  full-width chart. ② Supplier bars show the **FULL supplier name + "(N invoices)"** —
+  counts from NEW injected section **sp_supp**: per-supplier DISTINCT invoices across BOTH
+  legs (user-approved) — the direct AP invoices of the register (`dct_unpaid_invoices_v`,
+  same predicates as ap_lines) UNION the **PO-matched invoices behind the in-scope
+  receipts** (the sp_extra grn linkage + the grn_lines register's charge-account/non-zero/
+  hash-id exclusions, supplier via po_headers — so names key 1:1 to the template-summed
+  bars; keys prefixed 'A'/'P' so the two id spaces can't collide). Bar labels wrap via
+  `.sup-bars .hb-lbl` (420px); an uninvoiced-only supplier prints "(0 invoices)".
+  ③ NEW **Paid KPI tile** (between Active Suppliers and Top Supplier Share): paid amount +
+  **% of the Total Actual** — sp_extra EXTENDED with `ap_paid_aed` (register AED weighted
+  by each invoice header's paid ratio) + `grn_paid_aed` (the matched-invoice paid leg);
+  tile = (ap_paid+grn_paid) and ÷ actual_ytd. ④ AP Invoices (direct) + GRN Receipts tiles
+  gain the same bold **"X% paid"** as Part 02 (same X.ap_paid_pct/grn_paid_pct — the two
+  parts can never disagree). Top-Supplier-Share tile name un-truncated; Part-05 TOC
+  description re-worded (no more "monthly trend"). Sub-pages 5.1/5.2 untouched. Verified:
+  sp_supp/sp_extra live via DBMS_SQL (228 suppliers / 1 row) + run #1065.
+- **2026-09-06 — SECTOR_PERF_BOOK content restructure: 2.1/2.2 removed, NEW Part 03 "Top 10
+  Projects Budget" + NEW Part 04 "Top 5 Projects Budget by Department" (user-approved; db/42
+  re-run + template).** Part 02's two sub-tables are GONE (2.1 Utilization by sector — a
+  one-sector report made it a one-row duplicate of the KPI band — and 2.2 Budget lines under
+  pressure; the Observations "Budget pressure" insight dropped its "Part 2.2 lists…" sentence
+  but keeps the tightest-line callout). **Part 03** = the 10 largest task budget lines in
+  scope (project × task grain, etypes rolled up, ordered by annual budget) as one full-width
+  card table — Project Number / Project Name / Task / Annual Budget / Plan(YTD) / Actual /
+  Encumbrance / Fund Available / Actual-Budget % / Actual-Plan % + a Total row (ratios
+  recomputed from sums). **TASK DISPLAY RULE (user):** a PLAIN-NUMBER task number (the MSS
+  style: 2, 4, 5…) prints the task NAME instead (`REGEXP_LIKE '^[0-9][0-9. ]*$'` →
+  ATD_TASKS.task_name PROJECT-SCOPED via ATD_PROJECTS, the db/25 tnm pattern); code-bearing
+  task numbers (DCT style, e.g. "Facilities Rent-N1") print as-is. **Part 04** = ONE PAGE PER
+  DEPARTMENT (cost centre) of the sector, largest budget first — a full Part-02 replica scoped
+  to the department: 8-tile KPI band + composition stack (from the EXTENDED sp_dept row) +
+  "Utilization by Project" bars (top 5 by budget, full project number · name) + "Department
+  Overview" kind table (sp_dkind rows, Total = the sp_dept row) + "Budget overview by Project"
+  table (top 5 + Total of the shown 5 + "top 5 of N — remaining budget" note via proj_count).
+  db/42: sp_dept EXTENDED (actual_ap/actual_grn/obligation_po/commitment_pr, budget_lines,
+  over_budget_lines, effective plan_annual) + 3 NEW injected sections **sp_top10 / sp_dkind /
+  sp_dproj** (all on dct_sector_perf_v with the l_bscope predicate incl. the NVL'd chapter
+  default; sp_dproj = ROW_NUMBER PARTITION BY cost_centre ≤ 5 + COUNT(*) OVER proj_count).
+  Template: TOC gains entries 03 + 04 (02's description re-worded), old parts 03–08 renumbered
+  **05–10** (pt-no, sub-h 3.1→5.1 … 7.2→9.2, footers, Observations cross-refs). Verified:
+  section SQLs live via DBMS_SQL (10/10/25/7 rows for Support Service), run #1063 default
+  scope — TOC 10 entries, Part 03 total ties to the band, 7 department pages each reconciling
+  to the By-Department table row.
+- **2026-09-06 — SECTOR_PERF_BOOK default chapter scope = Opex + Capex (user-approved; db/42 re-run + template + GL v1.119.0 hint).**
+  The report now TARGETS the Opex + Capex chapters: db/42 resolves the default chapter list
+  from the chapter classification (`alt_name1 IN ('Opex','Capex')` → `'Chapter 2|Chapter 3'`)
+  and **rewrites every copied section's chapter predicate to `NVL([COLON]chapter, <default>)`**
+  (surgery on both the aggregate and the `s.`-aliased scope form, before the sp_* prepend, so
+  the default holds on EVERY entry point — GL bridge, BI run drawer, schedules). The GL page's
+  existing **Search → Chapter multi-select overrides it** (that was the approved flexibility
+  mechanism — no new UI). sp_kind's hard `IN ('Opex','Capex')` filter REMOVED: the Sector
+  Overview table now shows every kind in scope and its Total ALWAYS equals the KPI band
+  (the 299.8-vs-309.3 gap is gone — a default run is 299.80M everywhere; adding Chapter 1
+  brings a Payroll row and 309.3M everywhere). Cover gains a **"Scope: Opex + Capex"** line
+  (kinds derived from the data); the band chip prints "Opex + Capex chapters (default)" or
+  the explicit comma-separated chapter list; table title/Total label follow the kinds.
+  Param-spec chapter hint updated for the BI drawer; GL menu-entry hint mentions the default
+  (v1.119.0, webtier 20260906194839). NOTE: lines with NO chapter classification fall outside
+  any chapter pick — chapter coverage is effectively total on live data. Verified: run #1061
+  (default — cover Scope Opex + Capex, KPIs 299.80M, table total = band) and #1062
+  (Chapter 1|2|3 — Scope Opex + Capex + Payroll, Payroll row, plain Total).
+- **2026-09-06 — SECTOR_PERF_BOOK Overview feedback round 2 (db/42 re-run + template).** Six
+  fixes on the annotated page: ① "Actual vs Plan X%" wrapped in a nowrap span (never splits
+  across lines); ② composition stack prints each segment's % INSIDE its bar (≥5.5% wide;
+  Available segment gets a dark `.dk` label); ④ department bars + table show the **cost-centre
+  code + FULL department name** — sp_dept regrained to `GROUP BY cost_centre, department`
+  (+ `plan_ytd` column so the Total row can recompute ratios from sums) and `.dep-bars
+  .hb-lbl` widened/wrapping; ⑤ the 299.80M-vs-309.30M question = the table's Opex+Capex-only
+  rule — a `.tbl-note` footnote now prints the excluded amount so the report self-explains;
+  ⑥ table retitled **"Budget overview by Department"** + tfoot **Total row** (sums over ALL
+  departments, ratios recomputed — reconciles to the KPI band exactly: 309.30M / 107.80M /
+  34.90% / 63.70%) + centred column headers (`.chart .data th`); ⑦ part-band scope line
+  truncate 80→150 so "Project type: DCT OPEX Project Type" prints in full. Verified live run
+  #1060 (Support Service, YTD 09-2026).
+- **2026-09-06 — SECTOR_PERF_BOOK Overview rework (annotated round: db/42 re-run + template; NO frontend change).**
+  Part 02 "Budget Utilization Overview" rebuilt per the user's 9 annotations, all figures from
+  THREE new SECTOR_PERF-only sections that db/42 now injects alongside `terms` (same
+  `"sections":[` surgery + INSTR guard; l_bscope/l_scope copied VERBATIM from db/21 — keep in
+  lock-step): **`sp_extra`** (kv: Actual-vs-Plan %, Actual/Budget %, and the amount-based
+  %Paid pair — AP = paid ratio per `dct_unpaid_invoices_v` header applied to the counted
+  `ap_actual_aed`; GRN = the l_grn PO-distribution linkage joined to `ap_invoices` headers:
+  paid ÷ invoiced of the invoices matched to the in-scope receipts), **`sp_dept`** (department
+  rollup over `prod.dct_sector_perf_v`, ordered by annual budget DESC) and **`sp_kind`**
+  (Opex/Capex + ROLLUP Total — **Opex+Capex ONLY**, user decision; other kinds excluded).
+  All three ride `dct_sector_perf_v` (db/v2/123: cost adjustments already folded, plan +
+  expenditure kind, BUTIL_END-aware) so they tie to /gl/butil by construction — verified
+  SUM-for-SUM against the butil view (309.32M / 107.81M exact). **Ratio conventions
+  (user-approved): Actual = AP+GRN+approved costing adjustments; Actual/Budget % vs the
+  adjusted ANNUAL budget (the standing vs-Budget rule); Actual/Plan % vs the EFFECTIVE YTD
+  plan (revised else approved); %Paid by amount.** Template: YTD-Plan tile + "Actual vs
+  Plan %", AP/GRN tiles + "% paid", Utilization tile → **Actual/Budget %** (YTD actual ÷
+  annual budget), "Top sectors by approved budget" REMOVED (one-sector report),
+  "Utilization by sector" → **"Utilization by Department"** bars (top 10, budget-ordered),
+  plus two new table cards: **Sector Overview — Opex/Capex** (Annual Budget · YTD Actual ·
+  YTD Plan · Actual/Budget % · Actual/Plan %) and **By Department** (Annual Budget · Actual ·
+  Encumbrance · Fund Available · Actual/Budget % · Actual/Plan %, top 12 + note). Bare
+  `sub-h` numbers (1.1…6.2) renumbered +1 to follow the part shift (the earlier regex only
+  caught "Part N"). Empty-state guard: `X.get('attr')` — attribute access on the empty-dict
+  helper returns Undefined which PASSES `is not none` and then blows up on `> 100`.
+  Verified: live run #1058 (Support Service, YTD 09-2026) — Actual vs Plan 63.70%, AP 48.80%
+  / GRN 92.10% paid, Actual/Budget 34.90% = 107.81/309.32, dept + kind tables laid out per
+  the annotation, 47 pages, following parts untouched.
+- **2026-09-06 — SECTOR_PERF_BOOK "Terms and Key definitions" content entry 01 (db/42 re-run + template + datasource.py LOB fix).**
+  User feature: the report's FIRST content entry is now **"Terms and Key definitions"** — a
+  rich-text document managed in **GL → Settings → Terms and Key definitions** (`DCT_GL_REPORT_TERMS`,
+  db/v2/129; Quill editor, CLOB content, start/end validity + lookup status + applied-to scope
+  seeded `SECTOR_PERF`). `db/42` now **PREPENDS a `terms` section into the copied source_ref
+  after every refresh** (string surgery on `"sections":[` + INSTR guard, so the 42-after-21
+  coupling still holds): the section SQL selects the ACTIVE document whose window covers the
+  report's **period-end date** (`:period` MM-YYYY → LAST_DAY; full year → 31-Dec of `:year`).
+  Template: contents index gains entry 01 and every part shifted +1 (Overview 02 … Observations
+  08); the new Part 1 page renders `content_html` via `|safe` inside `.terms-doc` (+ ql-* CSS
+  for Quill alignment/size/indent/RTL classes; empty state prints a notice, numbering stable).
+  **Runner fix (fleet-synced + rpt-worker restart ×3): `datasource.fetch` now materialises LOB
+  values at fetch time** — a CLOB column previously reached Jinja as an oracledb LOB handle
+  (dead once the cursor closed); inert for LOB-free reports. Verified live: run #1054 prints
+  the 7 seeded terms as Part 1 with formatting; local render test covers both branches.
+- **2026-09-06 — SECTOR_PERF_BOOK "Sector Performance Report" (reporting/db/42 + `sector_perf_book.html.j2` + NEW render_pdf.py per-page header/footer hook).**
+  A distribution copy of BUDGET_UTIL_BOOK launched from the GL Budget Utilization page's Generate
+  Report menu (bridge `GL/db/50`, `POST /gl/butil/sectorbook`). `db/42` seeds the definition as a
+  **column-for-column copy of BUDGET_UTIL_BOOK** (source_ref / params_json / param_spec_json
+  verbatim; PDF-only; own `pdf_template`) — **re-run 42 after any db/21 re-run** to refresh the
+  copy. The template differs only in the chrome, per the user's annotated cover: DCT logo top-right
+  + user-approved copyright line ("© <generation year> Department of Culture and Tourism — Abu
+  Dhabi. All rights reserved. Confidential — for internal use only.") on EVERY page, cover = title
+  "Sector Performance Report" + "YTD MM-YYYY" subtitle + Prepared-by card ("Financial Planning and
+  Reporting") only — no parameter chips / description / Generated block. **NEW generic runner
+  hook** in `render_pdf.py` (`_extract_pdf_chrome`): a template may embed
+  `<template id="pdf-header" data-margin="24mm">…</template>` and/or
+  `<template id="pdf-footer" data-margin="16mm">…</template>`; the blocks are cut out of the
+  flowing HTML and passed to Chromium's `displayHeaderFooter`, so they repeat on every printed
+  page **inside the page margins** (content can never overlap them) and `data-margin` overrides
+  that side's margin to make the room — mind the shrunken page box (top 24mm ⇒ the cover block
+  must fit 170mm, not 180mm). Reports without the blocks render byte-identically to before; on
+  the WeasyPrint path an unprocessed `<template>` element renders nothing. The logo rides the
+  template as a ~27KB quantized-PNG data-URI (Pillow MEDIANCUT 48 colours from
+  `docs/photos/DCT logo.webp` — the raw PNG was 90KB). Fleet: `render_pdf.py` +
+  `templates/sector_perf_book.html.j2` scp'd to vm180-182 + `systemctl restart rpt-worker` ×3;
+  template also uploaded to `DCT_RPT_TEMPLATE` (96,761 bytes) via `upload_template.py` on vm180
+  (NOTE: the service env vars `RPT_DB_USER`/`RPT_DB_DSN`/`TNS_ADMIN` live in the systemd unit,
+  not `/etc/rpt-worker.env` — export them manually for ad-hoc runs). Verified: local Chromium
+  render QA (logo + copyright on cover, table-continuation and last pages; no overlap) + live
+  fleet E2E via `final apps/GL/tests/sector_book_api_smoke.py`. **User-feedback round same
+  day (template-only re-upload):** the Chromium header box carries a ~5.5mm inherent top
+  offset — the declared 5mm padding + 15mm logo really ended at 24.9mm and clipped the cover's
+  teal band (content top = 24.0mm); fixed to 2mm + 13mm (bottom 20.0mm, 4.1mm clearance).
+  **Lesson: calibrate displayHeaderFooter geometry by measuring a rasterized page, not from
+  the declared units.** Cover title now one line + a `Sector: …` line under the subtitle (brackets removed per user feedback, template re-upload 2026-09-06)
+  (sector filter, pipe-lists → comma-separated, "All Sectors" default).
+
 - **2026-08-30 — BUDGET_UTIL_REGISTER sheet 8 renamed "Fund Movement" + column rework (reporting/db/25 re-seed + render_xlsx.py, user request).**
   ① Sheet title "Additional Fund Transfers" → **"Fund Movement"** (tab = "8. Fund Movement"). ② Columns
   **Project Type / Period From / Period To / Task Name removed** (kept in the inner query — the
@@ -646,3 +967,35 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   numbers repeat across projects; the butil view has no name column and
   DCT_TASKS names are empty). Renamed `tnm` inline view per the pf/fm
   ambiguity rule. SRC_LEN 29,364.
+
+## 2026-09-06 — Budget Status PDF/PPT
+
+`reporting/db/41_rpt_gl_budget_status.sql` deployed via SQLcl; explicit count/INSERT/UPDATE
+avoids MERGE skipping. GL/db/49 bridges the authenticated Print menu to
+`GL_BUDGET_STATUS` (no recipients). `render_fd.py`, the Budget Status Jinja template
+and narrow PDF/PPT dispatch hooks deployed to vm180/181/182; backups under
+`/opt/rpt-worker/backups/budget-status-20260906`. Six real jobs (1002–1007) succeeded
+for all three presentations, including Arabic PPT. PDF totals match the GL dashboard.
+The seed follows the live fd/status entity-classification semantics; re-run after
+changing that handler. PowerPoint uses rendered page images; full ledger pages
+accompany treemaps. The later Sector Performance PDF-header/footer work is separate
+and must be preserved on rollback. See GL/docs/budget-status-review.md.
+
+## 2026-09-06 — Budget Status renderer deep-review fixes
+
+Deployed release `/var/www/ifinance-releases/20260906104833`, previous `/var/www/ifinance-releases/20260906061035`. Only Budget Status frontend hunks plus the version changed; concurrent GL work was preserved using the live baseline and hashes. Report workers vm180/181/182 were paused until idle, updated, restarted and verified active. Worker backups: `/opt/rpt-worker/backups/fd-deep-20260906`. Only `render_fd.py` and `templates/gl_budget_status.html.j2` changed. Fresh SQLcl deployed `GL/db/49_gl_fd_report_ords.sql`; handlers backed up in round-4 evidence.
+
+Fixes: recover invalid saved settings/storage failures; prevent stale search responses/errors; clear errors on cached-period selection; keyboard Search toggle and accessible criteria/entity state; hide hover instructions when Show Summary is off; configured Entity names in collapsed Search; active Entity classification validation for export; exact/automatic export numeric parity; measured continuation-page pagination retaining complete entries and correct page numbering. User-approved zero-budget behavior: Ledger rows with a No budget allocated notice instead of an empty map, independently for sectors/departments, on screen and in PDF/PPT.
+
+Verification: live browser 190/190, live Show Summary 67/67, six live PDF/PPT reports 51/51; local deep browser 40/40, export fidelity 85/85, reopened PDF/PPT artifacts 24/24, report unit tests 4/4; initial API baseline 144/144. Deployed deep browser checks passed 40/40; configured entity plus Unclassified exports passed 11/11. UAT: `UAT/UAT_GL_round4-06-09-2026/` workbook, Word results and evidence.
+
+Access tests: two temporary accounts verified owner downloads and cross-user 404 (including another privileged user); accounts/sessions removed. Current `FEATURE_SEC_ENFORCE_GL` compatibility behavior permits report submission without the dedicated privilege. This policy remains unchanged pending the user's explicit decision. Automatic approval review initially blocked the additional entity test; the user explicitly authorized the built-in quick login, and the test then passed 11/11 across all configured entities and Unclassified. Regular live PDF/PPT exports passed. No financial data changed and no reports were emailed.
+
+Rollback: reverse only this review's hunks if subsequent changes exist; otherwise the previous release above is available. Restore the two worker backup files and restart safely. ORDS source backup is retained with round-4 evidence. Do not revert unrelated GL changes.
+
+## 2026-09-07 — literal `&mdash;` fix in 4 PDF templates
+- User report: a null Actual/Plan % cell on a SECTOR_PERF_BOOK department page printed the literal text `&mdash;`.
+- Cause: the no-value dash was written as an HTML entity **inside a Jinja `{{ }}` expression** (`else '&mdash;'`) — the environment autoescapes string expressions, so the entity prints literally. Entities in RAW template text (the `money()`/`dt()` macros, cover) are untouched and always rendered fine — that's why only expression-built cells broke.
+- RULE: in `.j2` report templates, never put an HTML entity inside a Jinja string literal — use the real character (`'—'`).
+- Fixed `sector_perf_book.html.j2` (12 spots) + same latent bug in `ap_dup_book.html.j2` (1), `procash_book.html.j2` (4), `gl_fmr_book.html.j2` (1); scp'd to vm180-182 `/opt/rpt-worker/templates/` + upserted to the DB store via `upload_template.py` on vm180.
+- Verified: SECTOR_PERF_BOOK run #1102 (ALC, YTD 09-2026) — 0 literal occurrences; the null plan cell renders `—`.

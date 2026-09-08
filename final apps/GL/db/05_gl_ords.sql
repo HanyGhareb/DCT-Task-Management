@@ -403,14 +403,15 @@ END;
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_type VARCHAR2(30); l_seg VARCHAR2(60); l_cv NUMBER; l_s DATE; l_e DATE;
+  l_cur_cv NUMBER; l_cur_s DATE;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
-  SELECT class_type_code, segment_value INTO l_type, l_seg FROM dct_gl_seg_class_map WHERE map_id=[COLON]id;
-  l_cv := NVL(APEX_JSON.get_number(p_path=>'classValueId'),
-              (SELECT class_value_id FROM dct_gl_seg_class_map WHERE map_id=[COLON]id));
-  l_s  := NVL(TO_DATE(APEX_JSON.get_varchar2(p_path=>'startDate'),'YYYY-MM-DD'),
-              (SELECT start_date FROM dct_gl_seg_class_map WHERE map_id=[COLON]id));
+  SELECT class_type_code, segment_value, class_value_id, start_date
+    INTO l_type, l_seg, l_cur_cv, l_cur_s
+    FROM dct_gl_seg_class_map WHERE map_id=[COLON]id;
+  l_cv := NVL(APEX_JSON.get_number(p_path=>'classValueId'), l_cur_cv);
+  l_s  := NVL(TO_DATE(APEX_JSON.get_varchar2(p_path=>'startDate'),'YYYY-MM-DD'), l_cur_s);
   l_e  := TO_DATE(APEX_JSON.get_varchar2(p_path=>'endDate'),'YYYY-MM-DD');
   dct_gl_class_pkg.validate_map([COLON]id, l_type, l_seg, l_cv, l_s, l_e);
   UPDATE dct_gl_seg_class_map SET class_value_id=l_cv, start_date=l_s, end_date=l_e,
@@ -456,7 +457,14 @@ BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF l_asof IS NOT NULL THEN dct_gl_class_pkg.set_asof(TO_DATE(l_asof,'YYYY-MM-DD'));
   ELSE dct_gl_class_pkg.clear_asof; END IF;
-  SELECT COUNT(*) INTO l_total FROM dct_gl_coa_v v
+  -- Current-date requests use the hourly refreshed, indexed snapshot.  A
+  -- historical as-of request still uses the effective-dated live view.
+  WITH coa AS (
+    SELECT * FROM dct_gl_coa_snap WHERE l_asof IS NULL
+    UNION ALL
+    SELECT * FROM dct_gl_coa_v WHERE l_asof IS NOT NULL
+  )
+  SELECT COUNT(*) INTO l_total FROM coa v
    WHERE (l_search IS NULL OR UPPER(v.cc_string||' '||v.cost_center_desc||' '||v.account_desc) LIKE '%'||UPPER(l_search)||'%')
      AND (l_sector IS NULL OR v.sector_code=l_sector)
      AND (l_chap   IS NULL OR v.chapter_code=l_chap)
@@ -465,7 +473,12 @@ BEGIN
   APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT * FROM dct_gl_coa_v v
+    WITH coa AS (
+      SELECT * FROM dct_gl_coa_snap WHERE l_asof IS NULL
+      UNION ALL
+      SELECT * FROM dct_gl_coa_v WHERE l_asof IS NOT NULL
+    )
+    SELECT * FROM coa v
      WHERE (l_search IS NULL OR UPPER(v.cc_string||' '||v.cost_center_desc||' '||v.account_desc) LIKE '%'||UPPER(l_search)||'%')
        AND (l_sector IS NULL OR v.sector_code=l_sector)
        AND (l_chap   IS NULL OR v.chapter_code=l_chap)

@@ -1,0 +1,370 @@
+<title>Sectors and Departments Studies</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --ink:#1B2A27; --muted:#5F6E6A; --line:#D8E0DC; --accent:#3F6F5F; --accent-soft:#E4EEE9; --gold:#B8912C;
+  --font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --serif:'Fraunces',Georgia,'Times New Roman',serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#0F1614; --surface:#182120; --ink:#E6EDEA; --muted:#98A6A1; --line:#2A3634; --accent:#7CC3A8; --accent-soft:#1E2D28; --gold:#D4B25A; } }
+:root[data-theme="dark"]{ --bg:#0F1614; --surface:#182120; --ink:#E6EDEA; --muted:#98A6A1; --line:#2A3634; --accent:#7CC3A8; --accent-soft:#1E2D28; --gold:#D4B25A; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+.page{max-width:1300px;margin:0 auto;padding:28px 24px 80px}
+.masthead{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:18px}
+.masthead h1{font-family:var(--serif);font-weight:500;font-size:30px;margin:0 0 6px;letter-spacing:-.01em;text-wrap:balance}
+.masthead p{margin:0;color:var(--muted);max-width:72ch}
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
+.jump{display:flex;gap:8px;flex-wrap:wrap}
+.jump a{color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:8px;font-weight:600;font-size:13px}
+.jump a:hover,.jump a:focus-visible{border-color:var(--accent);outline:none}
+.legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:0 0 26px;color:var(--muted);font-size:12.5px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:6px;vertical-align:-1px}
+.option{margin:0 0 56px}
+.option-head{display:grid;grid-template-columns:auto 1fr;gap:16px 20px;align-items:start;margin-bottom:14px}
+.option-letter{font-family:var(--serif);font-size:46px;font-weight:500;line-height:1;color:var(--accent);padding-top:2px}
+.option-head h2{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.option-head p{margin:0;color:var(--muted);max-width:80ch}
+.option-head ul{margin:8px 0 0;padding-inline-start:18px;color:var(--muted);max-width:80ch}
+.option-head li{margin:2px 0}
+.frame-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 12px 30px rgba(15,30,25,.08)}
+.frame{min-width:1180px}
+
+/* ============ mock chrome — explicit light colours: the frames represent the light GL app on any host ground ============ */
+.mock{--m-bg:#F4F6F5;--m-card:#FFFFFF;--m-ink:#1B2A27;--m-muted:#66746F;--m-line:#DCE3DF;--m-brand:#3F6F5F;--m-brand-dark:#2C5044;--m-brand-soft:#E7EFEB;--m-gold:#C9A43A;--m-track:rgba(27,42,39,.09);
+  --bud:#3A6EA5;--act:#59468F;--enc:#9A6B1F;--fund:#2E7D5B;--bad:#B3261E;--warn:#B7791F;
+  background:var(--m-bg);color:var(--m-ink);padding:0 0 18px;font-family:var(--font);font-variant-numeric:tabular-nums}
+.pstrip{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 22px 6px;color:var(--m-muted);font-size:12.5px}
+.pstrip b{color:var(--m-ink);font-weight:600}
+.pstrip .ph{font-family:var(--serif);font-weight:500;font-size:20px;color:var(--m-ink);margin-inline-end:8px}
+.region{margin:10px 22px 0;background:var(--m-card);border:1px solid var(--m-line);border-radius:12px;overflow:hidden}
+.rh{display:flex;align-items:center;gap:12px;padding:9px 16px;background:var(--m-brand);color:#fff;min-height:44px}
+.rh .t{font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;white-space:nowrap}
+.rh .hint{font-size:12.5px;opacity:.88;flex:1;min-width:0}
+.rh .right{display:flex;align-items:center;gap:8px;font-size:12px;opacity:.95;flex-wrap:wrap;justify-content:flex-end}
+.rh .kbtn{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.08);color:#fff;border-radius:7px;padding:4px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.rh .kbtn:hover,.rh .kbtn:focus-visible{background:rgba(255,255,255,.2);outline:none}
+.rh input,.rh select{border:1px solid rgba(255,255,255,.5);background:#fff;color:var(--m-ink);border-radius:7px;padding:5px 9px;font:inherit;font-size:12.5px;min-width:0}
+.rh input{width:190px}
+.rh input:focus-visible,.rh select:focus-visible{outline:2px solid var(--m-gold);outline-offset:1px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--m-brand-dark);border-radius:999px;padding:3px 6px 3px 10px;font-size:12px;font-weight:600}
+.chip button{border:0;background:var(--m-brand-soft);color:var(--m-brand-dark);width:16px;height:16px;border-radius:50%;font-size:11px;line-height:1;cursor:pointer;display:grid;place-items:center;font-family:inherit}
+.chip button:hover{background:var(--m-gold);color:#fff}
+.rb{padding:14px 16px 16px}
+.ico{width:30px;height:30px;border-radius:9px;background:var(--m-brand-soft);color:var(--m-brand-dark);display:grid;place-items:center;flex:none}
+.ico svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.chk{width:18px;height:18px;border-radius:50%;border:1.5px solid #B9C6C0;background:#fff;display:grid;place-items:center;flex:none;transition:background .12s,border-color .12s}
+.chk:after{content:'';width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg);opacity:0}
+.on .chk{background:var(--m-brand);border-color:var(--m-brand)}
+.on .chk:after{opacity:1}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700;letter-spacing:.01em;white-space:nowrap}
+.pill:before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.ok{background:#E3F0E9;color:#1F6A48}
+.pill.tight{background:#F6EBD3;color:#8A5A0E}
+.pill.over{background:#F6DEDB;color:#9A2419}
+/* composition bar shared by A and B */
+.cbar{height:8px;border-radius:999px;background:var(--m-track);overflow:hidden;display:flex}
+.cbar i{display:block;height:100%}
+.cbar .ca{background:var(--act)} .cbar .ce{background:var(--enc)} .cbar .cf{background:var(--fund);opacity:.55}
+.cbar.over{box-shadow:0 0 0 1.5px var(--bad)}
+.scope{margin:10px 22px 0;display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--m-brand-dark);color:#fff;border-radius:12px;padding:12px 18px}
+.scope .lab{font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;opacity:.8}
+.scope .who{font-weight:600;font-size:13px;flex:1;min-width:200px}
+.scope .kv{display:flex;flex-direction:column;gap:1px;min-width:110px}
+.scope .kv span{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;opacity:.75}
+.scope .kv b{font-family:var(--serif);font-size:20px;font-weight:500;line-height:1.1}
+.scope .kv.neg b{color:#FFB4AA}
+.empty{padding:26px;text-align:center;color:var(--m-muted);font-size:13px}
+
+/* ============ A · Ledger rows ============ */
+.lg{display:grid;grid-template-columns:22px 34px minmax(200px,260px) 1fr 108px 108px 108px 118px;gap:0 12px;align-items:center}
+.lg-head{padding:0 12px 8px;border-bottom:1px solid var(--m-line);color:var(--m-muted);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.lg-head .r{text-align:right}
+.lg-row{border:0;background:transparent;color:var(--m-ink);font:inherit;text-align:start;cursor:pointer;padding:7px 12px;border-radius:9px;width:100%;min-height:46px;transition:background .12s}
+.lg-row:hover{background:var(--m-brand-soft)}
+.lg-row:focus-visible{outline:2px solid var(--m-brand);outline-offset:-2px}
+.lg-row.on{background:var(--m-brand-soft);box-shadow:inset 3px 0 0 var(--m-brand)}
+.lg-row.dim{opacity:.5}
+.lg-row .nm{font-weight:600;font-size:13.5px;line-height:1.25;min-width:0}
+.lg-row .nm small{display:block;color:var(--m-muted);font-weight:500;font-size:11px;margin-top:1px;font-family:var(--mono);letter-spacing:.01em}
+.lg-row .nm small.sn{font-family:var(--font)}
+.lg-row .share{min-width:0;padding-inline-end:8px}
+.lg-row .share .cbar{height:12px;border-radius:4px}
+.lg-row .fig{text-align:right;font-size:13px;font-weight:600;line-height:1.15}
+.lg-row .fig small{display:block;color:var(--m-muted);font-weight:500;font-size:11px;margin-top:2px}
+.lg-row .fig.neg{color:var(--bad)}
+.lg-row .fig.bud{font-family:var(--serif);font-size:15.5px;font-weight:500}
+.lg-more{margin:10px 12px 0;border:1px dashed var(--m-line);background:transparent;color:var(--m-brand-dark);border-radius:9px;padding:8px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;width:calc(100% - 24px)}
+.lg-more:hover{background:var(--m-brand-soft)}
+
+/* ============ B · Composition tiles ============ */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:12px}
+.tile{position:relative;border:1px solid var(--m-line);background:var(--m-card);border-radius:12px;padding:12px 13px 11px;text-align:start;cursor:pointer;font:inherit;color:var(--m-ink);display:flex;flex-direction:column;gap:8px;min-width:0;transition:transform .12s,box-shadow .12s,border-color .12s,opacity .12s}
+.tile:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(20,40,32,.10);border-color:var(--m-brand)}
+.tile:focus-visible{outline:2px solid var(--m-brand);outline-offset:2px}
+.tile.on{border-color:var(--m-brand);box-shadow:inset 0 3px 0 var(--m-brand),inset 0 0 0 1.5px var(--m-brand)}
+.tile.dim{opacity:.5}
+.tile .top{display:flex;align-items:flex-start;gap:9px}
+.tile .top .nm{flex:1;min-width:0;font-weight:600;font-size:13.5px;line-height:1.25;padding-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tile .big{font-family:var(--serif);font-size:25px;font-weight:500;line-height:1.05;letter-spacing:-.01em}
+.tile .big small{font-family:var(--font);font-size:11px;font-weight:600;color:var(--m-muted);letter-spacing:.02em;margin-inline-start:6px}
+.tile .foot{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--m-muted);white-space:nowrap}
+.tile .foot+.foot{margin-top:-3px}
+.tile .foot b{color:var(--m-ink);font-weight:600}
+.tiles.dept{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.tile.d{padding:10px 12px 10px;gap:6px}
+.tile.d .code{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--m-muted);letter-spacing:.02em}
+.tile.d .code .sn{font-family:var(--font);font-weight:600;font-size:11px;color:var(--m-brand-dark);background:var(--m-brand-soft);border-radius:6px;padding:1px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.tile.d .code .chk{margin-inline-start:auto}
+.tile.d .nm{font-weight:600;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em}
+.tile.d .row{display:flex;align-items:center;gap:10px}
+.tile.d .row .cbar{flex:1}
+.tile.d .row .v{font-family:var(--serif);font-size:16px;font-weight:500;min-width:58px}
+.tile.d .foot{font-size:11px}
+
+/* ============ C · Proportional map ============ */
+.tm-wrap{position:relative;width:100%;background:var(--m-bg);border-radius:10px;overflow:hidden}
+.tm{position:absolute;border:0;padding:8px 9px;text-align:start;font:inherit;cursor:pointer;overflow:hidden;color:var(--m-ink);box-shadow:inset 0 0 0 2px #fff;transition:opacity .12s,box-shadow .12s;display:flex;flex-direction:column;gap:2px;justify-content:flex-start}
+.tm.light{color:var(--m-ink)} .tm.darkt{color:#fff}
+.tm .nm{font-weight:700;font-size:12.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm .fg{font-family:var(--serif);font-size:16px;font-weight:500;line-height:1.1}
+.tm .sub{font-size:10.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm .cd{font-family:var(--mono);font-size:10px;opacity:.8;letter-spacing:.02em}
+.tm:hover{box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 4px var(--m-gold)}
+.tm:focus-visible{outline:2px solid var(--m-gold);outline-offset:-4px}
+.tm.on{box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 5px var(--m-brand-dark)}
+.tm.on:after{content:'';position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--m-brand-dark);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7'/%3E%3C/svg%3E");background-size:12px;background-position:center;background-repeat:no-repeat;box-shadow:0 0 0 2px #fff}
+.tm.dim{opacity:.38}
+.tm-grp{position:absolute;box-shadow:inset 0 0 0 2px #fff;background:#fff}
+.tm-grp .gl{position:absolute;left:0;top:0;right:0;height:20px;padding:3px 9px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--m-brand-dark);background:var(--m-brand-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:10px;color:var(--m-muted);font-size:11.5px}
+.tm-legend .sw{display:inline-flex;align-items:center;gap:5px}
+.tm-legend .sw i{width:14px;height:10px;border-radius:2px;display:inline-block}
+.tm-legend .sep{opacity:.5}
+
+@media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+@media (max-width:720px){ .page{padding:18px 12px 60px} .masthead h1{font-size:24px} }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">GL · Budget Status · Sectors & Departments regions</div>
+      <h1>Three treatments for the Sectors and Departments regions</h1>
+      <p>Same live figures in each study: <b>Sep 2026 YTD, all business units</b> — 18 sectors, 92 cost centres. Click sectors and departments in any study; the selection filters exactly the way the page does, and the scope strip at the bottom of each frame shows what the chapter bands would then total.</p>
+    </div>
+    <nav class="jump"><a href="#A">A · Ledger Rows</a><a href="#B">B · Composition Tiles</a><a href="#C">C · Proportional Map</a></nav>
+  </header>
+  <div class="legend">
+    <span><i style="background:#59468F"></i>Actual</span><span><i style="background:#9A6B1F"></i>Encumbrance</span><span><i style="background:#2E7D5B;opacity:.55"></i>Fund available</span><span>· bar length = budget · every study keeps the page's Business unit, Year and Period criteria above it unchanged</span>
+  </div>
+
+  <section class="option" id="A">
+    <div class="option-head">
+      <div class="option-letter">A</div>
+      <div>
+        <h2>Ledger Rows — one scale for every sector</h2>
+        <p>Cards become ranked rows. The bar of each sector is drawn to <b>one shared scale</b> (Tourism's 1.72B is the full width, TeamLab's 80M a sliver) and split into Actual · Encumbrance · Fund — so relative size and consumption read in one glance, the way a board pack table does. Figures sit in aligned columns with their share of budget underneath.</p>
+        <ul>
+          <li>Selecting = clicking the row; the check and a brand spine mark it. Others soften.</li>
+          <li>Departments use the same ledger, ranked by budget with the cost-centre code and sector under the name; top 12 shown, one click for all 92.</li>
+          <li>Best when the executive wants comparison and precision over pictures.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="frame-wrap"><div class="frame"><div class="mock" id="mockA"></div></div></div>
+  </section>
+
+  <section class="option" id="B">
+    <div class="option-head">
+      <div class="option-letter">B</div>
+      <div>
+        <h2>Composition Tiles — the cards, told in the bands' own colours</h2>
+        <p>Keeps the card grid the page has today but gives each card a hierarchy: the budget as the one large figure, its share of the total, then a <b>composition bar in the same Actual / Encumbrance / Fund colours as the chapter rings below</b>, and a state pill that says how much room is left. The card and the band tell the same story in the same language.</p>
+        <ul>
+          <li>Selected cards get a brand top edge and a filled check; a chip rail in the header lists the picks with one-click removal.</li>
+          <li>Department tiles carry the code, the sector tag and a compact bar; the header adds search and a sort (Budget · % used · % free).</li>
+          <li>Closest to what is live — an upgrade rather than a redesign.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="frame-wrap"><div class="frame"><div class="mock" id="mockB"></div></div></div>
+  </section>
+
+  <section class="option" id="C">
+    <div class="option-head">
+      <div class="option-letter">C</div>
+      <div>
+        <h2>Proportional Map — where the money sits, as one picture</h2>
+        <p>Sectors become a treemap: <b>tile area = budget share, fill = % consumed</b> (Actual + Encumbrance), from pale for lightly-used to deep brand for nearly-committed and rust for over-committed. Departments are the same map nested inside their sectors. An executive sees the whole 8.48B and its pressure points before reading a single number.</p>
+        <ul>
+          <li>Click a tile to select; picked tiles get a dark ring and tick, the rest fade. Small tiles keep a tooltip with the full figures.</li>
+          <li>Selecting sectors re-draws the department map to just those sectors, so their cost centres get the room.</li>
+          <li>The boldest of the three; the ledger row detail can still live one click away in the drill drawer.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="frame-wrap"><div class="frame"><div class="mock" id="mockC"></div></div></div>
+  </section>
+</div>
+
+<script id="fd-data" type="application/json">{"period":"09-2026","totals":{"budget":8477793017,"actual":4302647467.51,"encumbrance":2922696327.93,"fundsAvailable":1252449221.56},"sectors":[{"code":"TOURISM","name":"Tourism","budget":1718668313,"actual":964900962.09,"encumbrance":433680691.68,"fundsAvailable":320086659.23},{"code":"EXECUTIVE_OFFICE","name":"Executive Office","budget":1457375482,"actual":1200239357.87,"encumbrance":121866472.71,"fundsAvailable":135269651.42},{"code":"STRATEGIC_MARKETING_COMMUNICATION","name":"Strategic Marketing & Communication","budget":1090017181,"actual":340439029.92,"encumbrance":614549311.65,"fundsAvailable":135028839.43},{"code":"CULTURE","name":"Culture","budget":939887962,"actual":523226106.29,"encumbrance":212940177.64,"fundsAvailable":203721678.07},{"code":"AD_GUGGENHEIM_MUSEUM","name":"AD-Guggenheim Museum","budget":607092960,"actual":125809054.23,"encumbrance":436100973.36,"fundsAvailable":45182932.41},{"code":"LOUVRE_ABU_DHABI","name":"Louvre Abu Dhabi","budget":592642581,"actual":181028854.11,"encumbrance":358782830.14,"fundsAvailable":52830896.75},{"code":"SUPPORT_SERVICE","name":"Support Service","budget":520376290,"actual":287206936.74,"encumbrance":137620416.85,"fundsAvailable":95548936.41},{"code":"MUSEUM_SHARED_SERVICES","name":"Museum Shared Services","budget":321222223,"actual":101223143.52,"encumbrance":186831709.79,"fundsAvailable":33167369.69},{"code":"STRATEGIC_AFFAIRS","name":"Strategic Affairs","budget":299327582,"actual":125464629.93,"encumbrance":135571206.48,"fundsAvailable":38291745.59},{"code":"NATURAL_HISTORY_MUSEUM","name":"Natural History Museum","budget":267893454,"actual":132590381.94,"encumbrance":105780834,"fundsAvailable":29522238.06},{"code":"ZAYED_NATIONAL_MUSEUM","name":"Zayed National Museum","budget":252916190,"actual":155675006.75,"encumbrance":45862962.25,"fundsAvailable":51378221},{"code":"ALC","name":"ALC","budget":236483504,"actual":109932975.56,"encumbrance":34010335.52,"fundsAvailable":92540192.92},{"code":"TEAMLAB","name":"TeamLab","budget":80000000,"actual":0,"encumbrance":80000000,"fundsAvailable":0},{"code":"PROJECTS_MANAGEMENT_ENGINEERING","name":"Projects Management & Engineering","budget":35899594,"actual":21925588.88,"encumbrance":8752929.9,"fundsAvailable":5221075.22},{"code":"LEGAL_GOVERNMENT_AFFAIRS","name":"Legal & Government Affairs","budget":27107525,"actual":15023324.18,"encumbrance":4237875.62,"fundsAvailable":7846325.2},{"code":"TENDERING_AND_PROJECTS_CONTROL","name":"Tendering and Projects Control","budget":22355102,"actual":13508700.28,"encumbrance":3376880.84,"fundsAvailable":5469520.88},{"code":"INTERNAL_AUDIT","name":"Internal Audit","budget":7776245,"actual":4076572.34,"encumbrance":2730719.5,"fundsAvailable":968953.16},{"code":"UNCLASSIFIED","name":"Unclassified","budget":750829,"actual":376842.88,"encumbrance":0,"fundsAvailable":373986.12},{"code":"MUSEUMS","name":"Museums","budget":0,"actual":0,"encumbrance":0,"fundsAvailable":0}],"costCenters":[{"code":"4510110","name":"DCT - Executive Management Office (Central)","sector":"EXECUTIVE_OFFICE","sectorName":"Executive Office","budget":1183199707,"actual":1044008972.46,"encumbrance":118748142.14,"fundsAvailable":20442592.4},{"code":"4515500","name":"DCT - Abu Dhabi Events Bureau","sector":"TOURISM","sectorName":"Tourism","budget":1100740496,"actual":717022384.96,"encumbrance":161814974.03,"fundsAvailable":221903137.01},{"code":"4513130","name":"DCT - Planning, Strategy & Operations Department","sector":"STRATEGIC_MARKETING_COMMUNICATION","sectorName":"Strategic Marketing & Communication","budget":917384912,"actual":271218376.33,"encumbrance":571727007.38,"fundsAvailable":74439528.29},{"code":"4510410","name":"Museums - GAD - Director's Office","sector":"AD_GUGGENHEIM_MUSEUM","sectorName":"AD-Guggenheim Museum","budget":607092960,"actual":125809054.22999999,"encumbrance":436100973.36,"fundsAvailable":45182932.41},{"code":"4510122","name":"Museums - LAD - Scientific, Curatorial and Collection Management","sector":"LOUVRE_ABU_DHABI","sectorName":"Louvre Abu Dhabi","budget":274654014,"actual":65993836.580000006,"encumbrance":194447034.52,"fundsAvailable":14213142.899999999},{"code":"4510011","name":"DCT - Executive Affairs Department","sector":"EXECUTIVE_OFFICE","sectorName":"Executive Office","budget":274175775,"actual":156230385.41,"encumbrance":3118330.57,"fundsAvailable":114827059.02000001},{"code":"4511250","name":"DCT - Culture Sites Management Department","sector":"CULTURE","sectorName":"Culture","budget":255713812,"actual":166105543.07,"encumbrance":995401.5,"fundsAvailable":88612867.43},{"code":"4510250","name":"DCT - Smart Systems & GovernmentServices Dept","sector":"SUPPORT_SERVICE","sectorName":"Support Service","budget":215499170,"actual":66534205.08,"encumbrance":123976068.03999999,"fundsAvailable":24988896.88},{"code":"4515010","name":"DCT - Tourism (Central) Dept","sector":"TOURISM","sectorName":"Tourism","budget":211492562,"actual":13975156.65,"encumbrance":193420513.6,"fundsAvailable":4096891.75},{"code":"4514180","name":"Museums - Information Technology","sector":"MUSEUM_SHARED_SERVICES","sectorName":"Museum Shared Services","budget":186853880,"actual":47088262.67,"encumbrance":126136757.56,"fundsAvailable":13628859.77},{"code":"4510127","name":"Museums - LAD - Technical Operations","sector":"LOUVRE_ABU_DHABI","sectorName":"Louvre Abu Dhabi","budget":185179059,"actual":53723099.67,"encumbrance":112503852.95,"fundsAvailable":18952106.38},{"code":"4511700","name":"DCT - Cultural Programs Dept","sector":"CULTURE","sectorName":"Culture","budget":168587564,"actual":106425965.39999999,"encumbrance":51722066.56999999,"fundsAvailable":10439532.029999997},{"code":"4515100","name":"DCT-International Operations Department","sector":"TOURISM","sectorName":"Tourism","budget":155090160,"actual":92117303.46000001,"encumbrance":29096741.66,"fundsAvailable":33876114.879999995},{"code":"4512200","name":"DCT - Business Intelligence Dept","sector":"STRATEGIC_AFFAIRS","sectorName":"Strategic Affairs","budget":103647079,"actual":23961855.499999996,"encumbrance":66065224.5,"fundsAvailable":13619999.0},{"code":"4511300","name":"DCT - Historical Environment Dept","sector":"CULTURE","sectorName":"Culture","budget":103405911,"actual":46483842.7,"encumbrance":43294846.620000005,"fundsAvailable":13627221.68},{"code":"4518113","name":"DCT - AD Gaming Business Development Department","sector":"STRATEGIC_AFFAIRS","sectorName":"Strategic Affairs","budget":93270235,"actual":56265011.95999999,"encumbrance":33213552.189999998,"fundsAvailable":3791670.85},{"code":"4515400","name":"DCT - Abu Dhabi Conventions & Exhibition Bureau","sector":"TOURISM","sectorName":"Tourism","budget":89387561,"actual":47482473.33,"encumbrance":27804144.7,"fundsAvailable":14100942.969999999},{"code":"4511010","name":"DCT - Culture (Central) Dept","sector":"CULTURE","sectorName":"Culture","budget":88179012,"actual":23164921.740000002,"encumbrance":62466771.02,"fundsAvailable":2547319.2399999998},{"code":"4513140","name":"DCT - Sector Marketing Department","sector":"STRATEGIC_MARKETING_COMMUNICATION","sectorName":"Strategic Marketing & Communication","budget":87382674,"actual":25039809.01,"encumbrance":35685245.5,"fundsAvailable":26657619.49},{"code":"4516100","name":"DCT - Library Management Department","sector":"CULTURE","sectorName":"Culture","budget":85769688,"actual":44400650.870000005,"encumbrance":5747650.94,"fundsAvailable":35621386.19},{"code":"4510142","name":"Museums - TLP - Team Lab Phenomena","sector":"TEAMLAB","sectorName":"TeamLab","budget":80000000,"actual":0,"encumbrance":80000000,"fundsAvailable":0},{"code":"4511150","name":"DCT - Culture Planning & Development Dept.","sector":"CULTURE","sectorName":"Culture","budget":76862169,"actual":24153366.68,"encumbrance":39329134.28,"fundsAvailable":13379668.04},{"code":"4511750","name":"DCT \u2013 Culture Festivals & Platforms Dept","sector":"CULTURE","sectorName":"Culture","budget":75617035,"actual":63762956.31,"encumbrance":1115958.46,"fundsAvailable":10738120.23},{"code":"4510220","name":"DCT - People & Performance Dept","sector":"SUPPORT_SERVICE","sectorName":"Support Service","budget":72509977,"actual":55167556.629999995,"encumbrance":-1808717.5,"fundsAvailable":19151137.87},{"code":"4510185","name":"Museums - ZNM - Marketing & Communications","sector":"ZAYED_NATIONAL_MUSEUM","sectorName":"Zayed National Museum","budget":71881812,"actual":34969508.129999995,"encumbrance":24970333.07,"fundsAvailable":11941970.8},{"code":"4515300","name":"DCT - Visitor Experience & Tourism Products Development Dept.","sector":"TOURISM","sectorName":"Tourism","budget":70658756,"actual":18866034.419999998,"encumbrance":18163763.34,"fundsAvailable":33628958.239999995},{"code":"4510230","name":"DCT - Facility & General Services Management","sector":"SUPPORT_SERVICE","sectorName":"Support Service","budget":65941979,"actual":64015226.620000005,"encumbrance":-5100575.369999999,"fundsAvailable":7027327.75},{"code":"4510342","name":"Museums - NHM - Technical Operations","sector":"NATURAL_HISTORY_MUSEUM","sectorName":"Natural History Museum","budget":64270457,"actual":28311511.0,"encumbrance":30610982.09,"fundsAvailable":5347963.91},{"code":"4510184","name":"Museums - ZNM - Technical Operations","sector":"ZAYED_NATIONAL_MUSEUM","sectorName":"Zayed National Museum","budget":63856197,"actual":49806873.74,"encumbrance":2749013.15,"fundsAvailable":11300310.110000001},{"code":"4510322","name":"Museums - NHM - Collections","sector":"NATURAL_HISTORY_MUSEUM","sectorName":"Natural History Museum","budget":60843593,"actual":30934673.38,"encumbrance":22867874.810000002,"fundsAvailable":7041044.81},{"code":"4515700","name":"DCT-Destination Management Department","sector":"TOURISM","sectorName":"Tourism","budget":60652426,"actual":58167462.9,"encumbrance":-5341177.98,"fundsAvailable":7826141.08},{"code":"4510332","name":"Museums - NHM - Visitor Experience & Communications","sector":"NATURAL_HISTORY_MUSEUM","sectorName":"Natural History Museum","budget":59653344,"actual":49903579.39,"encumbrance":979610.6800000006,"fundsAvailable":8770153.93},{"code":"4510210","name":"DCT - Finance Dept","sector":"SUPPORT_SERVICE","sectorName":"Support Service","budget":56741159,"actual":30911221.54,"encumbrance":15100863.66,"fundsAvailable":10729073.8},{"code":"4510125","name":"Museums - LAD - Visitor Experience and Event Management","sector":"LOUVRE_ABU_DHABI","sectorName":"Louvre Abu Dhabi","budget":56520630,"actual":19002822.88,"encumbrance":33449663.21,"fundsAvailable":4068143.91},{"code":"4510181","name":"Museums - ZNM - Curatorial & Collection Management","sector":"ZAYED_NATIONAL_MUSEUM","sectorName":"Zayed National Museum","budget":54996322,"actual":26131322.72,"encumbrance":17163279.89,"fundsAvailable":11701719.39},{"code":"4519203","name":"ALC- Strategic Planning Office","sector":"ALC","sectorName":"ALC","budget":50362069,"actual":15584970.86,"encumbrance":18580317.77,"fundsAvailable":16196780.37},{"code":"4510170","name":"DCT-Licensing & Regulatory Compliance Department","sector":"SUPPORT_SERVICE","sectorName":"Support Service","budget":49558017,"actual":32763229.869999997,"encumbrance":1915822.99,"fundsAvailable":14878964.14},{"code":"4513110","name":"DCT - Creative and Production Department","sector":"STRATEGIC_MARKETING_COMMUNICATION","sectorName":"Strategic Marketing & Communication","budget":46964784,"actual":20849415.07,"encumbrance":-1752817.31,"fundsAvailable":27868186.240000002},{"code":"4519200","name":"ALC- Bookfairs & Events Department","sector":"ALC","sectorName":"ALC","budget":45945805,"actual":38481080.44,"encumbrance":-29197222.13,"fundsAvailable":36661946.69},{"code":"4510321","name":"Museums - NHM - Curatorial","sector":"NATURAL_HISTORY_MUSEUM","sectorName":"Natural History Museum","budget":45238472,"actual":4146867.45,"encumbrance":39413737.190000005,"fundsAvailable":1677867.36},{"code":"4510240","name":"DCT - Supply Management Dept","sector":"SUPPORT_SERVICE","sectorName":"Support Service","budget":43626336,"actual":28387725.36,"encumbrance":654242.03,"fundsAvailable":14584368.61},{"code":"4511550","name":"DCT - Marketing & Communication Dept.","sector":"CULTURE","sectorName":"Culture","budget":41529522,"actual":15615771.11,"encumbrance":15847897.05,"fundsAvailable":10065853.84},{"code":"4510182","name":"Museums - ZNM - Learning & Public Engagement","sector":"ZAYED_NATIONAL_MUSEUM","sectorName":"Zayed National Museum","budget":40145984,"actual":31998740.46,"encumbrance":-2416414.63,"fundsAvailable":10563658.17},{"code":"4514140","name":"Museums - People and Performance","sector":"MUSEUM_SHARED_SERVICES","sectorName":"Museum Shared Services","budget":39217665,"actual":21876600.44,"encumbrance":9734996.9,"fundsAvailable":7606067.66},{"code":"4512100","name":"DCT - Strategy Planning Dept","sector":"STRATEGIC_AFFAIRS","sectorName":"Strategic Affairs","budget":36875711,"actual":16676916.05,"encumbrance":14748783.6,"fundsAvailable":5450011.35},{"code":"4512300","name":"DCT - Business Continuity Dept","sector":"STRATEGIC_AFFAIRS","sectorName":"Strategic Affairs","budget":36839521,"actual":18094584.6,"encumbrance":9319891.78,"fundsAvailable":9425044.620000001},{"code":"4519201","name":"ALC- Literature Awards Department","sector":"ALC","sectorName":"ALC","budget":36787422,"actual":8189302.9,"encumbrance":23320195.74,"fundsAvailable":5277923.359999999},{"code":"4510150","name":"DCT - Projects Management & Engineering Dept","sector":"PROJECTS_MANAGEMENT_ENGINEERING","sectorName":"Projects Management & Engineering","budget":35899594,"actual":21925588.88,"encumbrance":8752929.9,"fundsAvailable":5221075.22},{"code":"4513120","name":"DCT - Strategic Communications Department","sector":"STRATEGIC_MARKETING_COMMUNICATION","sectorName":"Strategic Marketing & Communication","budget":35017294,"actual":22454031.67,"encumbrance":8889876.08,"fundsAvailable":3673386.25},{"code":"4514000","name":"Museums - Director\u2019s Office","sector":"MUSEUM_SHARED_SERVICES","sectorName":"Museum Shared Services","budget":31146601,"actual":3119487.46,"encumbrance":27183249,"fundsAvailable":843864.54},{"code":"4510195","name":"ALC - Arabic Language Centre (Central)","sector":"ALC","sectorName":"ALC","budget":31056359,"actual":12337209.760000002,"encumbrance":1850.6,"fundsAvailable":18717298.64},{"code":"4511800","name":"DCT - Education & Outreach Dept","sector":"CULTURE","sectorName":"Culture","budget":30412845,"actual":14179928.9,"encumbrance":8804083.98,"fundsAvailable":7428832.119999999},{"code":"4511600","name":"DCT - Intangible Heritage Dept","sector":"CULTURE","sectorName":"Culture","budget":28773860,"actual":15945222.200000001,"encumbrance":6532788.4,"fundsAvailable":6295849.399999999},{"code":"4510160","name":"DCT - Legal & Government Affairs Dept","sector":"LEGAL_GOVERNMENT_AFFAIRS","sectorName":"Legal & Government Affairs","budget":27107525,"actual":15023324.18,"encumbrance":4237875.62,"fundsAvailable":7846325.2},{"code":"4510123","name":"Museums - LAD - Education and Cultural Engagement","sector":"LOUVRE_ABU_DHABI","sectorName":"Louvre Abu Dhabi","budget":25552397,"actual":17557744.47,"encumbrance":2696939.32,"fundsAvailable":5297713.209999999},{"code":"4519196","name":"ALC- Marketing & Communications Department","sector":"ALC","sectorName":"ALC","budget":24366561,"actual":11926466.69,"encumbrance":6117681.53,"fundsAvailable":6322412.78},{"code":"4510124","name":"Museums - LAD - Marketing and Communication","sector":"LOUVRE_ABU_DHABI","sectorName":"Louvre Abu Dhabi","budget":24205194,"actual":19471921.97,"encumbrance":-1101157.48,"fundsAvailable":5834429.51},{"code":"4510121","name":"Museums - LAD - Director's Office","sector":"LOUVRE_ABU_DHABI","sectorName":"Louvre Abu Dhabi","budget":24052687,"actual":5279428.539999999,"encumbrance":16786497.62,"fundsAvailable":1986760.84},{"code":"4510155","name":"DCT \u2013 Tendering & Projects Control Dept.","sector":"TENDERING_AND_PROJECTS_CONTROL","sectorName":"Tendering and Projects Control","budget":22355102,"actual":13508700.28,"encumbrance":3376880.84,"fundsAvailable":5469520.88},{"code":"4519199","name":"ALC- Creative Content Department","sector":"ALC","sectorName":"ALC","budget":21386962,"actual":10669156.91,"encumbrance":6683908.66,"fundsAvailable":4033896.43},{"code":"4514130","name":"Museums - Technical Operations","sector":"MUSEUM_SHARED_SERVICES","sectorName":"Museum Shared Services","budget":21241330,"actual":5197926.890000001,"encumbrance":15695256.74,"fundsAvailable":348146.37},{"code":"4514160","name":"Museums - Supply Management","sector":"MUSEUM_SHARED_SERVICES","sectorName":"Museum Shared Services","budget":20013165,"actual":11194580.190000001,"encumbrance":2487729.21,"fundsAvailable":6330855.600000001},{"code":"4512600","name":"DCT - Sandstorm Comics Department","sector":"STRATEGIC_AFFAIRS","sectorName":"Strategic Affairs","budget":19563964,"actual":5877859.55,"encumbrance":9625898.14,"fundsAvailable":4060206.31},{"code":"4510331","name":"Museums - NHM - Education","sector":"NATURAL_HISTORY_MUSEUM","sectorName":"Natural History Museum","budget":18577575,"actual":7368420.17,"encumbrance":8299929.5,"fundsAvailable":2909225.33},{"code":"4515900","name":"DCT - Tourism Products Development Department","sector":"TOURISM","sectorName":"Tourism","budget":18031040,"actual":9631481.23,"encumbrance":6679118.25,"fundsAvailable":1720440.52},{"code":"4514120","name":"Museums - Finance","sector":"MUSEUM_SHARED_SERVICES","sectorName":"Museum Shared Services","budget":16990273,"actual":10498231.870000001,"encumbrance":2118159.88,"fundsAvailable":4373881.25},{"code":"4510201","name":"DCT - Support Services (Central) Dept","sector":"SUPPORT_SERVICE","sectorName":"Support Service","budget":16499652,"actual":9427771.64,"encumbrance":2882713,"fundsAvailable":4189167.36},{"code":"4519202","name":"ALC- Specialized Library Department","sector":"ALC","sectorName":"ALC","budget":13473907,"actual":8504091.02,"encumbrance":1889312.35,"fundsAvailable":3080503.6300000004},{"code":"4510180","name":"Museums - ZNM - Director's office","sector":"ZAYED_NATIONAL_MUSEUM","sectorName":"Zayed National Museum","budget":13195564,"actual":8222930.99,"encumbrance":2091186.63,"fundsAvailable":2881446.38},{"code":"4519197","name":"ALC- Arabic Language Education & Research Department","sector":"ALC","sectorName":"ALC","budget":12567382,"actual":4153661.63,"encumbrance":6614291,"fundsAvailable":1799429.37},{"code":"4510311","name":"Museums - NHM - Director's Office","sector":"NATURAL_HISTORY_MUSEUM","sectorName":"Natural History Museum","budget":10305538,"actual":6672525.74,"encumbrance":2084325.16,"fundsAvailable":1548687.1},{"code":"4510183","name":"Museums - ZNM - Development & Commercial Services","sector":"ZAYED_NATIONAL_MUSEUM","sectorName":"Zayed National Museum","budget":8840311,"actual":4545630.71,"encumbrance":1305564.14,"fundsAvailable":2989116.15},{"code":"4515020","name":"DCT- Emiratization & Capability Development Office","sector":"TOURISM","sectorName":"Tourism","budget":8581936,"actual":4332609.91,"encumbrance":2042614.08,"fundsAvailable":2206712.01},{"code":"4510140","name":"DCT - Internal Audit Dept","sector":"INTERNAL_AUDIT","sectorName":"Internal Audit","budget":7776245,"actual":4076572.34,"encumbrance":2730719.5,"fundsAvailable":968953.16},{"code":"4512010","name":"DCT - Strategy Affairs (Central) DEPT.","sector":"STRATEGIC_AFFAIRS","sectorName":"Strategic Affairs","budget":7071072,"actual":4145718.27,"encumbrance":980540.27,"fundsAvailable":1944813.46},{"code":"4510341","name":"Museums - NHM - Partnerships and Commercial","sector":"NATURAL_HISTORY_MUSEUM","sectorName":"Natural History Museum","budget":6049385,"actual":2829787.72,"encumbrance":1524374.57,"fundsAvailable":1695222.71},{"code":"4514150","name":"Museums - Visitor Experience","sector":"MUSEUM_SHARED_SERVICES","sectorName":"Museum Shared Services","budget":5759309,"actual":2248054,"encumbrance":3475560.5,"fundsAvailable":35694.5},{"code":"4515001","name":"DCT- DG Office Tourism","sector":"TOURISM","sectorName":"Tourism","budget":4033376,"actual":3306055.23,"encumbrance":0,"fundsAvailable":727320.77},{"code":"4510310","name":"Museums - NHM - Natural History Museum","sector":"NATURAL_HISTORY_MUSEUM","sectorName":"Natural History Museum","budget":2955090,"actual":2423017.09,"encumbrance":0,"fundsAvailable":532072.91},{"code":"4515600","name":"DCT - Tourist Destination Marketing & Promotion Dept.","sector":"STRATEGIC_MARKETING_COMMUNICATION","sectorName":"Strategic Marketing & Communication","budget":2883643,"actual":493524.97,"encumbrance":0,"fundsAvailable":2390118.03},{"code":"4510120","name":"Museums - LAD - Louvre Abu Dhabi","sector":"LOUVRE_ABU_DHABI","sectorName":"Louvre Abu Dhabi","budget":2478600,"actual":0,"encumbrance":0,"fundsAvailable":2478600},{"code":"4512500","name":"DCT - Organization Developments & Change Enablement Department","sector":"STRATEGIC_AFFAIRS","sectorName":"Strategic Affairs","budget":2060000,"actual":442684,"encumbrance":1617316,"fundsAvailable":0},{"code":"4519204","name":"ALC - Corporate Communication Office Head","sector":"ALC","sectorName":"ALC","budget":537037,"actual":87035.35,"encumbrance":0,"fundsAvailable":450001.65},{"code":"4510175","name":"DCT - Media Affairs Dept","sector":"STRATEGIC_MARKETING_COMMUNICATION","sectorName":"Strategic Marketing & Communication","budget":383874,"actual":383872.87,"encumbrance":0,"fundsAvailable":1.13},{"code":"4510460","name":"Museums - GAD - Marketing, Communications and Visitor Experience","sector":"UNCLASSIFIED","sectorName":"Unclassified","budget":292545,"actual":124573.08,"encumbrance":0,"fundsAvailable":167971.92},{"code":"4510450","name":"Museums - GAD - Education and Public Engagement","sector":"UNCLASSIFIED","sectorName":"Unclassified","budget":197911,"actual":84818.25,"encumbrance":0,"fundsAvailable":113092.75},{"code":"4510480","name":"Museums - GAD - Operations","sector":"UNCLASSIFIED","sectorName":"Unclassified","budget":162610,"actual":69690,"encumbrance":0,"fundsAvailable":92920},{"code":"4512400","name":"DCT - Achievement & Performance Dept","sector":"UNCLASSIFIED","sectorName":"Unclassified","budget":49763,"actual":49761.55,"encumbrance":0,"fundsAvailable":1.45},{"code":"4516200","name":"DCT - Publishing Dept","sector":"UNCLASSIFIED","sectorName":"Unclassified","budget":48000,"actual":48000,"encumbrance":0,"fundsAvailable":0},{"code":"4511011","name":"DCT - Abu Dhabi Public Art","sector":"CULTURE","sectorName":"Culture","budget":0,"actual":0,"encumbrance":0,"fundsAvailable":0},{"code":"4510202","name":"Museums","sector":"MUSEUMS","sectorName":"Museums","budget":0,"actual":0,"encumbrance":0,"fundsAvailable":0},{"code":"4511020","name":"DCT - Culture Sector Policy and Development Office","sector":"CULTURE","sectorName":"Culture","budget":-14963456,"actual":2987937.31,"encumbrance":-22916421.18,"fundsAvailable":4965027.87}]}</script>
+<script>
+(function(){
+  var DATA = JSON.parse(document.getElementById('fd-data').textContent);
+  var S = DATA.sectors.filter(function(s){ return s.budget || s.actual || s.encumbrance; });
+  var CC = DATA.costCenters.slice();
+  var TOTAL = DATA.totals;
+  var MAXB = Math.max.apply(null, S.map(function(s){ return s.budget; }));
+  var ICONS = {
+    building:'<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-5h6v5M8 7h2M14 7h2M8 11h2M14 11h2"/></svg>',
+    mask:'<svg viewBox="0 0 24 24"><path d="M4 5c2.5 1 5.5 1.5 8 1.5S17.5 6 20 5v6.5c0 4.5-3.5 8-8 8s-8-3.5-8-8Z"/><path d="M8.5 10.5c.8-.6 1.7-.6 2.5 0M13 10.5c.8-.6 1.7-.6 2.5 0M9 15c1.8 1.4 4.2 1.4 6 0"/></svg>',
+    compass:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 5.3-5.3 2.2 2.2-5.3Z"/></svg>',
+    brief:'<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M3 12h18"/></svg>',
+    mega:'<svg viewBox="0 0 24 24"><path d="M4 10v4h3l7 4V6l-7 4Z"/><path d="M17 9.5a3.5 3.5 0 0 1 0 5M8 14l1.5 5"/></svg>',
+    target:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>',
+    museum:'<svg viewBox="0 0 24 24"><path d="M3 9.5 12 4l9 5.5M4 10h16M6 10v8M10 10v8M14 10v8M18 10v8M3 20h18"/></svg>',
+    book:'<svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5V5.5M8 7h8"/></svg>',
+    shield:'<svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 9.5 4-1.5 7-5 7-9.5V6Z"/><path d="m9.5 12 1.8 1.8L15 10"/></svg>',
+    scale:'<svg viewBox="0 0 24 24"><path d="M12 4v16M6 20h12M5 8h14"/><path d="M5 8 3 13h4ZM19 8l-2 5h4Z"/></svg>',
+    wrench:'<svg viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0 5.2 5.2L10 21.5l-3-3L16.7 8.7"/><path d="M14.5 6.5 17 4l3 3-2.5 2.5"/></svg>',
+    clip:'<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6M9 18h3"/></svg>',
+    lab:'<svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 15h9"/></svg>',
+    grid:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>'
+  };
+  var SICON = { TOURISM:'compass', CULTURE:'mask', SUPPORT_SERVICE:'building', EXECUTIVE_OFFICE:'brief', STRATEGIC_MARKETING_COMMUNICATION:'mega', STRATEGIC_AFFAIRS:'target',
+    LOUVRE_ABU_DHABI:'museum', AD_GUGGENHEIM_MUSEUM:'museum', ZAYED_NATIONAL_MUSEUM:'museum', NATURAL_HISTORY_MUSEUM:'museum', MUSEUM_SHARED_SERVICES:'museum', MUSEUMS:'museum',
+    TEAMLAB:'lab', ALC:'book', INTERNAL_AUDIT:'shield', LEGAL_GOVERNMENT_AFFAIRS:'scale', PROJECTS_MANAGEMENT_ENGINEERING:'wrench', TENDERING_AND_PROJECTS_CONTROL:'clip' };
+  function icon(code){ return '<span class="ico">' + ICONS[SICON[code] || 'grid'] + '</span>'; }
+  var SNAME = {}; S.forEach(function(s){ SNAME[s.code] = s.name; });
+
+  function short(n){ var a = Math.abs(n), s = n < 0 ? '−' : '';
+    if (a >= 1e9) return s + (a/1e9).toFixed(2) + 'B'; if (a >= 1e6) return s + (a/1e6).toFixed(1) + 'M'; if (a >= 1e3) return s + (a/1e3).toFixed(0) + 'K'; return s + a.toFixed(0); }
+  function full(n){ return Math.round(n).toLocaleString('en-US'); }
+  function pct(a, b){ return b ? Math.round(a / b * 100) : 0; }
+  function share(a, b){ if (!b) return '0%'; var v = a / b * 100; return (v < 1 ? v.toFixed(1) : Math.round(v)) + '%'; }
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  function status(r){ var c = r.budget ? (r.actual + r.encumbrance) / r.budget : 0;
+    if (r.fundsAvailable < 0 || c > 1.0001) return { k:'over', t:'Over committed' };
+    if (c >= .9) return { k:'tight', t:'Tight' }; return { k:'ok', t:'On track' }; }
+  function freePill(r){ var st = status(r), f = pct(r.fundsAvailable, r.budget);
+    return '<span class="pill ' + st.k + '" title="' + st.t + '">' + (f < 0 ? '−' : '') + Math.abs(f) + '% free</span>'; }
+  function title(r){ return 'Budget ' + full(r.budget) + ' · Actual ' + full(r.actual) + ' · Encumbrance ' + full(r.encumbrance) + ' · Fund available ' + full(r.fundsAvailable); }
+  function cbar(r, outer, extra){ var b = r.budget || 1, a = Math.max(0, Math.min(100, r.actual / b * 100)), e = Math.max(0, Math.min(100 - a, r.encumbrance / b * 100)), f = Math.max(0, Math.min(100 - a - e, r.fundsAvailable / b * 100));
+    return '<div class="cbar' + (r.fundsAvailable < 0 ? ' over' : '') + (extra ? ' ' + extra : '') + '" style="width:' + (outer == null ? 100 : outer) + '%"><i class="ca" style="width:' + a + '%"></i><i class="ce" style="width:' + e + '%"></i><i class="cf" style="width:' + f + '%"></i></div>'; }
+
+  var state = { A:{ sec:{}, cc:{}, q:'', all:false, sort:'budget' }, B:{ sec:{}, cc:{}, q:'', all:false, sort:'budget' }, C:{ sec:{}, cc:{}, q:'', all:false, sort:'budget' } };
+  function keys(o){ return Object.keys(o); }
+  function secSel(st){ return keys(st.sec); } function ccSel(st){ return keys(st.cc); }
+  function deptsAll(st){ var sel = secSel(st); return CC.filter(function(c){ return !sel.length || st.sec[c.sector]; }); }
+  function depts(st){ var q = st.q.trim().toLowerCase(); var l = deptsAll(st).filter(function(c){ return !q || (c.code + ' ' + c.name + ' ' + c.sectorName).toLowerCase().indexOf(q) >= 0; });
+    if (st.sort === 'used') l = l.slice().sort(function(a,b){ return pct(b.actual,b.budget) - pct(a.actual,a.budget); });
+    else if (st.sort === 'free') l = l.slice().sort(function(a,b){ return pct(b.fundsAvailable,b.budget) - pct(a.fundsAvailable,a.budget); });
+    return l; }
+  function scopeRows(st){ var rows = deptsAll(st); if (ccSel(st).length) rows = rows.filter(function(c){ return st.cc[c.code]; }); return rows; }
+  function sum(rows){ return rows.reduce(function(t, r){ t.budget += r.budget; t.actual += r.actual; t.encumbrance += r.encumbrance; t.fundsAvailable += r.fundsAvailable; return t; }, { budget:0, actual:0, encumbrance:0, fundsAvailable:0 }); }
+  function prune(st){ var sel = secSel(st); if (!sel.length) return; keys(st.cc).forEach(function(k){ var c = CC.filter(function(x){ return x.code === k; })[0]; if (!c || !st.sec[c.sector]) delete st.cc[k]; }); }
+  function toggle(map, k){ if (map[k]) delete map[k]; else map[k] = 1; }
+
+  function pstrip(){ return '<div class="pstrip"><div><span class="ph">Budget Status</span> Budget, Actual, Encumbrance and Fund Available by chapter — every business unit</div><div><b>Sep 2026</b> YTD · <b>All units</b> · Figures in <b>Exact number</b></div></div>'; }
+  function scopeStrip(st){ var rows = scopeRows(st), t = sum(rows), ns = secSel(st).length, nc = ccSel(st).length;
+    var who = !ns && !nc ? 'Every sector · every department' : (ns ? ns + ' sector' + (ns > 1 ? 's' : '') : 'All sectors') + ' · ' + (nc ? nc + ' department' + (nc > 1 ? 's' : '') : rows.length + ' departments');
+    function kv(l, v, neg){ return '<div class="kv' + (neg ? ' neg' : '') + '"><span>' + l + '</span><b>' + short(v) + '</b></div>'; }
+    return '<div class="scope"><span class="lab">Chapter bands would show</span><span class="who">' + who + '</span>' + kv('Budget', t.budget) + kv('Actual', t.actual) + kv('Encumbrance', t.encumbrance) + kv('Fund available', t.fundsAvailable, t.fundsAvailable < 0) + '</div>'; }
+  function secHeaderRight(st, opt){ var sel = secSel(st); if (!sel.length) return '<span>Showing all ' + S.length + ' sectors</span>';
+    if (opt === 'B') return '<div class="chips">' + sel.map(function(k){ return '<span class="chip">' + esc(SNAME[k]) + '<button type="button" data-sec="' + k + '" aria-label="Remove">×</button></span>'; }).join('') + '<button type="button" class="kbtn" data-act="clear-sec">Clear</button></div>';
+    return '<span>' + sel.length + ' selected</span><button type="button" class="kbtn" data-act="clear-sec">Clear</button>'; }
+  function deptHeaderRight(st, shown, total, withSort){ var sel = ccSel(st);
+    return '<input type="search" placeholder="Filter departments…" value="' + esc(st.q) + '" data-q aria-label="Filter departments">' +
+      (withSort ? '<select data-sort aria-label="Sort"><option value="budget"' + (st.sort==='budget'?' selected':'') + '>Sort: Budget</option><option value="used"' + (st.sort==='used'?' selected':'') + '>Sort: % used</option><option value="free"' + (st.sort==='free'?' selected':'') + '>Sort: % free</option></select>' : '') +
+      '<span>' + (sel.length ? sel.length + ' selected' : 'Showing ' + shown + ' of ' + total) + '</span>' + (sel.length ? '<button type="button" class="kbtn" data-act="clear-cc">Clear</button>' : ''); }
+
+  /* ---------- A ---------- */
+  function renderA(){ var st = state.A, hasSel = secSel(st).length > 0, hasCc = ccSel(st).length > 0;
+    function fig(v, b, cls){ return '<span class="fig ' + (cls || '') + (v < 0 ? ' neg' : '') + '">' + short(v) + '<small>' + (b ? pct(v, b) + '% of budget' : '&nbsp;') + '</small></span>'; }
+    function head(first){ return '<div class="lg lg-head"><span></span><span></span><span>' + first + '</span><span>Budget to scale · Actual / Encumbrance / Fund</span><span class="r">Budget</span><span class="r">Actual</span><span class="r">Encumbrance</span><span class="r">Fund available</span></div>'; }
+    var srows = S.map(function(s){ var on = !!st.sec[s.code];
+      return '<button type="button" class="lg lg-row' + (on ? ' on' : (hasSel ? ' dim' : '')) + '" data-sec="' + s.code + '" aria-pressed="' + on + '" title="' + title(s) + '"><span class="chk"></span>' + icon(s.code) +
+        '<span class="nm">' + esc(s.name) + '<small class="sn">' + share(s.budget, TOTAL.budget) + ' of total budget · ' + pct(s.actual, s.budget) + '% used</small></span>' +
+        '<span class="share">' + cbar(s, s.budget / MAXB * 100) + '</span>' +
+        '<span class="fig bud">' + short(s.budget) + '<small>' + full(s.budget) + '</small></span>' + fig(s.actual, s.budget) + fig(s.encumbrance, s.budget) + fig(s.fundsAvailable, s.budget) + '</button>'; }).join('');
+    var all = depts(st), maxd = Math.max.apply(null, deptsAll(st).map(function(c){ return c.budget; })), list = st.all ? all : all.slice(0, 12);
+    var drows = list.map(function(c){ var on = !!st.cc[c.code];
+      return '<button type="button" class="lg lg-row' + (on ? ' on' : (hasCc ? ' dim' : '')) + '" data-cc="' + c.code + '" aria-pressed="' + on + '" title="' + title(c) + '"><span class="chk"></span>' + icon(c.sector) +
+        '<span class="nm">' + esc(c.name) + '<small>' + c.code + ' · <span style="font-family:var(--font)">' + esc(c.sectorName) + '</span></small></span>' +
+        '<span class="share">' + cbar(c, c.budget / maxd * 100) + '</span>' +
+        '<span class="fig bud">' + short(c.budget) + '<small>' + full(c.budget) + '</small></span>' + fig(c.actual, c.budget) + fig(c.encumbrance, c.budget) + fig(c.fundsAvailable, c.budget) + '</button>'; }).join('');
+    if (!list.length) drows = '<div class="empty">No department matches the filter. Clear the text or pick another sector.</div>';
+    var more = all.length > 12 ? '<button type="button" class="lg-more" data-act="all">' + (st.all ? 'Show top 12 only' : 'Show all ' + all.length + ' departments') + '</button>' : '';
+    document.getElementById('mockA').innerHTML = pstrip() +
+      '<div class="region"><div class="rh"><span class="t">Sectors</span><span class="hint">Click one or more sectors to filter the chapters below — bars share one scale, longest = largest budget</span><span class="right">' + secHeaderRight(st, 'A') + '</span></div><div class="rb">' + head('Sector') + srows + '</div></div>' +
+      '<div class="region"><div class="rh"><span class="t">Departments (Cost Centres)</span><span class="hint">Cost centres of the selected sectors, ranked by budget</span><span class="right">' + deptHeaderRight(st, list.length, all.length, false) + '</span></div><div class="rb" data-dbody>' + head('Department') + drows + more + '</div></div>' + scopeStrip(st); }
+
+  /* ---------- B ---------- */
+  function renderB(){ var st = state.B, hasSel = secSel(st).length > 0, hasCc = ccSel(st).length > 0;
+    var stiles = S.map(function(s){ var on = !!st.sec[s.code];
+      return '<button type="button" class="tile' + (on ? ' on' : (hasSel ? ' dim' : '')) + '" data-sec="' + s.code + '" aria-pressed="' + on + '" title="' + title(s) + '">' +
+        '<span class="top">' + icon(s.code) + '<span class="nm">' + esc(s.name) + '</span><span class="chk"></span></span>' +
+        '<span class="big">' + short(s.budget) + '<small>' + share(s.budget, TOTAL.budget) + ' OF TOTAL</small></span>' + cbar(s) +
+        '<span class="foot"><span><b>' + pct(s.actual, s.budget) + '%</b> used · <b>' + pct(s.encumbrance, s.budget) + '%</b> committed</span></span>' +
+        '<span class="foot">' + freePill(s) + '<span>Fund <b' + (s.fundsAvailable < 0 ? ' style="color:var(--bad)"' : '') + '>' + short(s.fundsAvailable) + '</b></span></span></button>'; }).join('');
+    var all = depts(st), list = st.all ? all : all.slice(0, 18);
+    var dtiles = list.map(function(c){ var on = !!st.cc[c.code];
+      return '<button type="button" class="tile d' + (on ? ' on' : (hasCc ? ' dim' : '')) + '" data-cc="' + c.code + '" aria-pressed="' + on + '" title="' + title(c) + '">' +
+        '<span class="code">' + c.code + '<span class="sn">' + esc(c.sectorName) + '</span><span class="chk"></span></span>' +
+        '<span class="nm">' + esc(c.name) + '</span>' +
+        '<span class="row"><span class="v">' + short(c.budget) + '</span>' + cbar(c) + '</span>' +
+        '<span class="foot"><span><b>' + pct(c.actual, c.budget) + '%</b> used · <b>' + pct(c.encumbrance, c.budget) + '%</b> committed</span>' + freePill(c) + '</span></button>'; }).join('');
+    if (!list.length) dtiles = '<div class="empty" style="grid-column:1/-1">No department matches the filter. Clear the text or pick another sector.</div>';
+    var more = all.length > 18 ? '<button type="button" class="lg-more" data-act="all" style="margin:12px 0 0;width:100%">' + (st.all ? 'Show top 18 only' : 'Show all ' + all.length + ' departments') + '</button>' : '';
+    document.getElementById('mockB').innerHTML = pstrip() +
+      '<div class="region"><div class="rh"><span class="t">Sectors</span><span class="hint">Click one or more sectors to filter the chapters below</span><span class="right">' + secHeaderRight(st, 'B') + '</span></div><div class="rb"><div class="tiles">' + stiles + '</div></div></div>' +
+      '<div class="region"><div class="rh"><span class="t">Departments (Cost Centres)</span><span class="hint">Cost centres of the selected sectors — click one or more to narrow further</span><span class="right">' + deptHeaderRight(st, list.length, all.length, true) + '</span></div><div class="rb" data-dbody><div class="tiles dept">' + dtiles + '</div>' + more + '</div></div>' + scopeStrip(st); }
+
+  /* ---------- C ---------- */
+  function heat(r){ var c = r.budget ? (r.actual + r.encumbrance) / r.budget : 0;
+    if (r.fundsAvailable < 0 || c > 1.0001) return { bg:'#9E3B33', t:'darkt' };
+    if (c >= .9) return { bg:'#2C5044', t:'darkt' }; if (c >= .8) return { bg:'#4F8A75', t:'darkt' }; if (c >= .6) return { bg:'#9CC3B3', t:'light' }; return { bg:'#DCE9E3', t:'light' }; }
+  function worst(row, side, scale){ var s = 0; row.forEach(function(i){ s += i.v * scale; }); var th = s / side, w = 0; row.forEach(function(i){ var len = i.v * scale / th; w = Math.max(w, th / len, len / th); }); return w; }
+  function squarify(items, x, y, w, h){ var out = [], rest = items.filter(function(i){ return i.v > 0; }).sort(function(a,b){ return b.v - a.v; }); if (!rest.length || w <= 0 || h <= 0) return out;
+    var total = 0; rest.forEach(function(i){ total += i.v; }); var scale = w * h / total, cx = x, cy = y, cw = w, ch = h;
+    while (rest.length){ var vert = cw >= ch, side = vert ? ch : cw, row = [], best = Infinity;
+      while (rest.length){ var cand = row.concat([rest[0]]), wr = worst(cand, side, scale); if (wr <= best || !row.length){ row = cand; best = wr; rest.shift(); } else break; }
+      var area = 0; row.forEach(function(i){ area += i.v * scale; }); var th = area / side, off = 0;
+      row.forEach(function(i){ var len = i.v * scale / th; out.push({ it:i, x: vert ? cx : cx + off, y: vert ? cy + off : cy, w: vert ? th : len, h: vert ? len : th }); off += len; });
+      if (vert){ cx += th; cw -= th; } else { cy += th; ch -= th; } }
+    return out; }
+  function tmTile(r, box, attrs, on, dim, isDept){ var hh = heat(r), big = box.w > 118 && box.h > 84, mid = box.w > 72 && box.h > 30, code = isDept && box.h > 100;
+    var inner = big ? (code ? '<span class="cd">' + r.code + '</span>' : '') + '<span class="nm">' + esc(r.name) + '</span><span class="fg">' + short(r.budget) + '</span><span class="sub">' + pct(r.actual, r.budget) + '% used · ' + pct(r.encumbrance, r.budget) + '% committed</span>'
+      : mid ? '<span class="nm">' + esc(isDept ? r.name.replace(/^(DCT|Museums|ALC)\s-\s/, '') : r.name) + '</span>' + (box.h > 44 ? '<span class="sub">' + short(r.budget) + '</span>' : '') : '';
+    return '<button type="button" class="tm ' + hh.t + (on ? ' on' : (dim ? ' dim' : '')) + '" ' + attrs + ' aria-pressed="' + on + '" style="left:' + box.x + 'px;top:' + box.y + 'px;width:' + box.w + 'px;height:' + box.h + 'px;background:' + hh.bg + '" title="' + esc(r.name) + ' — ' + title(r) + '">' + inner + '</button>'; }
+  function tmLegend(){ return '<div class="tm-legend"><span>Tile area = share of budget</span><span class="sep">·</span><span>Fill = % consumed (Actual + Encumbrance):</span><span class="sw"><i style="background:#DCE9E3"></i>&lt;60%</span><span class="sw"><i style="background:#9CC3B3"></i>60–80%</span><span class="sw"><i style="background:#4F8A75"></i>80–90%</span><span class="sw"><i style="background:#2C5044"></i>90–100%</span><span class="sw"><i style="background:#9E3B33"></i>over committed</span></div>'; }
+  function renderC(){ var st = state.C, hasSel = secSel(st).length > 0, hasCc = ccSel(st).length > 0, root = document.getElementById('mockC');
+    var W = Math.max(600, (root.clientWidth || 1180) - 44 - 32), H1 = 330, H2 = 380;
+    var sboxes = squarify(S.map(function(s){ return { v:s.budget, r:s }; }), 0, 0, W, H1);
+    var stiles = sboxes.map(function(b){ var s = b.it.r; return tmTile(s, b, 'data-sec="' + s.code + '"', !!st.sec[s.code], hasSel, false); }).join('');
+    var pool = depts(st), groups = {}; pool.forEach(function(c){ (groups[c.sector] = groups[c.sector] || []).push(c); });
+    var gitems = keys(groups).map(function(k){ var v = 0; groups[k].forEach(function(c){ v += Math.max(0, c.budget); }); return { v:v, k:k }; });
+    var gboxes = squarify(gitems, 0, 0, W, H2), dtiles = '';
+    gboxes.forEach(function(g){ var strip = g.h > 46 && g.w > 60 ? 20 : 0;
+      dtiles += '<div class="tm-grp" style="left:' + g.x + 'px;top:' + g.y + 'px;width:' + g.w + 'px;height:' + g.h + 'px">' + (strip ? '<span class="gl">' + esc(SNAME[g.it.k]) + '</span>' : '') + '</div>';
+      var inner = squarify(groups[g.it.k].map(function(c){ return { v:c.budget, r:c }; }), g.x + 2, g.y + strip + 2, g.w - 4, g.h - strip - 4);
+      inner.forEach(function(b){ var c = b.it.r; dtiles += tmTile(c, b, 'data-cc="' + c.code + '"', !!st.cc[c.code], hasCc, true); }); });
+    if (!pool.length) dtiles = '<div class="empty">No department matches the filter. Clear the text or pick another sector.</div>';
+    root.innerHTML = pstrip() +
+      '<div class="region"><div class="rh"><span class="t">Sectors</span><span class="hint">Click one or more sectors to filter the chapters below — the bigger the tile, the bigger the budget; the darker, the more consumed</span><span class="right">' + secHeaderRight(st, 'C') + '</span></div><div class="rb"><div class="tm-wrap" style="height:' + H1 + 'px">' + stiles + '</div>' + tmLegend() + '</div></div>' +
+      '<div class="region"><div class="rh"><span class="t">Departments (Cost Centres)</span><span class="hint">Cost centres nested in their sectors — click one or more to narrow further</span><span class="right">' + deptHeaderRight(st, pool.length, deptsAll(st).length, false) + '</span></div><div class="rb" data-dbody><div class="tm-wrap" style="height:' + H2 + 'px">' + dtiles + '</div></div></div>' + scopeStrip(st); }
+
+  var R = { A:renderA, B:renderB, C:renderC };
+  keys(R).forEach(function(opt){ var root = document.getElementById('mock' + opt), st = state[opt];
+    root.addEventListener('click', function(ev){ var b = ev.target.closest('[data-sec],[data-cc],[data-act]'); if (!b || !root.contains(b)) return;
+      if (b.hasAttribute('data-sec')) { toggle(st.sec, b.getAttribute('data-sec')); prune(st); }
+      else if (b.hasAttribute('data-cc')) toggle(st.cc, b.getAttribute('data-cc'));
+      else { var a = b.getAttribute('data-act'); if (a === 'clear-sec') { st.sec = {}; } else if (a === 'clear-cc') st.cc = {}; else if (a === 'all') st.all = !st.all; }
+      R[opt](); });
+    root.addEventListener('input', function(ev){ if (ev.target.hasAttribute('data-q')) { st.q = ev.target.value; var pos = ev.target.selectionStart; R[opt](); var i = root.querySelector('[data-q]'); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch(e){} } } });
+    root.addEventListener('change', function(ev){ if (ev.target.hasAttribute('data-sort')) { st.sort = ev.target.value; R[opt](); } });
+    R[opt](); });
+  var rt; window.addEventListener('resize', function(){ clearTimeout(rt); rt = setTimeout(renderC, 120); });
+})();
+</script>

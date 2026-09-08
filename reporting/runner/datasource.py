@@ -39,6 +39,12 @@ def fetch(conn, source_type, source_ref, params):
     cur.execute(sql, binds) if binds else cur.execute(sql)
     columns = [d[0].lower() for d in cur.description]
     rows = cur.fetchall()
+    # CLOB columns (e.g. the SECTOR_PERF_BOOK terms section's rich-text HTML)
+    # arrive as oracledb LOB handles -- materialise them so templates render
+    # the text, not the handle repr. Handles die with the cursor, so read now.
+    if any(hasattr(v, "read") for row in rows[:1] for v in row):
+        rows = [tuple(v.read() if hasattr(v, "read") else v for v in row)
+                for row in rows]
     return columns, rows
 
 

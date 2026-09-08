@@ -25,6 +25,8 @@ contract, organizer P&L, post-event report).
 | AR Customer WS package `DCT_AR_WS_PKG` | ✅ Deployed + unit-tested (mock 8/8) | `db/09_ar_customer_ws_pkg.sql` — envelope/gateway/parse/mock; STAGE reachable from ADB, PROD awaits IP whitelisting |
 | AR Customer ORDS (`customers/*` ×9, additive) | ✅ Published + API-smoked 12/12 | `db/10_ar_customer_ords.sql` — RE-RUN after any 05 re-run |
 | AR Customer JET pages (`arCustomers` + `arCustomerForm`) | ✅ Built + browser-smoked 19/19 | APP_VERSION 4.6.0; 67-field form, Fusion lookup modal, mock banner | Per standing rule: build in APEX Builder 24.2 first |
+| AR Transactions dashboard ORDS (`trx/*` ×7, additive + `DCT_AR_TRX_PKG` facet engine) | ✅ Deployed + API-smoked 2026-09-02 | `db/12_ar_trx_ords.sql` — RE-RUN after any 05 re-run (post-05 list = 10, 11, 12) |
+| AR Transactions dashboard JET page (`arTrxDashboard`) | ✅ Built + browser-smoked 28/28 (EN+AR) | APP_VERSION 4.11.0; AP-dashboard pattern: facet rail, KPI band, 8 charts, 2-level register, drill window/drawer, build-bar loader |
 
 ## AI live-test results
 

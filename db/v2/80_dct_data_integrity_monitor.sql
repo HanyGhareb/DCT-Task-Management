@@ -197,7 +197,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_integrity_pkg AS
         prod.dct_notify.send(u.user_id,'WARNING','Database integrity warning',
           l_warnings||' constraint(s) need validation. Actual data findings: '||
           l_orphans||' orphan row(s), '||l_duplicates||' duplicate group(s).',
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
     END IF;
 

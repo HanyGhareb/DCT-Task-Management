@@ -79,7 +79,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_scheduler_health_pkg AS
                 'Database job failed twice: ' || j.job_name,
                 'The job failed in its last two runs. Last error: ' ||
                   SUBSTR(NVL(l_info,'No error details supplied by Oracle.'),1,3500),
-                NULL, NULL, 'ADMIN', '/Admin/Jet/index.html#runners');
+                NULL, NULL, 'ADMIN', '/dct/index.html#runners');
             END LOOP;
 
             MERGE INTO prod.dct_scheduler_alert_state s

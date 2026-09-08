@@ -172,6 +172,40 @@ BEGIN
  APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM); END;!');
 
+  dt('revenue-categories/lov');
+  dh('revenue-categories/lov','GET',q'!
+DECLARE
+ l_user VARCHAR2(100):=dct_rest.validate_session;
+ l_kind VARCHAR2(30):=UPPER(TRIM([COLON]kind));
+ l_search VARCHAR2(200):=UPPER(TRIM([COLON]search));
+ l_project VARCHAR2(100):=TRIM([COLON]project);
+ PROCEDURE item(p_value VARCHAR2,p_label VARCHAR2,p_detail VARCHAR2 DEFAULT NULL) IS
+ BEGIN APEX_JSON.open_object; APEX_JSON.write('value',p_value); APEX_JSON.write('label',p_label); APEX_JSON.write('detail',NVL(p_detail,'')); APEX_JSON.close_object; END;
+BEGIN
+ IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+ IF l_kind NOT IN ('TRANSACTION_TYPE','TRANSACTION_SOURCE','REVENUE_TYPE','COST_CENTER','GL_ACCOUNT','PROJECT','TASK','CUSTOMER') THEN dct_rest.err(400,'Invalid LOV kind'); RETURN; END IF;
+ dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
+ item('ALL','ALL — All values');
+ IF l_kind='TRANSACTION_TYPE' THEN
+  FOR x IN (SELECT value FROM (SELECT DISTINCT TRIM(transaction_type_name) value FROM prod.ar_transaction_details_v WHERE transaction_type_name IS NOT NULL AND (l_search IS NULL OR UPPER(transaction_type_name) LIKE '%'||l_search||'%') ORDER BY 1) WHERE ROWNUM<=100) LOOP item(x.value,x.value); END LOOP;
+ ELSIF l_kind='TRANSACTION_SOURCE' THEN
+  FOR x IN (SELECT value FROM (SELECT DISTINCT TRIM(transaction_source) value FROM prod.ar_transaction_details_v WHERE transaction_source IS NOT NULL AND (l_search IS NULL OR UPPER(transaction_source) LIKE '%'||l_search||'%') ORDER BY 1) WHERE ROWNUM<=100) LOOP item(x.value,x.value); END LOOP;
+ ELSIF l_kind='REVENUE_TYPE' THEN
+  FOR x IN (SELECT value,detail FROM (SELECT DISTINCT TRIM(revenue_type) value, TRIM(service_name) detail FROM prod.atd_ar_revenue_types WHERE revenue_type IS NOT NULL AND (l_search IS NULL OR UPPER(revenue_type||' '||service_name) LIKE '%'||l_search||'%') ORDER BY 1,2) WHERE ROWNUM<=100) LOOP item(x.value,x.value,x.detail); END LOOP;
+ ELSIF l_kind='COST_CENTER' THEN
+  FOR x IN (SELECT value,detail FROM (SELECT DISTINCT TRIM(cost_center) value,TRIM(cost_center_description) detail FROM prod.atd_gl_cost_centers_list WHERE cost_center IS NOT NULL AND (l_search IS NULL OR UPPER(cost_center||' '||cost_center_description) LIKE '%'||l_search||'%') ORDER BY 1) WHERE ROWNUM<=100) LOOP item(x.value,x.value,x.detail); END LOOP;
+ ELSIF l_kind='GL_ACCOUNT' THEN
+  FOR x IN (SELECT value,detail FROM (SELECT DISTINCT TRIM(account_code) value,TRIM(account_description) detail FROM prod.atd_gl_account_list WHERE account_code IS NOT NULL AND (l_search IS NULL OR UPPER(account_code||' '||account_description) LIKE '%'||l_search||'%') ORDER BY 1) WHERE ROWNUM<=100) LOOP item(x.value,x.value,x.detail); END LOOP;
+ ELSIF l_kind='PROJECT' THEN
+  FOR x IN (SELECT value,detail FROM (SELECT DISTINCT TRIM(project_number) value,TRIM(project_name) detail FROM prod.projects WHERE project_number IS NOT NULL AND (l_search IS NULL OR UPPER(project_number||' '||project_name) LIKE '%'||l_search||'%') ORDER BY 1) WHERE ROWNUM<=100) LOOP item(x.value,x.value,x.detail); END LOOP;
+ ELSIF l_kind='TASK' AND l_project IS NOT NULL AND l_project<>'ALL' THEN
+  FOR x IN (SELECT value,detail FROM (SELECT DISTINCT TRIM(t.task_number) value,TRIM(t.task_name) detail FROM prod.tasks t JOIN prod.projects p ON p.project_id=t.project_id WHERE p.project_number=l_project AND t.task_number IS NOT NULL AND (l_search IS NULL OR UPPER(t.task_number||' '||t.task_name) LIKE '%'||l_search||'%') ORDER BY 1) WHERE ROWNUM<=100) LOOP item(x.value,x.value,x.detail); END LOOP;
+ ELSIF l_kind='CUSTOMER' THEN
+  FOR x IN (SELECT value FROM (SELECT DISTINCT TRIM(bill_to_customer_number) value FROM prod.ar_transaction_details_v WHERE bill_to_customer_number IS NOT NULL AND (l_search IS NULL OR UPPER(bill_to_customer_number) LIKE '%'||l_search||'%') ORDER BY 1) WHERE ROWNUM<=100) LOOP item(x.value,x.value); END LOOP;
+ END IF;
+ APEX_JSON.close_array; APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM); END;!');
+
   dh('revenue-categories','POST',q'!
 DECLARE l_user VARCHAR2(100):=dct_rest.validate_session; l_id NUMBER; l_level VARCHAR2(10); l_parent NUMBER;
 BEGIN

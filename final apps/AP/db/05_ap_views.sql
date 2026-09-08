@@ -374,12 +374,20 @@ FROM prod.ap_invoice_distributions d
 LEFT JOIN prod.ap_invoices i   ON i.invoice_id = d.invoice_id
 LEFT JOIN benef_site bs        ON bs.supplier_number = i.supplier_number
                               AND bs.site = i.site
-LEFT JOIN ap_po_match pm       ON pm.po_number    = d.po_number
-                              AND pm.po_line      = d.po_line
-                              AND pm.po_dist_line = d.po_distribution_line
+-- LINE-GRAIN PO RULE (2026-09-06): a corrected PO match lives on the invoice
+-- LINE; the accounted distributions keep the original. Line wins.
+LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                  MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                  MAX(po_distribution) AS po_distribution
+           FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+           GROUP BY invoice_id, invoice_line_number) lgp
+       ON lgp.invoice_id = d.invoice_id AND lgp.invoice_line_number = d.line_number
+LEFT JOIN ap_po_match pm       ON pm.po_number    = COALESCE(lgp.po_number, d.po_number)
+                              AND pm.po_line      = COALESCE(lgp.po_line_number, d.po_line)
+                              AND pm.po_dist_line = COALESCE(lgp.po_distribution, d.po_distribution_line)
 LEFT JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
 LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = COALESCE(pm.charge_account, cid.cc_string)
-LEFT JOIN po_hdr ph            ON ph.order_number = d.po_number
+LEFT JOIN po_hdr ph            ON ph.order_number = COALESCE(lgp.po_number, d.po_number)
 LEFT JOIN pr_hdr prh           ON prh.pr_number = d.requisition
 LEFT JOIN proj_by_id pj        ON pj.project_id = d.project_id
 LEFT JOIN task_by_id tk        ON tk.task_id    = d.task_id;

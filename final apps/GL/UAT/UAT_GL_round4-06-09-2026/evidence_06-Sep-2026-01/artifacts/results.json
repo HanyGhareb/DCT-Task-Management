@@ -1,0 +1,98 @@
+[
+  [
+    "en-tiles PDF and PPT page counts match",
+    true
+  ],
+  [
+    "en-tiles PDF retains all 30 department identifiers",
+    true
+  ],
+  [
+    "en-tiles all PPT slides contain report artwork",
+    true
+  ],
+  [
+    "en-tiles PDF contains no blank pages",
+    true
+  ],
+  [
+    "en-rows PDF and PPT page counts match",
+    true
+  ],
+  [
+    "en-rows PDF retains all 30 department identifiers",
+    true
+  ],
+  [
+    "en-rows all PPT slides contain report artwork",
+    true
+  ],
+  [
+    "en-rows PDF contains no blank pages",
+    true
+  ],
+  [
+    "en-map PDF and PPT page counts match",
+    true
+  ],
+  [
+    "en-map PDF retains all 30 department identifiers",
+    true
+  ],
+  [
+    "en-map all PPT slides contain report artwork",
+    true
+  ],
+  [
+    "en-map PDF contains no blank pages",
+    true
+  ],
+  [
+    "ar-tiles PDF and PPT page counts match",
+    true
+  ],
+  [
+    "ar-tiles PDF retains all 30 department identifiers",
+    true
+  ],
+  [
+    "ar-tiles all PPT slides contain report artwork",
+    true
+  ],
+  [
+    "ar-tiles PDF contains no blank pages",
+    true
+  ],
+  [
+    "ar-rows PDF and PPT page counts match",
+    true
+  ],
+  [
+    "ar-rows PDF retains all 30 department identifiers",
+    true
+  ],
+  [
+    "ar-rows all PPT slides contain report artwork",
+    true
+  ],
+  [
+    "ar-rows PDF contains no blank pages",
+    true
+  ],
+  [
+    "ar-map PDF and PPT page counts match",
+    true
+  ],
+  [
+    "ar-map PDF retains all 30 department identifiers",
+    true
+  ],
+  [
+    "ar-map all PPT slides contain report artwork",
+    true
+  ],
+  [
+    "ar-map PDF contains no blank pages",
+    true
+  ]
+]

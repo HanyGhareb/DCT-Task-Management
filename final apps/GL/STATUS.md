@@ -17,6 +17,32 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-09-08 (2)** — MSS report: **Task Name beside every Task Number on ALL sheets**
+  (`APP_VERSION` **1.122.1**, reporting/db/46 re-run — sheets 2/3/6/7 via the tnm map, sheet 8
+  exposes the PBT line's native task_name; webtier overlay 20260908162307). mss_register_api_smoke
+  **38/38** · browser **12/12**.
+- **2026-09-08** — **MSS - Projects Budget Utilization report** (`APP_VERSION` **1.122.0**): NEW
+  definition `MSS_BUTIL_REGISTER` (reporting/db/46 — register copy w/ FIXED 26-col sheet 1
+  [Task Number kept + Task Name], Requester on sheets 2–6 [AP = matched PO line via the
+  line-grain rule + invoice_date disambiguator; GRN/PO = PO requestor; PR = requisition
+  requester; Pending = per doc], Task Name on sheets 4–5; per-section JSON_VALUE→REPLACE→
+  JSON_TRANSFORM surgery w/ asserted patterns; re-run 46 after any 25 re-run) + NEW GL/db/53
+  bridge `/gl/butil/mssxlsx[/:id[/file]]` (**GL post-05 re-run list = 07..53**) + Generate
+  Report ▾ entry 5 of 6. Tests: mss_register_api_smoke 30/30 (live run, per-sheet layout +
+  fill verified) · mss_register_browser_smoke 12/12 EN+AR.
+- **2026-09-07** — **FBP - Projects Budget Utilization report** (`APP_VERSION` **1.120.0**, webtier
+  GL-only overlay 20260907144600): NEW definition `FBP_BUTIL_REGISTER` (reporting/db/45 — copy of
+  BUDGET_UTIL_REGISTER with a FIXED 21-column sheet 1: Task Name replaces Task Number, the sample's
+  19 red-marked columns removed; re-run 45 after any 25 re-run) + NEW GL/db/52 bridge
+  `/gl/butil/fbpxlsx[/:id[/file]]` (no sheetcols — Manage Columns never affects it; **GL post-05
+  re-run list = 07..52**) + Generate Report ▾ entry 4 of 5. Tests: fbp_register_api_smoke 18/18
+  (live run #1103, workbook layout verified) · fbp_register_browser_smoke 12/12 EN+AR (deployed).
+- **2026-09-06 (3)** — **PLATFORM RULE: budget = expense side only** (`APP_VERSION` **1.117.0**, webtier
+  GL-only overlay 20260906111321): the 3270xx Treasury-contribution funding mirror is dropped at
+  `GL_BALANCES_CC` (db/v2/32) + `DCT_EBS_BALANCE_MAPPED_V` (110); `DCT_BUDGET_ACTUAL(_PERIOD)_V` (32/34)
+  expense-only; YoY both legs `LIKE '4%'` (GL/db/18 + reporting/db/32); GL/db/04 re-issued as the SINGLE
+  SOURCE of `DCT_GL_COA_V` (38/39/40 restored after the 2026-09-05 Entity re-run had reverted them, Entity
+  kept). Period view 09-2026 = 8,851,453,715 = the Budget Status bands; footnote reworded. Tests: fd_api 144/144 · dof_api 31/31 (after the DETAIL fix) · entity_class_api 30/30 (after the kick fix) · mappings_api 11/11 · sectorperf_api 70/70 (incl. RECON vs /gl/butil) · fd_browser 190/190 · yoy_browser 24/24 (both legs expense-scoped) · legacy_browser 17/17 · recon_browser 27/29 (the 2 = the pre-existing 'no console errors' checks tripped by the shared shell's js/i18n 404 probes — the same 2 recorded on 2026-07-25; every functional check passes EN+AR) — all on the local tree with the new views; frontend release verified live (APP_VERSION 1.117.0 + footnote marker).
 - **2026-08-23 (2)** — **Comments feedback round** (`APP_VERSION` **1.83.0**, GL/db/26+21+11
   re-runs + reporting/db/25, webtier release 20260823183954 GL-only overlay): dashboard
   accounting-period select FIXED (the Portfolio page's shared-observable select had
@@ -250,3 +276,157 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 - GL/db/36 owns the category hierarchy, mapping rules, access assignments and
   eight additive ORDS handlers. Production starts empty; no mockup data seeded.
 - Webtier release: `20260831232838`.
+## 2026-09-03 — FD Dashboard / Budget Status (v1.102.0)
+
+- LIVE under General Ledger → Budget Status (right after Financial Performance).
+- User sketch → 3 mockups (`final apps/BI/docs/FD Dashboard/mockups/`) → mockup A "Ring Bands".
+- Webtier release: `20260903110916` (rollback `20260902122830`).
+- GL/db/42 `GET /gl/fd/status` (additive; post-05 list = 07..42). Same basis as the FMR tab,
+  reconciles to `/gl/fmr/entity` to the cent (fd_api_smoke 47/47, fd_browser_smoke 55/55 EN+AR).
+- 2026-09-03 v1.103.0: every band figure drills (GL/db/43 `GET /gl/fd/lines`, full 10-segment
+  combination grain + the shared segment-description popover); post-05 list = 07..43;
+  fd_api_smoke 90/90 · fd_browser_smoke 72/72 EN+AR. Webtier release `20260903121501` (rollback `20260903110916`).
+- 2026-09-03 v1.104.0: Departments (Cost Centres) card region under Sectors (multi-select, text
+  filter; cube at cost-centre grain, drill `costcenter=`); fd_api_smoke 104/104 · fd_browser_smoke 95/95.
+  Webtier release `20260903140645` (rollback `20260903121501`).
+- 2026-09-03 v1.105.0: Budget Status PRESENTATION switch — Search parameter renders the Sectors +
+  Departments regions as Composition tiles (default) / Ledger rows / Proportional map (treemap), same
+  multi-select state, remembered in this browser; state pills + map heat on the echoed vs-Budget
+  thresholds (GL/db/42 re-run, `thresholds{near,over}`); departments top-N + Show all. fd_api_smoke
+  105/105 · fd_browser_smoke 129/129 EN+AR (local + deployed). Webtier release `20260903155452`
+  (rollback `20260903140645`).
+- 2026-09-03 v1.106.0: Budget Status — Presentation = radio option cards + formatted reading hint
+  (thresholds + legend), explicit Sort (budget amount default · % used · % free · name) on Sectors AND
+  Departments, coloured ⓘ hint strips inside both regions (lead + tip + sort + top-N + legend).
+  Advisory only: balance-by-period ring hint (3 mockups in BI/docs/FD Dashboard/mockups, timings in
+  deployment-notes). fd_browser_smoke 140/140 EN+AR (local + deployed). Webtier release
+  `20260903161739` (rollback `20260903155452`).
+- 2026-09-03 v1.107.0: Budget Status — approach A: GL/db/42 = ONE scan for the whole year
+  (`series[]` per cube key × period + `periods[]` + `excludedByPeriod{}`; anchor rows/LOVs collected
+  from the same pass — 3.0 s / 221 KB, was 6.6 s with a second scan); period switch inside the year is
+  client-side (no request); Mockup-2 "monthly movement" hover popover on every ring + the Fund
+  square (brought-forward pale + month movement strong, negative in red, one scale, avg month).
+  fd_api_smoke 113/113 · fd_browser_smoke 156/156 EN+AR (local + deployed). Webtier release
+  `20260903173502` (rollback `20260903161739`).
+- 2026-09-03 v1.108.0: Budget Status — the monthly-movement popover on every SECTOR + DEPARTMENT
+  card in all three presentations (card = Actual, a figure inside = that measure, 4-measure chip
+  strip; sector = BU scope, department = BU ∩ picked sectors — last bar == the card figure; no
+  request, summed from the loaded year series). fd_browser_smoke 172/172 EN+AR (local + deployed).
+  Webtier release `20260903175814` (rollback `20260903173502`).
+- 2026-09-04 v1.109.0: Budget Status — Presentation parameter = vertical radio stack pinned to the
+  end side of the Search grid (last two columns, spans criteria + hint rows, dense flow, RTL mirror);
+  "Business unit" → "Entity" / "All entities" (EN+AR). fd_browser_smoke 175/175 EN+AR (local +
+  deployed). Webtier release `20260904044956` (rollback `20260903175814`).
+- 2026-09-04 v1.110.0: Budget Status — the Chapter ring bands moved to be the FIRST region after
+  Search (order now Chapters → Sectors → Departments; user, urgent). Frontend only (index.html block move +
+  `.fd-bands` margin-bottom); smoke 176/176 EN+AR; webtier GL-only overlay release 20260904074820.
+- 2026-09-04 v1.111.0: Budget Status — TOTAL band on top of the chapter rings (Budget / Actual /
+  Encumbrance / Fund Available summed over Chapters 1–3, same scope as the bands; drills + hover ladder
+  with no chapter predicate; user, urgent). Frontend only; smoke 184/184 EN+AR; webtier GL-only overlay
+  release 20260904080059.
+- 2026-09-04 v1.112.0: Budget Status — Chapter 4 (Subsidy) + Chapter 5 (Aids & Grants) bands (user,
+  urgent). GL/db/42 + 43 re-run: band rule = chapter × budget-group PAIRS (CH1–3 → bg 1, CH4 → bg 3,
+  CH5 → bg 5 — CH4/CH5 have NOTHING on bg 1); Total band = Chapters 1–5; Budget sub-label names each
+  band's own budget group. API smoke 144/144 (FMR reconciliation scoped to CH1–3) + browser 188/188 EN+AR;
+  webtier GL-only overlay release 20260904081416.
+- 2026-09-04 GL/db/46: FIX — `PUT /gl/mappings/:id` (assignment end date / dates / notes from the
+  Classification-values drawer + Manage CoA Mapping modal) returned ORDS 555 since birth (scalar
+  subquery inside a PL/SQL expression = PLS-00405); rewritten to SELECT INTO locals; synced into 05.
+  mappings_api_smoke 11/11 + live drawer probe. Post-05 re-run list now ends at 46.
+- 2026-09-06 v1.115.0 Sector Performance Report: NEW Generate Report menu entry running
+  SECTOR_PERF_BOOK (reporting/db/42 = a copy of BUDGET_UTIL_BOOK with a distribution cover:
+  DCT logo top-right + copyright line on EVERY page via the NEW render_pdf.py
+  pdf-header/pdf-footer hook, "YTD MM-YYYY" subtitle, no parameter chips/description/generated
+  block, prepared by Financial Planning and Reporting) through NEW bridge GL/db/50
+  POST /gl/butil/sectorbook (+ :id + :id/pdf). Re-run reporting/db/42 after any db/21 re-run;
+  GL post-05 re-run list now includes 50. sector_book_api_smoke.py live-run PASS.
+- 2026-09-06 v1.114.0 + GL/db/47+48: ENTITY = a 4th date-tracked classification (rules on ANY of the
+  10 GL segments, one Entity rule per combination enforced, DCT flagged Default, Unclassified bucket)
+  replacing the hard-coded CASE in fd/status, fd/lines, fmr/*, sector-perf and the FMR/Budget-Status
+  report definitions; every classification write now fires the COA-snapshot + butil-cache refresh
+  jobs asynchronously. entity_class_api_smoke 30/30 · entity_class_browser_smoke 23/23 ·
+  fd_api_smoke 144/144. Post-05 re-run list now ends at 48. Webtier release 20260905202533.
+
+- 2026-09-06 v1.113.0 Budget Status: compact right-side Presentation rail; Show Summary
+  unchecked on load/Reset; Print PDF/PPT via GL/db/49 and reporting/db/41
+  (`GL_BUDGET_STATUS`, no recipients). Worker renderer deployed vm180/181/182.
+  Webtier overlay 20260905201058, preserved by subsequent GL releases. Live report
+  API 51/51, browser regression 190/190, actual Print/layout 14/14. Details and
+  rollback cautions: docs/budget-status-review.md. Post-05 rebuilds must include db/49
+  in addition to the independent db/47+48 and db/50 changes.
+- 2026-09-06 (2) Sector Performance Report cover feedback (template-only re-upload): logo
+  clearance fixed (13mm logo + 2mm padding — Chromium header box has ~5.5mm inherent offset;
+  was clipping the teal band), title on one line, new "Sector: ..." line under the YTD (brackets removed per user feedback 2026-09-06, template-only re-upload)
+  subtitle. Live run re-verified page-1.
+
+- 2026-09-06 v1.115.1 Budget Status correction: Show Summary controls ALL formatted
+  graph summaries (rings/Fund, sectors, departments; tiles/rows/map). Default false,
+  immediate close on uncheck; selection/drills preserved. GL-only overlay release
+  20260906020630 over 20260905202533. No DB or reporting-worker changes.
+- 2026-09-06 (3) v1.116.0 Sector Performance Report ONE-SECTOR rule (user-approved "both
+  ends"): bridge 400s without exactly one sector (GL/db/50 re-run), BI drawer sector
+  required via db/42 param-spec merge-patch (hint rewritten from "Optional"), menu entry
+  disabled + hint until the Sector filter is picked. Webtier GL overlay 20260906061035.
+  Smokes: api (sector guardrails) + browser 15/15.
+
+## 2026-09-06 — Budget Status deep review, GL 1.116.1
+
+Deployed release `/var/www/ifinance-releases/20260906104833`, previous `/var/www/ifinance-releases/20260906061035`. Only Budget Status frontend hunks plus the version changed; concurrent GL work was preserved using the live baseline and hashes. Report workers vm180/181/182 were paused until idle, updated, restarted and verified active. Worker backups: `/opt/rpt-worker/backups/fd-deep-20260906`. Only `render_fd.py` and `templates/gl_budget_status.html.j2` changed. Fresh SQLcl deployed `GL/db/49_gl_fd_report_ords.sql`; handlers backed up in round-4 evidence.
+
+Fixes: recover invalid saved settings/storage failures; prevent stale search responses/errors; clear errors on cached-period selection; keyboard Search toggle and accessible criteria/entity state; hide hover instructions when Show Summary is off; configured Entity names in collapsed Search; active Entity classification validation for export; exact/automatic export numeric parity; measured continuation-page pagination retaining complete entries and correct page numbering. User-approved zero-budget behavior: Ledger rows with a No budget allocated notice instead of an empty map, independently for sectors/departments, on screen and in PDF/PPT.
+
+Verification: live browser 190/190, live Show Summary 67/67, six live PDF/PPT reports 51/51; local deep browser 40/40, export fidelity 85/85, reopened PDF/PPT artifacts 24/24, report unit tests 4/4; initial API baseline 144/144. Deployed deep browser checks passed 40/40; configured entity plus Unclassified exports passed 11/11. UAT: `UAT/UAT_GL_round4-06-09-2026/` workbook, Word results and evidence.
+
+Access tests: two temporary accounts verified owner downloads and cross-user 404 (including another privileged user); accounts/sessions removed. Current `FEATURE_SEC_ENFORCE_GL` compatibility behavior permits report submission without the dedicated privilege. This policy remains unchanged pending the user's explicit decision. Automatic approval review initially blocked the additional entity test; the user explicitly authorized the built-in quick login, and the test then passed 11/11 across all configured entities and Unclassified. Regular live PDF/PPT exports passed. No financial data changed and no reports were emailed.
+
+Rollback: reverse only this review's hunks if subsequent changes exist; otherwise the previous release above is available. Restore the two worker backup files and restart safely. ORDS source backup is retained with round-4 evidence. Do not revert unrelated GL changes.
+
+## 2026-09-06 — Terms and Key definitions (GL 1.118.0, db/v2/129 + GL/db/51 + reporting/db/42 re-run)
+
+New Settings → Terms and Key definitions page (capability-hidden, GL_MANAGE_TERMS/SYS_ADMIN): register of rich-text definition documents (`DCT_GL_REPORT_TERMS` — title, applied-to lookup seeded Sector Performance, CLOB content, start/end dates, lookup status) with a drawer holding the vendored Quill 2.0.3 editor (UMD before require.js; textarea fallback). The ACTIVE document at the report's period end prints as content entry 01 "Terms and Key definitions" of the Sector Performance Report with identical formatting — SECTOR_PERF_BOOK's copied source_ref gets the section PREPENDED on every db/42 refresh, template contents + parts renumbered 02..08. The 7 initial terms seeded per the user's list. Gotchas burned: block-local function in SQL DML = uncatchable 555; dct_rest.parse_body caps bodies at 32,767 bytes (full-CLOB CONVERTTOCLOB parse in the write handlers); Playwright must edit through Quill's model, not .ql-editor innerHTML.
+
+Deployed: db/v2/129 → GL/db/51 → reporting/db/42 → datasource.py fleet sync + rpt-worker restart ×3 → template 99,351 B upload + fallbacks → webtier overlay 20260906154050 (rollback 20260906111321). GL post-05 re-run list = 07..51. Tests: terms_api_smoke 19/19 · terms_browser_smoke 17/17 EN+AR · live render run #1054 (terms as Part 1, contents 01–08).
+
+## 2026-09-06 — Sector Performance Report: Overview page rework (report-only, reporting/db/42 re-run + template)
+
+The report's Part 02 "Budget Utilization Overview" rebuilt per the user's 9 annotations: Actual-vs-Plan % on the YTD Plan tile, amount-based %Paid on the AP and GRN tiles, Utilization tile → Actual/Budget % (YTD actual ÷ adjusted ANNUAL budget — the standing vs-Budget rule), Top-sectors chart removed, Utilization-by-Department bars (top 10 by budget), and two new tables — Sector Overview (Opex/Capex/Total, Opex+Capex only) and By Department (Annual Budget/Actual/Encumbrance/Fund Available/Actual/Budget %/Actual/Plan %). Data = three new sections (sp_extra/sp_dept/sp_kind) injected by db/42 over DCT_SECTOR_PERF_V (cost adjustments folded, reconciles to /gl/butil sum-for-sum). No GL frontend change. Verified on live run #1058 (Support Service, YTD 09-2026, 47 pages).
+
+## 2026-09-06 — Sector Performance Report: Overview feedback round 2 (report-only)
+
+Six annotated fixes: Actual-vs-Plan % on one line; composition-bar percentages printed inside their segments; department bars and table carry the cost-centre code + full department name (sp_dept regrained to cost_centre × department); Sector Overview footnote explains the Opex+Capex-only total vs the whole-scope KPI (the 299.80M vs 309.30M question); table retitled "Budget overview by Department" with a Total row reconciling to the KPI band (309.30M / 107.80M / 34.90% / 63.70%) and centred headers; part-band scope line shows the full project type. reporting/db/42 re-run + template upload; verified live run #1060.
+
+## 2026-09-06 — Sector Performance Report targets Opex + Capex (GL 1.119.0 + reporting/db/42 re-run)
+
+User-approved rule: the report covers the Opex + Capex chapters BY DEFAULT — db/42 rewrites every section's chapter predicate to NVL(:chapter, 'Chapter 2|Chapter 3') (default resolved from the chapter classification at seed time), so the default holds from the GL bridge, the BI run drawer and schedules alike. Flexibility = the existing Search → Chapter multi-select overrides it (pick Chapter 1 to include Payroll, etc.). Sector Overview table now lists every kind in scope and its Total always equals the KPI band (no more 299.8-vs-309.3 gap); cover prints "Scope: Opex + Capex" and the band names the chapter scope. GL menu hint mentions the default (v1.119.0, webtier 20260906194839, rollback 20260906120807). Verified runs #1061 (default) + #1062 (Ch 1|2|3 → Payroll row, totals 309.3 everywhere).
+
+## 2026-09-06 — Sector Performance Report: content restructure — Top 10 Projects + per-department pages (report-only, reporting/db/42 re-run + template)
+
+User-approved round: Part-02's 2.1 "Utilization by sector" and 2.2 "Budget lines under pressure" tables removed (a one-sector report made 2.1 a one-row duplicate of the KPI band). NEW content entry 03 "Top 10 Projects Budget" — the 10 largest task budget lines in scope (project × task, ordered by annual budget) with Project Number/Name, Task, Annual Budget, YTD Plan, Actual, Encumbrance, Fund Available and both utilization ratios + a Total row (ratios recomputed from sums). Task display rule (user): a plain-number task number (the MSS style: 2, 4, 5…) prints the task NAME instead (ATD_TASKS project-scoped); code-bearing DCT task numbers print as-is. NEW content entry 04 "Top 5 Projects Budget by Department" — one page per department of the sector (largest budget first), each a full Part-02 replica scoped to that department: 8-tile KPI band + composition bar (extended sp_dept row), Utilization-by-Project bars and Budget-overview-by-Project table for its top 5 projects by budget (full project number · name, Total of the shown five, "top 5 of N — remaining budget" note). Old parts 03–08 renumbered 05–10 (TOC, bands, footers, cross-references). db/42 adds sections sp_top10/sp_dkind/sp_dproj and extends sp_dept; all on DCT_SECTOR_PERF_V under the Opex+Capex default chapter scope, so every figure reconciles to /gl/butil. No GL frontend change. Verified live runs #1063 (default, 50 pages, 7 department pages each matching its By-Department row) and the widened-chapter run.
+
+## 2026-09-06 — Sector Performance Report: Part 05 Actuals rework (report-only, reporting/db/42 re-run + template)
+
+User-annotated round on "Actuals — Supplier Invoices & Goods Receipts": ① Monthly actuals AP-vs-GRN chart removed; the Top-10-suppliers panel takes the full width. ② Supplier bars show the full supplier name plus "(N invoices)" — a new sp_supp section counts each supplier's DISTINCT invoices across BOTH legs (user-approved): the direct AP invoices of the register plus the PO-matched invoices behind the in-scope goods receipts, with the register's own exclusions so the names match the bars exactly; an uninvoiced-only supplier reads "(0 invoices)". ③ New Paid KPI tile (before Top Supplier Share): total paid amount and % of the Total Actual — sp_extra now ships ap_paid_aed + grn_paid_aed alongside the percentages. ④ The AP Invoices (Direct) and GRN Receipts tiles carry the same bold "X% paid" figures as the Part 02 overview, from the same section, so the two parts always agree. No GL frontend change. Verified live run #1065.
+
+## 2026-09-06 — Sector Performance Report: Paid% on the Top-10 supplier bars (report-only, reporting/db/42 re-run + template)
+
+User picked the "two-tone bar" style from three proposed options: each supplier's spend bar now shows a green PAID portion with the gold remainder unpaid, the value column reads "25.20 M · 89.60% paid", and a legend explains the tones. Per-supplier paid figures extend the sp_supp section — the direct AP counted amounts and the PO-matched invoices behind the in-scope receipts, each weighted by the invoice header's paid ratio (capped, so the % can never exceed 100); summed across suppliers the legs equal the Paid KPI tile, so the chart and the KPI always agree. A supplier with no billed invoices keeps a solid gold bar. Verified live run #1067 (0% row solid gold, 100% rows solid green, 49.7% row half-and-half).
+
+## 2026-09-06 — Sector Performance Report: Part 06 Open Obligations round (+ Part 07 same fix; report-only, template)
+
+The "Largest Single Line" KPI showed a bogus 3 K: the PO register is project-ordered, and the KPI/chart read the FIRST row as the largest — the "Largest open PO lines" bars were divided by that 3 K and overflowed. The template now sorts the PO (and PR — same latent bug) lines by amount: the KPI reads the true largest line with a self-explaining sub-line ("the biggest single open PO line — PO 451102004891/1 · MIDEAST DATA SYSTEMS L.L.C"), the charts show proper proportional bars sorted by amount with FULL supplier names, and the 6.1/7.1 registers finally honour their "ordered by amount" headings. The Top-10-suppliers-by-open-obligation labels now read "Full Supplier Name (N POs · share-of-open-obligation %)". Verified live run #1068.
+
+## 2026-09-06 — Sector Performance Report: Part 07 rework + new Appendix (report-only, reporting/db/42 re-run + template)
+
+Open Commitments (PRs) round: the Largest-open-requisition-lines chart now shows "PR number(Line) - Requester name" (real display names, not usernames), sorted by amount, with how many days each line's funds have been reserved ("4.40 M · 41 days" — days from the funds-reservation budget date); the Largest Single Line KPI names its PR, line and requester, and a KPI-guide footnote at the bottom of both the PO and PR pages explains the KPI in plain words. NEW content point "A — Appendix — Detailed Registers" after Observations & Insights: the four full line-level registers moved there — A.1 AP invoices charged directly (with a new Paid % column and the overall paid % on the Total row), A.2 Goods receipts (with a Paid % column per receipt line = paid ÷ invoiced of its matched invoices), A.3 Open purchase-order lines, A.4 Open purchase-requisition lines. Parts 05–07 keep their overview pages only. Verified live runs #1069 and #1070.
+
+## 2026-09-06 — Sector Performance Report: Pending Approvals sorted + Plan Performance by Department (report-only, reporting/db/42 re-run + template)
+
+Pending Approvals (PR & PO Queue): every chart and the 8.1 table now sort by amount — the aging ladder keeps its day-bucket labels but orders rows by pending value, and the top-approvers chart/table are guaranteed amount-descending. Expenditure Plan Performance re-based to Department: a new sp_dplan section (the by-sector plan logic re-grained to cost centre over DCT_SECTOR_PERF_V, with the GL module settings driving the Below/Within/Ahead status) powers the "Plan execution by Department" and "Plan coverage by Department" charts and the "9.1 Plan vs actual by Department" table — all labelled "Full Department Name (CC code)", ordered largest annual budget first. Removed per user decision ("Both"): the 9.2 Largest-deviations-from-plan table and the explanatory paragraph at the page bottom. Verified live run #1071.
+
+## 2026-09-06 — Sector Performance Report: Part 10 removed + "% of Budget Planned" rename (report-only, template)
+
+User audit round. The negative Uninvoiced AED question was answered with a live trace (AD BURGER PO 451102008430: one 4,800 receipt vs 10,360 invoiced — a 5,560 invoice was matched to the PO with no goods receipt recorded; negative uninvoiced flags invoicing ahead of the GRN, not a calculation error). Part 10 "Observations & Insights" — the only content point never specified by the user — removed entirely (insight paragraphs + methodology block + TOC row); the report now runs 01–09 plus the Appendix. The "Plan Coverage" KPI renamed "% of Budget Planned" on the Part 09 tile, the by-Department chart title and the 9.1 column, per the user's pick from four offered names. Verified live run #1072 (75 pages).
+
+## 2026-09-06 — Line-grain PO rule (platform fix; root cause of the negative Uninvoiced)
+
+The −5,560 Uninvoiced row was traced to its root cause: invoice 40626-2 was re-matched in Fusion from PO 451102008430 to 451102008216 on 24-Aug — the correction updates the invoice LINE, while the accounted distributions keep the original PO, and the OTBI extracts faithfully report both grains. Nine invoices / 157,059 AED were mis-attributed platform-wide. User-approved fix (Wave 1+2): every AP-distribution→PO join now takes the invoice line's PO reference first (COALESCE line→dist) — applied across the reporting books/registers, the uninvoiced-GRN view, DCT_ACTUAL_V / DCT_BUDGET_ACTUAL_V charge-account attribution, the PO/Project/Task document views, the live butil/lines GRN drill and the AP dashboards. Verified: zero mis-attributions remain, actuals totals unchanged to the cent, both AD Burger POs now read 100% invoiced / 0 uninvoiced exactly as Fusion shows (report run #1073).

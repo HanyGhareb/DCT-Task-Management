@@ -4,7 +4,10 @@
 --  norm()            canonical zero-padded segment string (used in views/joins)
 --  set_asof / clear_asof / get_asof  drive the as-of date for DCT_GL_COA_V
 --  resolve_value_id  classification value effective on a given date
---  validate_map      overlap + dimension-consistency guard (raises -20090/-20001)
+--  validate_map      overlap + dimension-consistency guard (raises -20090/-20001);
+--                    + segment_key / one-Entity-rule-per-combination (GL/db/47)
+--  segment_value_of  one padded segment of a canonical combination string
+--  entity_of         Entity code of a combination string (rules -> default -> NULL)
 -- ===========================================================================
 SET DEFINE OFF
 SET SQLBLANKLINES ON
@@ -43,13 +46,35 @@ CREATE OR REPLACE PACKAGE prod.dct_gl_class_pkg AS
   FUNCTION resolve_value_id (p_type IN VARCHAR2, p_segment_value IN VARCHAR2,
                              p_date IN DATE DEFAULT SYSDATE) RETURN NUMBER;
 
-  -- guard a create/update of a date-tracked assignment
+  -- guard a create/update of a date-tracked assignment. p_segment_key (GL/db/47,
+  -- 2026-09-04): the GL segment the rule reads -- NULL = the dimension's own
+  -- segment; only ENTITY rules may name another one (any of the 10 segments).
+  -- ENTITY rules must never overlap on a real combination: a combination may
+  -- match ONE Entity rule only (checked against DCT_GL_COA_SNAP, raises -20090).
   PROCEDURE validate_map (p_map_id         IN NUMBER,
                           p_type           IN VARCHAR2,
                           p_segment_value  IN VARCHAR2,
                           p_class_value_id IN NUMBER,
                           p_start          IN DATE,
-                          p_end            IN DATE);
+                          p_end            IN DATE,
+                          p_segment_key    IN VARCHAR2 DEFAULT NULL);
+
+  -- the padded value of one segment (by DCT_GL_SEGMENT position) of a canonical
+  -- 10-segment combination string; NULL for an unknown key
+  FUNCTION segment_value_of (p_cc_string IN VARCHAR2, p_segment_key IN VARCHAR2) RETURN VARCHAR2;
+
+  -- Entity code for a canonical combination string on p_date (default = the
+  -- GL_CTX as-of date): the matching ENTITY rule, else the flagged default
+  -- value, else NULL (= Unclassified). Row-by-row fallback for strings that
+  -- are not in the COA snapshot (plan uploads); page-scale reads join the
+  -- snapshot's entity_class_code instead.
+  -- RESULT_CACHE: page-scale SQL calls it once per row (tens of thousands of
+  -- rows) -- the cache turns that into one rule lookup per distinct
+  -- (string, date) and is invalidated automatically when a rule or value
+  -- changes, so every surface sees a rule edit at once. SQL callers pass an
+  -- explicit date (TRUNC(SYSDATE)); entity_asof() is the GL_CTX-aware wrapper.
+  FUNCTION entity_of (p_cc_string IN VARCHAR2, p_date IN DATE) RETURN VARCHAR2 RESULT_CACHE;
+  FUNCTION entity_asof (p_cc_string IN VARCHAR2) RETURN VARCHAR2;
 
 END dct_gl_class_pkg;
 /
@@ -123,13 +148,60 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_gl_class_pkg AS
     RETURN NULL;
   END resolve_value_id;
 
+  FUNCTION segment_value_of (p_cc_string IN VARCHAR2, p_segment_key IN VARCHAR2) RETURN VARCHAR2 IS
+    l_pos NUMBER; l_w NUMBER;
+  BEGIN
+    IF p_cc_string IS NULL OR p_segment_key IS NULL THEN RETURN NULL; END IF;
+    SELECT position, width INTO l_pos, l_w FROM prod.dct_gl_segment WHERE segment_key = UPPER(p_segment_key);
+    RETURN norm(REGEXP_SUBSTR(p_cc_string, '[^.]+', 1, l_pos), l_w);
+  EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+  END segment_value_of;
+
+  FUNCTION entity_of (p_cc_string IN VARCHAR2, p_date IN DATE) RETURN VARCHAR2 RESULT_CACHE IS
+    l_d    DATE := TRUNC(NVL(p_date, SYSDATE));
+    l_code VARCHAR2(60);
+  BEGIN
+    IF p_cc_string IS NULL THEN RETURN NULL; END IF;
+    SELECT value_code INTO l_code FROM (
+      SELECT v.value_code
+        FROM prod.dct_gl_seg_class_map m
+        JOIN prod.dct_gl_class_type  t ON t.class_type_code = m.class_type_code
+        JOIN prod.dct_gl_segment     g ON g.segment_key = NVL(m.segment_key, t.segment_key)
+        JOIN prod.dct_gl_class_value v ON v.class_value_id = m.class_value_id
+       WHERE m.class_type_code = 'ENTITY'
+         AND l_d BETWEEN m.start_date AND NVL(m.end_date, c_hi)
+         AND m.segment_value = norm(REGEXP_SUBSTR(p_cc_string, '[^.]+', 1, g.position), g.width)
+       ORDER BY m.start_date, m.map_id
+    ) WHERE ROWNUM = 1;
+    RETURN l_code;
+  EXCEPTION WHEN NO_DATA_FOUND THEN
+    BEGIN
+      SELECT value_code INTO l_code FROM prod.dct_gl_class_value
+       WHERE class_type_code = 'ENTITY' AND is_default = 'Y' AND is_active = 'Y' AND ROWNUM = 1;
+      RETURN l_code;
+    EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+    END;
+  END entity_of;
+
+  FUNCTION entity_asof (p_cc_string IN VARCHAR2) RETURN VARCHAR2 IS
+  BEGIN
+    RETURN entity_of(p_cc_string, get_asof);
+  END entity_asof;
+
   PROCEDURE validate_map (p_map_id         IN NUMBER,
                           p_type           IN VARCHAR2,
                           p_segment_value  IN VARCHAR2,
                           p_class_value_id IN NUMBER,
                           p_start          IN DATE,
-                          p_end            IN DATE) IS
-    n NUMBER;
+                          p_end            IN DATE,
+                          p_segment_key    IN VARCHAR2 DEFAULT NULL) IS
+    n       NUMBER;
+    l_tkey  VARCHAR2(30);
+    l_key   VARCHAR2(30);
+    l_pos   NUMBER;
+    l_w     NUMBER;
+    l_val   VARCHAR2(60);
+    l_other VARCHAR2(400);
   BEGIN
     IF p_segment_value IS NULL OR p_start IS NULL THEN
       RAISE_APPLICATION_ERROR(-20001, 'Segment value and start date are required.');
@@ -137,6 +209,24 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_gl_class_pkg AS
     IF p_end IS NOT NULL AND p_end < p_start THEN
       RAISE_APPLICATION_ERROR(-20001, 'End date cannot be before start date.');
     END IF;
+
+    -- which segment does this rule read? (only ENTITY may pick one)
+    BEGIN
+      SELECT segment_key INTO l_tkey FROM prod.dct_gl_class_type WHERE class_type_code = p_type;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Unknown classification "' || p_type || '".');
+    END;
+    l_key := UPPER(NVL(p_segment_key, l_tkey));
+    IF p_type <> 'ENTITY' AND l_key <> l_tkey THEN
+      RAISE_APPLICATION_ERROR(-20001,
+        'Only Entity rules may read another GL segment; ' || p_type || ' rules read ' || l_tkey || '.');
+    END IF;
+    BEGIN
+      SELECT position, width INTO l_pos, l_w FROM prod.dct_gl_segment WHERE segment_key = l_key;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Unknown GL segment "' || l_key || '".');
+    END;
+    l_val := norm(p_segment_value, l_w);
 
     -- value must belong to the dimension
     SELECT COUNT(*) INTO n FROM prod.dct_gl_class_value
@@ -146,18 +236,44 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_gl_class_pkg AS
         'Selected value does not belong to classification "' || p_type || '".');
     END IF;
 
-    -- no overlapping effective period for the same (dimension, segment value)
+    -- no overlapping effective period for the same (dimension, segment, segment value)
     SELECT COUNT(*) INTO n
     FROM   prod.dct_gl_seg_class_map m
+    JOIN   prod.dct_gl_class_type t ON t.class_type_code = m.class_type_code
     WHERE  m.class_type_code = p_type
-    AND    m.segment_value   = p_segment_value
+    AND    NVL(m.segment_key, t.segment_key) = l_key
+    AND    m.segment_value   = l_val
     AND    (p_map_id IS NULL OR m.map_id <> p_map_id)
     AND    m.start_date <= NVL(p_end, c_hi)
     AND    NVL(m.end_date, c_hi) >= p_start;
     IF n > 0 THEN
       RAISE_APPLICATION_ERROR(-20090,
         'This period overlaps an existing assignment for ' || p_type ||
-        ' / segment ' || p_segment_value || '. Close or adjust the existing one first.');
+        ' / ' || l_key || ' ' || l_val || '. Close or adjust the existing one first.');
+    END IF;
+
+    -- ENTITY: a GL combination may match ONE rule only. Any combination in the
+    -- chart that this rule matches must not also match another active Entity
+    -- rule (on any segment) in an overlapping period.
+    IF p_type = 'ENTITY' THEN
+      SELECT COUNT(DISTINCT s.cc_id),
+             MIN(NVL(m.segment_key, t.segment_key) || ' ' || m.segment_value || ' = ' || v.value_code || ' (rule #' || m.map_id || ')')
+        INTO n, l_other
+        FROM prod.dct_gl_coa_snap s
+        JOIN prod.dct_gl_seg_class_map m ON m.class_type_code = 'ENTITY'
+                                        AND (p_map_id IS NULL OR m.map_id <> p_map_id)
+                                        AND m.start_date <= NVL(p_end, c_hi)
+                                        AND NVL(m.end_date, c_hi) >= p_start
+        JOIN prod.dct_gl_class_type  t ON t.class_type_code = m.class_type_code
+        JOIN prod.dct_gl_segment     g ON g.segment_key = NVL(m.segment_key, t.segment_key)
+        JOIN prod.dct_gl_class_value v ON v.class_value_id = m.class_value_id
+       WHERE norm(REGEXP_SUBSTR(s.cc_string, '[^.]+', 1, l_pos), l_w) = l_val
+         AND m.segment_value = norm(REGEXP_SUBSTR(s.cc_string, '[^.]+', 1, g.position), g.width);
+      IF n > 0 THEN
+        RAISE_APPLICATION_ERROR(-20090,
+          'A GL combination may match only ONE Entity rule: this rule overlaps ' || l_other ||
+          ' on ' || n || ' combination(s). End or narrow that rule first.');
+      END IF;
     END IF;
   END validate_map;
 

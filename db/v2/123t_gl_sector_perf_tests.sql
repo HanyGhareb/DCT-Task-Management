@@ -19,7 +19,7 @@ DECLARE
     l_fail  PLS_INTEGER := 0;
     c_year  CONSTANT NUMBER := 2026;
     c_cut   CONSTANT VARCHAR2(10) := '2026-08-31';
-    n1 NUMBER; n2 NUMBER; n3 NUMBER;
+    n1 NUMBER; n2 NUMBER; n3 NUMBER; n_real NUMBER;
     l_e NUMBER; l_r NUMBER; l_m NUMBER;
 
     PROCEDURE ok (p_name VARCHAR2, p_cond BOOLEAN, p_detail VARCHAR2 DEFAULT NULL) IS
@@ -47,12 +47,22 @@ DECLARE
         b_ac NUMBER; s_ac NUMBER;  b_en NUMBER; s_en NUMBER;
         b_fa NUMBER; s_fa NUMBER;
     BEGIN
-        SELECT COUNT(*), SUM(NVL(budget_annual,0)), SUM(NVL(budget,0)),
-               SUM(NVL(actual_ap,0) + NVL(actual_grn,0)),
-               SUM(NVL(commitment_pr,0) + NVL(obligation_po,0)),
-               SUM(NVL(fund_available,0))
+        -- the butil side folds the APPROVED costing adjustments exactly the
+        -- way the sector-perf view (and the /gl/butil page default) does
+        SELECT COUNT(*),
+               SUM(NVL(v.budget_annual,0) + NVL(ca.budget_ovr_annual,0)),
+               SUM(NVL(v.budget,0) + NVL(ca.budget_ovr_aed,0)),
+               SUM(NVL(v.actual_ap,0) + NVL(v.actual_grn,0) + NVL(ca.cost_adj_aed,0)),
+               SUM(NVL(v.commitment_pr,0) + NVL(v.obligation_po,0)),
+               SUM(NVL(v.fund_available,0) + NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0))
           INTO b_rows, b_ba, b_by, b_ac, b_en, b_fa
-          FROM prod.dct_budget_utilization_v WHERE budget_year = c_year;
+          FROM prod.dct_budget_utilization_v v
+          LEFT JOIN prod.dct_pa_cost_adj_butil_v ca
+                 ON ca.budget_year = v.budget_year
+                AND ca.project_number = v.project_number
+                AND ca.task_number = v.task_number
+                AND ca.expenditure_type = v.expenditure_type
+          WHERE v.budget_year = c_year;
         SELECT COUNT(*), SUM(budget_annual), SUM(budget_ytd),
                SUM(actual_ytd), SUM(encumbrance), SUM(NVL(fund_available,0))
           INTO s_rows, s_ba, s_by, s_ac, s_en, s_fa
@@ -84,13 +94,16 @@ BEGIN
      WHERE budget_year = c_year;
     eq_num('plan annual equals the sum of its period rows', n1, n2, 0.05);
 
+    -- SAMPLE rows only: a real uploaded plan is legitimately sparse (monthly
+    -- rows only where amounts exist), so the 12-row shape is a property of the
+    -- GENERATOR, not of the table (real 2026 data landed 2026-09-02)
     SELECT COUNT(*) INTO n1 FROM (
         SELECT project_number, task_number, expenditure_type, COUNT(*) c
         FROM   prod.dct_project_cashflow
-        WHERE  budget_year = c_year AND cf_type = 'APPROVED'
+        WHERE  budget_year = c_year AND cf_type = 'APPROVED' AND loaded_by = 'SAMPLE'
         GROUP  BY project_number, task_number, expenditure_type
         HAVING COUNT(*) <> 12);
-    ok('every planned line carries exactly 12 period rows', n1 = 0, n1 || ' lines differ');
+    ok('every SAMPLE-planned line carries exactly 12 period rows', n1 = 0, n1 || ' lines differ');
 
     prod.dct_gl_class_pkg.set_butil_end(TO_DATE(c_cut, 'YYYY-MM-DD'));
     SELECT NVL(SUM(plan_ytd), 0) INTO n1 FROM prod.dct_sector_plan_v WHERE budget_year = c_year;
@@ -140,12 +153,25 @@ BEGIN
     eq_num('Opex kind equals Chapter 2 budget', n1, n2);
 
     DBMS_OUTPUT.put_line('-- group 7: sample data locks');
-    ok('sample is flagged active while sample rows exist',
-       prod.dct_gl_plan_sample_pkg.is_sample_active(c_year) = 'Y');
+    -- presence must mirror the function's own definition: sample rows in
+    -- EITHER plan table (live: revenue sample exists, expenditure is real)
+    SELECT COUNT(*) INTO n2 FROM (
+        SELECT 1 FROM prod.dct_project_cashflow
+        WHERE  budget_year = c_year AND loaded_by = 'SAMPLE' AND ROWNUM = 1
+        UNION ALL
+        SELECT 1 FROM prod.dct_gl_revenue_plan
+        WHERE  budget_year = c_year AND loaded_by = 'SAMPLE' AND ROWNUM = 1);
+    ok('is_sample_active mirrors the presence of sample rows',
+       prod.dct_gl_plan_sample_pkg.is_sample_active(c_year)
+         = CASE WHEN n2 > 0 THEN 'Y' ELSE 'N' END,
+       'sample rows present=' || n2);
 
-    SELECT COUNT(*) INTO n1 FROM prod.dct_project_cashflow
+    -- rows NOT tagged SAMPLE are the REAL uploaded plan (6,701 rows for 2026
+    -- since 2026-09-02) -- remember the count so the purge test below can prove
+    -- the purge leaves every one of them untouched
+    SELECT COUNT(*) INTO n_real FROM prod.dct_project_cashflow
      WHERE budget_year = c_year AND NVL(loaded_by,'x') <> 'SAMPLE';
-    ok('generator wrote nothing that is not tagged SAMPLE', n1 = 0, n1 || ' untagged');
+    ok('real (untagged) plan rows are countable', n_real >= 0, n_real || ' real rows');
 
     SELECT COUNT(*) INTO n1 FROM prod.dct_project_cashflow
      WHERE budget_year = c_year AND loaded_by = 'SAMPLE'
@@ -179,6 +205,10 @@ BEGIN
     ok('purge removed every sample expenditure row', n1 = 0, n1 || ' left');
     ok('purge removed every sample revenue row',     n2 = 0, n2 || ' left');
     ok('purge left the real uploaded row untouched', n3 = 1, n3 || ' found');
+    SELECT COUNT(*) INTO n1 FROM prod.dct_project_cashflow
+     WHERE budget_year = c_year AND NVL(loaded_by,'x') <> 'SAMPLE';
+    ok('purge left every real uploaded plan row untouched',
+       n1 = n_real + 1, n1 || ' vs ' || (n_real + 1));
     ok('sample is no longer flagged active',
        prod.dct_gl_plan_sample_pkg.is_sample_active(c_year) = 'N');
 

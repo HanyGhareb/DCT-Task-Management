@@ -96,12 +96,34 @@ SELECT
            WHEN ABS(NVL(i.invoice_amount_paid,0)) >= ABS(NVL(i.invoice_amount,0)) - 0.005 THEN 'Paid'
            WHEN NVL(i.invoice_amount_paid,0) <> 0 THEN 'Partially Paid'
            ELSE 'Unpaid' END)                                           AS payment_status,
-  MAX(CASE WHEN d.po_number IS NOT NULL THEN 'Y' ELSE 'N' END)          AS has_po
+  MAX(CASE WHEN d.po_number IS NOT NULL THEN 'Y' ELSE 'N' END)          AS has_po,
+  -- Variance rule (2026-09-02, user): a PO-matched variance distribution
+  -- (Tax rate / Invoice price / Conversion rate / Retainage) belongs in the
+  -- butil AP actual ONLY when its charge account IS the line's expense
+  -- account (the expenditure type's 6-digit prefix) -- db/v2/37 f_ap lock-step.
+  -- Additive splits at the same grain so the report AP sections can list
+  -- the exact AP-actual amount per invoice, typed TRV.
+  SUM(CASE WHEN d.po_number IS NULL
+           THEN NVL(d.distribution_amount_functi, d.distribution_amount) END) AS matched_direct_aed,
+  SUM(CASE WHEN d.po_number IS NOT NULL
+            AND d.distribution_type IN ('Tax rate variance','Invoice price variance','Conversion rate variance','Retainage')
+                AND cid.account_code = REGEXP_SUBSTR(d.expenditure_type, '^[0-9]{6}')
+           THEN NVL(d.distribution_amount_functi, d.distribution_amount) END) AS matched_var_aed,
+  LISTAGG(DISTINCT CASE WHEN d.po_number IS NOT NULL AND cid.account_code = REGEXP_SUBSTR(d.expenditure_type, '^[0-9]{6}') THEN CASE d.distribution_type WHEN 'Tax rate variance' THEN 'TRV' WHEN 'Invoice price variance' THEN 'IPV' WHEN 'Conversion rate variance' THEN 'CRV' WHEN 'Retainage' THEN 'RET' END END, ' + ')
+    WITHIN GROUP (ORDER BY CASE WHEN d.po_number IS NOT NULL AND cid.account_code = REGEXP_SUBSTR(d.expenditure_type, '^[0-9]{6}') THEN CASE d.distribution_type WHEN 'Tax rate variance' THEN 'TRV' WHEN 'Invoice price variance' THEN 'IPV' WHEN 'Conversion rate variance' THEN 'CRV' WHEN 'Retainage' THEN 'RET' END END)                                  AS variance_types,
+  NVL(SUM(CASE WHEN d.po_number IS NULL
+             OR (d.distribution_type IN ('Tax rate variance','Invoice price variance','Conversion rate variance','Retainage')
+                AND cid.account_code = REGEXP_SUBSTR(d.expenditure_type, '^[0-9]{6}'))
+               THEN NVL(d.distribution_amount_functi, d.distribution_amount) END), 0) AS ap_actual_aed
 FROM prod.ap_invoice_distributions d
 JOIN prod.ap_invoices i ON i.invoice_id = d.invoice_id
 -- beneficiary-aware vendor (db/v2/51): the generic BENEFICIARY supplier
 -- resolves to the beneficiary's name
 LEFT JOIN prod.dct_ap_supplier_eff_v se ON se.invoice_id = i.invoice_id
+-- account per distribution combination (grouped: no fan-out) for the
+-- variance charge-account test
+LEFT JOIN (SELECT cc_id, MAX(account_code) AS account_code
+             FROM prod.dct_gl_coa_snap GROUP BY cc_id) cid ON cid.cc_id = d.cc_id
 LEFT JOIN proj pj ON pj.project_id = d.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
 WHERE NVL(d.reversal_indicator,'N') <> 'Y'
@@ -159,12 +181,22 @@ pod_key AS (
   GROUP BY ph.order_number, pl.line, pod.distribution_number
 ),
 ap_per_dist AS (
+  -- LINE-GRAIN PO RULE (2026-09-06, user-approved): when an invoice's PO match
+  -- is corrected in Fusion, the LINE carries the corrected PO while the
+  -- accounted DISTRIBUTIONS keep the original one -- so the invoice line is
+  -- the authoritative PO reference; the distribution columns are the fallback.
   SELECT pk.po_distribution_id,
          SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) AS invoiced_aed
   FROM prod.ap_invoice_distributions d
-  JOIN pod_key pk ON pk.po_number    = d.po_number
-                 AND pk.po_line      = d.po_line
-                 AND pk.po_dist_line = d.po_distribution_line
+  LEFT JOIN (SELECT invoice_id, invoice_line_number,
+                    MAX(po_number) AS po_number, MAX(po_line_number) AS po_line_number,
+                    MAX(po_distribution) AS po_distribution
+             FROM prod.ap_invoice_lines WHERE po_number IS NOT NULL
+             GROUP BY invoice_id, invoice_line_number) lp
+         ON lp.invoice_id = d.invoice_id AND lp.invoice_line_number = d.line_number
+  JOIN pod_key pk ON pk.po_number    = COALESCE(lp.po_number, d.po_number)
+                 AND pk.po_line      = COALESCE(lp.po_line_number, d.po_line)
+                 AND pk.po_dist_line = COALESCE(lp.po_distribution, d.po_distribution_line)
   WHERE NVL(d.reversal_indicator,'N') <> 'Y'
   GROUP BY pk.po_distribution_id
 )

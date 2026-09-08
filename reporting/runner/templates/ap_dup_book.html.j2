@@ -94,7 +94,7 @@
         {% if r.reason %} &middot; {{ r.reason }}{% endif %}</td></tr>
       {% endif %}
       <tr><td>{{ r.member_name }}</td><td class="mono">{{ r.supplier_site or '' }}</td>
-        <td class="mono">{{ r.bank_accounts or '&mdash;' }}</td>
+        <td class="mono">{{ r.bank_accounts or '—' }}</td>
         <td class="num">{{ r.invoices|fmt }}</td><td class="num">{{ r.total_aed|fmt }}</td>
         <td class="num">{{ dt(r.first_invoice) }}</td><td class="num">{{ dt(r.last_invoice) }}</td></tr>
       {% endfor %}

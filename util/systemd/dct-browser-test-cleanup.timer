@@ -1,0 +1,10 @@
+[Unit]
+Description=Check overdue GL browser tests hourly on VM191
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+Unit=dct-browser-test-cleanup.service
+
+[Install]
+WantedBy=timers.target

@@ -22,6 +22,6 @@ define([], function () {
     authBase: ADB + '/dct',          // login / session (established by App 200)
 
     // shared api.js: where to send the browser when the session dies
-    adminPortalUrl: '/Admin/Jet/index.html',
+    adminPortalUrl: '/dct/index.html',
   };
 });

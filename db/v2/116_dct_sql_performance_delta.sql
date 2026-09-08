@@ -212,7 +212,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_sql_perf_pkg AS
           l_slow||' interactive/application SQL statement(s) breached the threshold: one execution at least '||
           l_single||' seconds, or at least '||l_min||' executions averaging '||l_alert||
           ' seconds. Slowest observed average: '||l_top||' seconds. Background reports are excluded.',
-          NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
+          NULL,NULL,'ADMIN','/dct/index.html#systemSettings');
       END LOOP;
     END IF;
 

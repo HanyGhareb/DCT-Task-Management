@@ -11,6 +11,23 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
     self.loading  = ko.observable(true);
     self.workers  = ko.observableArray([]);
     self.jobs     = ko.observableArray([]);
+    self.storage = ko.observable(null);
+    self.storageLoading = ko.observable(false);
+    self.storageError = ko.observable(false);
+    self.sizeText = function (bytes) {
+      if (bytes === null || bytes === undefined) return '—';
+      var n = Number(bytes), units = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0;
+      while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+      return n.toLocaleString('en-US', { maximumFractionDigits: i ? 2 : 0 }) + ' ' + units[i];
+    };
+    self.cleanupBadge = function (s) { return s === 'SUCCESS' ? 'badge badge--success' : s === 'FAILED' ? 'badge badge--danger' : 'badge badge--info'; };
+    self.loadStorage = function () {
+      if (self.storageLoading()) return;
+      self.storageLoading(true); self.storageError(false);
+      return rpt.getStorage().then(function (d) { self.storage(d); })
+        .catch(function () { self.storageError(true); })
+        .then(function () { self.storageLoading(false); });
+    };
     self.queued        = ko.observable(0);
     self.running       = ko.observable(0);
     self.failedToday   = ko.observable(0);
@@ -44,7 +61,7 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
         self.lastRefreshed(new Date().toLocaleTimeString());
       }).catch(function () {}).then(function () { self.loading(false); });
     };
-    self.refresh = function () { self.load(); };
+    self.refresh = function () { self.load(); self.loadStorage(); };
 
     // auto-refresh while the page is visible; the guard stops the timer after navigation
     var timer = setInterval(function () {
@@ -83,6 +100,7 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
     self.jobBadge = function (j) { return j.enabled === 'TRUE' ? 'badge badge--success' : 'badge badge--danger'; };
 
     self.load();
+    self.loadStorage();
   }
 
   return WorkersViewModel;

@@ -1,0 +1,125 @@
+{
+  "asOf": "2026-09-06 04:08 PM",
+  "retentionDays": 90,
+  "fileCount": 332,
+  "fileBytes": 211817767,
+  "allocatedBytes": 243924992,
+  "expiredCount": 0,
+  "expiredBytes": 0,
+  "added7DaysBytes": 67850713,
+  "added30DaysBytes": 133093255,
+  "reports": [
+    {
+      "reportCode": "BUDGET_UTIL_REGISTER",
+      "name": "Budget Utilization Register (Excel)",
+      "nameAr": "\u0633\u062c\u0644 \u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629",
+      "fileCount": 146,
+      "fileBytes": 111529551,
+      "oldestAt": "2026-07-16"
+    },
+    {
+      "reportCode": "BUDGET_UTIL_BOOK",
+      "name": "Budget Utilization Briefing Book",
+      "nameAr": "\u0643\u062a\u064a\u0628 \u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629",
+      "fileCount": 42,
+      "fileBytes": 33390367,
+      "oldestAt": "2026-07-14"
+    },
+    {
+      "reportCode": "GL_BUDGET_STATUS",
+      "name": "Budget Status",
+      "nameAr": "\u062d\u0627\u0644\u0629 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629",
+      "fileCount": 30,
+      "fileBytes": 18934067,
+      "oldestAt": "2026-09-06"
+    },
+    {
+      "reportCode": "SECTOR_PERF_BOOK",
+      "name": "Sector Performance Report",
+      "nameAr": "\u062a\u0642\u0631\u064a\u0631 \u0623\u062f\u0627\u0621 \u0627\u0644\u0642\u0637\u0627\u0639\u0627\u062a",
+      "fileCount": 15,
+      "fileBytes": 17709272,
+      "oldestAt": "2026-09-06"
+    },
+    {
+      "reportCode": "EBS_GL_BALANCE_REGISTER",
+      "name": "EBS GL Balance Register (Excel)",
+      "nameAr": "\u0633\u062c\u0644 \u0623\u0631\u0635\u062f\u0629 \u0627\u0644\u0646\u0638\u0627\u0645 \u0627\u0644\u0633\u0627\u0628\u0642 (EBS)",
+      "fileCount": 4,
+      "fileBytes": 11557566,
+      "oldestAt": "2026-07-29"
+    },
+    {
+      "reportCode": "GL_BUDGET_ACTUAL",
+      "name": "Budget vs Actual (YTD)",
+      "nameAr": "\u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u0645\u0642\u0627\u0628\u0644 \u0627\u0644\u0641\u0639\u0644\u064a",
+      "fileCount": 10,
+      "fileBytes": 5232347,
+      "oldestAt": "2026-06-30"
+    },
+    {
+      "reportCode": "ENC_PENDING_BOOK",
+      "name": "Encumbrances Pending Approval Briefing Book",
+      "nameAr": "\u0643\u062a\u064a\u0628 \u0627\u0644\u0627\u0631\u062a\u0628\u0627\u0637\u0627\u062a \u0642\u064a\u062f \u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f",
+      "fileCount": 10,
+      "fileBytes": 3751228,
+      "oldestAt": "2026-07-16"
+    },
+    {
+      "reportCode": "AP_BENEF_DUP_REGISTER",
+      "name": "AP Duplicate Vendors Register",
+      "nameAr": "\u0633\u062c\u0644 \u0627\u0644\u0645\u0648\u0631\u062f\u064a\u0646 \u0627\u0644\u0645\u0643\u0631\u0631\u064a\u0646 \u0644\u0644\u0630\u0645\u0645 \u0627\u0644\u062f\u0627\u0626\u0646\u0629",
+      "fileCount": 10,
+      "fileBytes": 3203136,
+      "oldestAt": "2026-08-06"
+    },
+    {
+      "reportCode": "BUDGET_UTIL_SECTOR",
+      "name": "Budget Utilization by Sector (Executive)",
+      "nameAr": "\u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0627\u0644\u0645\u0648\u0627\u0632\u0646\u0629 \u062d\u0633\u0628 \u0627\u0644\u0642\u0637\u0627\u0639",
+      "fileCount": 10,
+      "fileBytes": 2640815,
+      "oldestAt": "2026-07-02"
+    },
+    {
+      "reportCode": "AP_DIRECT_REGISTER",
+      "name": "Direct AP Briefing Book",
+      "nameAr": "\u0643\u062a\u0627\u0628 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631 \u0627\u0644\u0645\u0628\u0627\u0634\u0631\u0629",
+      "fileCount": 7,
+      "fileBytes": 1000443,
+      "oldestAt": "2026-08-21"
+    }
+  ],
+  "cleanup": [
+    {
+      "cleanupId": 3,
+      "startedAt": "2026-09-06 04:08 PM",
+      "finishedAt": "2026-09-06 04:08 PM",
+      "status": "SUCCESS",
+      "retentionDays": 90,
+      "filesDeleted": 0,
+      "bytesDeleted": 0,
+      "durationSeconds": 0
+    },
+    {
+      "cleanupId": 2,
+      "startedAt": "2026-09-06 04:04 PM",
+      "finishedAt": "2026-09-06 04:04 PM",
+      "status": "SUCCESS",
+      "retentionDays": 90,
+      "filesDeleted": 0,
+      "bytesDeleted": 0,
+      "durationSeconds": 0
+    },
+    {
+      "cleanupId": 1,
+      "startedAt": "2026-09-06 04:04 PM",
+      "finishedAt": "2026-09-06 04:04 PM",
+      "status": "SUCCESS",
+      "retentionDays": 90,
+      "filesDeleted": 1,
+      "bytesDeleted": 16,
+      "durationSeconds": 0
+    }
+  ]
+}

@@ -98,6 +98,40 @@ register. Enqueue only — the page never talks to Fusion directly.
 
 ---
 
+## 10. AR Transactions Dashboard (2026-09-02)
+
+**Transactions Dashboard** (`arTrxDashboard`, nav group "AR Transactions", any AR user) —
+executive analytics over the Fusion-loaded receivables transaction views
+(`AR_TRANSACTION_AGING_V` transaction grain · `AR_TRANSACTION_DETAILS_V` line grain),
+modeled on the AP dashboard (App 212). One facet engine (`prod.dct_ar_trx_pkg`) feeds the
+KPIs, charts, register and exports so every figure reconciles.
+- Facet rail: free-text search + transaction/due/GL date ranges + 13 facet groups
+  (settlement OPEN/SETTLED/CREDIT · aging buckets · business unit · type · source ·
+  payment terms · complete · customer type · customer · memo line · project · cost
+  center · account): `toggleGroup` / `toggleItem` / `chips` / `resetFilters`.
+- Analytics region: 8 KPI tiles (transactions · customers · invoiced · collected ·
+  credits & adjustments · outstanding · overdue · collection rate) + 8 drillable
+  Chart.js charts (`renderCharts`): outstanding by aging (brand ramp, Σ = outstanding
+  incl. negative credit balances), settlement doughnut, monthly invoiced trend, top
+  customers by outstanding, by type / source / BU, revenue by cost center (line grain,
+  informational). `exportSummaryCsv` · `exportChartsPng` · ⓘ hint popovers (`hintOver`).
+- Register region: two-level radio (Transactions | Lines — `setLevel`), metadata-driven
+  table w/ server sort (`sortBy`), column chooser persisted to `/dct/prefs`
+  (`ar.trxdash.cols`; `toggleCol` / `showAllCols` / `resetCols`), CSV + XLSX export
+  (`exportCsv` / `exportXlsx`), pager (`reloadRows`).
+- Transaction drill window (`openDrill` on any register/drawer row): master details +
+  summary card (invoiced hero, collected/credits/adjustments/remaining, settlement +
+  aging badges) + revenue lines table (empty-state for line-less opening balances);
+  ⤢ maximize (`toggleInvMax`), Esc restores then closes.
+- Chart drill drawer (`openChartDrill`): clicked segment → matching transactions,
+  reconciling invoiced + remaining footer, CSV (`dwExportCsv`), ⤢ full-screen.
+- `printReport` — A4-landscape pixel report (criteria chips + KPIs + chart images +
+  first-200 register rows, mirrors the visible columns).
+- **Build-bar loader**: `.arld-*` overlay (spinner + segmented Filters/Analytics/Register
+  progress bar + `buildPct` %) shown while the page's three loads assemble.
+
+---
+
 ## API Endpoints (ORDS)
 
 Module `ar.rest` · base path **`/ords/admin/ar/`** · defined in `final apps/AR/db/05_ar_ords.sql`.
@@ -121,6 +155,7 @@ service in the SPA). All other calls hit `/ords/admin/ar/`.
 | Meta | `GET meta/lookups` |
 | AR Customers (db/10, ADDITIVE — re-run after any 05 re-run) | `GET customers/` · `POST customers/` · `GET customers/:id` · `PUT customers/:id` · `DELETE customers/:id` · `POST customers/:id/submit` · `POST customers/:id/sync` · `GET customers/wssearch` · `GET customers/lovs` · `GET customers/soapui-config` (AR_ADMIN) |
 | AR Invoice Rebill (db/11, ADDITIVE — re-run after any 05 re-run; all AR_ADMIN) | `POST rebill/requests` (bulk enqueue, ≤500 rows, per-row result) · `GET rebill/requests` (register) · `GET rebill/requests/:id` (request + 9-stage timeline) · `GET rebill/lovs` |
+| AR Transactions dashboard (db/12, ADDITIVE — re-run after any 05 re-run; any valid session) | `GET trx/filters` (facet LOVs + counts) · `GET trx/summary` (KPIs + 8 chart datasets) · `GET trx/list` · `GET trx/lines` (paged registers w/ totals) · `GET trx/list/export` · `GET trx/lines/export` (CSV, 10k cap) · `GET trx/detail/:id` (header + lines) |
 
 ---
 
@@ -135,6 +170,7 @@ service in the SPA). All other calls hit `/ords/admin/ar/`.
 | `settingService` | module/system settings + AI providers. |
 | `arCustomerService` | AR Customer submissions CRUD + submit/sync + Fusion lookup + form LOVs. |
 | `rebillService` | AR Invoice Rebill: bulk enqueue, register, request detail + stage timeline, form value sets. |
+| `arTrxService` | AR Transactions dashboard: facet LOVs, summary (KPIs + charts), two-level register, transaction detail, CSV export blob/text. |
 | `soapuiGen` | client-side Excel→SoapUI-project generator (wire catalog, parse/validate, envelope + project XML, template) — keep in sync with `AR/tools/soapui-customers/generate_soapui_customers.py`. |
 
 ---

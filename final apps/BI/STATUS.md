@@ -1,0 +1,13 @@
+# BI — Status
+
+## 2026-09-06 — BI 1.16.0: report storage and cleanup
+
+User approved the first three storage recommendations: consolidate duplicate maintenance, add the BI storage panel and audit cleanup. Deployed BI-only release `/var/www/ifinance-releases/20260906120807`, previous `/var/www/ifinance-releases/20260906154050`, with baseline hash checks preserving concurrent GL/other work. No worker restart required.
+
+- Fresh ADMIN SQLcl ran `reporting/db/43_rpt_output_maintenance.sql` and `44_rpt_storage_ords.sql`. All objects compile. `PROD.DCT_RPT_CLEANUP_LOG` records start/end, retention/cutoff, deleted file count/bytes, status and errors. Deletions and success audit commit together; failures roll back deletion and record error. The 90-day setting is unchanged; 0 still keeps all files.
+- The existing **ADMIN.DCT_RPT_MAINT_JOB** is authoritative because BI Workers reads/manages the ADMIN schedule. Verified duplicate **PROD.DCT_RPT_MAINT_JOB** is disabled (definition retained). ADMIN ran the new audited procedure successfully at 16:08 Dubai. `05_rpt_sched_sync.sql` now includes canonical 43 instead of redefining the old procedure/recreating duplicates. After re-running 04, re-run **44** with the existing additive ORDS scripts.
+- `GET /rpt/storage` is read-only and SYS_ADMIN-only (401/403 verified). Summaries read output metadata; no file BLOB downloads/scans. Allocated space is nullable if dictionary access is unavailable. Largest reports limited to 10; history to latest 20. Added-in-period sizes count still-retained files, not net growth. Worker 10-second polling does not query storage; only entering the page or explicit refresh does.
+- BI → Workers → Report storage and cleanup: retained-file size/count, retention, eligible files/bytes, allocated storage, 7/30-day additions, largest report types, and cleanup audit with error/empty/loading states. EN/AR + narrow screens verified. No manual purge, per-report retention, archive or shrink added. Audit history is retained from deployment.
+- Validation: 21 browser checks, 10 live API/access checks, 11 database assertions, plus scheduled-job confirmation. Test fixtures removed; only one expired synthetic 16-byte output was deleted during testing. UAT workbook/Word/evidence: `final apps/BI/UAT/UAT_BI_round3-06-09-2026/`. Initial live UI samples include real aggregate report-storage metadata.
+
+Rollback: reverse only BI feature hunks if later releases exist; otherwise use the previous release. Procedure/job pre-change source snapshot is in UAT evidence. Preserve audit records. Do not re-enable the duplicate simply to roll back the UI.

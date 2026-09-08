@@ -8,11 +8,17 @@
 
   var API = '/ords/admin/gl';
   var SK  = 'ifinance_jet_session';
-  var ADMIN_LOGIN = '/Admin/Jet/index.html';
+  var ADMIN_LOGIN = '/dct/index.html';
+
+  // deep-link round-trip: bounce to login carrying the intended destination
+  // (path + #tab) so the Admin login lands the user back here after sign-in
+  function loginUrl() {
+    return ADMIN_LOGIN + '?return=' + encodeURIComponent(location.pathname + location.hash);
+  }
 
   var raw = localStorage.getItem(SK);
   var session = raw ? JSON.parse(raw) : null;
-  if (!session || !session.sessionId) { location.href = ADMIN_LOGIN; return; }
+  if (!session || !session.sessionId) { location.href = loginUrl(); return; }
   var TOKEN = session.sessionId;
 
   function api(method, path, body) {
@@ -20,7 +26,7 @@
     if (body !== undefined) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
     return fetch(API + path, o).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
-        if (r.status === 401) { location.href = ADMIN_LOGIN; }
+        if (r.status === 401) { location.href = loginUrl(); }
         if (!r.ok) { var e = new Error(d.error || ('HTTP ' + r.status)); e.status = r.status; throw e; }
         return d;
       });
@@ -841,6 +847,10 @@
     pnXlsxRunning:{en:'Preparing Excel…',ar:'جارٍ إعداد الملف…'},
     pnXlsxHint:{en:'Generate the Pending PR & PO Register (Excel, for internal analysis) using ALL the current page filters: one flat sheet of every funds-reserved pending line with the full approval trail, budget line and GL classification (Sector, Cost centre, Account, Appropriation, Program — code and name), plus the extract-coverage annex sheet. Prepared by the reporting workers — takes under a minute.',ar:'إنشاء سجل طلبات وأوامر الشراء المعلقة (إكسل للتحليل الداخلي) وفق جميع عوامل تصفية الصفحة الحالية: ورقة واحدة لكل بند محجوز معلق مع مسار الاعتماد الكامل وبند الموازنة والتصنيف المحاسبي، إضافةً إلى ورقة ملحق التغطية. يُجهَّز عبر خوادم التقارير — يستغرق أقل من دقيقة.'},
     pnXlsxReady:{en:'Excel register downloaded.',ar:'تم تنزيل سجل الإكسل.'},
+    buFbpReady:{en:'FBP - Projects Budget Utilization downloaded.',ar:'تم تنزيل تقرير FBP - استغلال ميزانية المشاريع.'},
+    buMssReady:{en:'MSS - Projects Budget Utilization downloaded.',ar:'تم تنزيل تقرير MSS - استغلال ميزانية المشاريع.'},
+    buMssHint:{en:'Generate the MSS - Projects Budget Utilization workbook (Excel) using ALL the current page filters — the Budget Utilization Register re-issued for the MSS distribution: sheet 1 carries the FIXED 26-column MSS layout (Task Number kept + Task Name added; no appropriation/program, YTD-budget or plan columns), a Requester column on every detail sheet (AP = the matched PO line’s requester, GRN/PO = the PO requestor, PR = the requisition requester, Pending = per document) and a Task Name column beside every Task Number on ALL sheets. The Manage Columns view does not affect it. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء تقرير MSS - استغلال ميزانية المشاريع (إكسل) وفق جميع عوامل تصفية الصفحة الحالية — سجل استخدام الموازنة بنسخة توزيع MSS: الورقة الأولى بتخطيط ثابت من 26 عموداً (رقم المهمة واسمها معاً، دون أعمدة الاعتماد والبرنامج والخطة)، وعمود مقدم الطلب في كل ورقة تفاصيل (الفواتير من أمر الشراء المطابق، والاستلام وأوامر الشراء من طالب أمر الشراء، والطلبات من طالب طلب الشراء)، وعمود اسم المهمة بجانب رقم المهمة في جميع الأوراق. لا يتأثر بإدارة الأعمدة. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    buFbpHint:{en:'Generate the FBP - Projects Budget Utilization workbook (Excel) using ALL the current page filters — the Budget Utilization Register re-issued for the FBP distribution: sheet 1 carries the FIXED 21-column FBP layout (Task Name in place of Task Number; no EBS/plan/vs-Budget/fund-movement columns) and every supporting detail list keeps its own worksheet. The Manage Columns view does not affect it. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء تقرير FBP - استغلال ميزانية المشاريع (إكسل) وفق جميع عوامل تصفية الصفحة الحالية — سجل استخدام الموازنة بنسخة توزيع FBP: الورقة الأولى بتخطيط ثابت من 21 عموداً (اسم المهمة بدل رقم المهمة، دون أعمدة EBS أو الخطة أو مقابل الموازنة أو حركة الأموال) مع بقاء كل قائمة تفاصيل في ورقتها. لا يتأثر بإدارة الأعمدة. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     buXlsxHint:{en:'Generate the Budget Utilization Register (Excel, for internal analysis) using ALL the current page filters: the utilization lines plus every supporting detail list in its own worksheet — direct AP invoices, GRN receipts, open purchase orders, open requisitions and the pending-approval PR/PO queue. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء سجل استخدام الموازنة (إكسل للتحليل الداخلي) وفق جميع عوامل تصفية الصفحة الحالية: بنود الاستخدام مع كل قائمة تفاصيل داعمة في ورقة مستقلة — فواتير الدائنين المباشرة وإيصالات الاستلام وأوامر الشراء المفتوحة وطلبات الشراء المفتوحة وقائمة الانتظار قيد الاعتماد. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     pnDrillHint:{en:'Click to see the matching pending lines.',ar:'انقر لعرض البنود المعلقة المطابقة.'},
     buTitle:{en:'Project Budget Utilization',ar:'استخدام موازنة المشاريع'},
@@ -857,12 +867,23 @@
     buBookReady:{en:'Briefing book downloaded.',ar:'تم تنزيل كتيب الإحاطة.'},
     buBookFailed:{en:'Briefing book failed: ',ar:'فشل إنشاء كتيب الإحاطة: '},
     buBookTimeout:{en:'Still running — check again shortly (run #',ar:'لا يزال قيد التشغيل — تحقق بعد قليل (تشغيل رقم '},
+    buSpbQueued:{en:'Sector Performance Report queued — run #',ar:'تم إرسال تقرير أداء القطاعات — تشغيل رقم '},
+    buSpbReady:{en:'Sector Performance Report downloaded.',ar:'تم تنزيل تقرير أداء القطاعات.'},
+    buSpbFailed:{en:'Sector Performance Report failed: ',ar:'فشل إنشاء تقرير أداء القطاعات: '},
+    buSpbHint:{en:'Generate the Sector Performance Report PDF for the selected sector — the Briefing Book pack re-covered for distribution (DCT logo and copyright line on every page, simplified cover) using ALL the current page filters. Covers the Opex + Capex chapters by default — pick Chapters in Search to include others (e.g. Payroll). Prepared by the reporting workers — takes about a minute.',ar:'إنشاء تقرير أداء القطاعات (PDF) للقطاع المحدد — كتيب الإحاطة بغلاف مبسّط مع شعار الدائرة وسطر حقوق النشر على كل صفحة، وفق جميع عوامل تصفية الصفحة الحالية. يغطي فصلي التشغيل والرأسمالية افتراضياً — اختر الفصول في البحث لإدراج غيرها. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    buSpbNeedSector:{en:'Select a sector in Search first — the Sector Performance Report runs for one sector.',ar:'اختر قطاعاً في البحث أولاً — تقرير أداء القطاعات يصدر لقطاع واحد.'},
     genReport:{en:'Generate Report ▾',ar:'إنشاء تقرير ▾'},
     genRunning:{en:'Generating…',ar:'جارٍ الإنشاء…'},
     repBook:{en:'Briefing Book (PDF)',ar:'كتيب الإحاطة (PDF)'},
     repBookSub:{en:'Executive briefing document',ar:'وثيقة إحاطة تنفيذية'},
+    repSpb:{en:'Sector Performance Report (PDF)',ar:'تقرير أداء القطاعات (PDF)'},
+    repSpbSub:{en:'Distribution copy with DCT branding',ar:'نسخة للتوزيع بشعار الدائرة'},
     repXlsx:{en:'Excel Register (XLSX)',ar:'سجل إكسل (XLSX)'},
     repXlsxSub:{en:'Full detail lists for analysis',ar:'قوائم تفصيلية كاملة للتحليل'},
+    repFbp:{en:'FBP - Projects Budget Utilization (XLSX)',ar:'FBP - استغلال ميزانية المشاريع (XLSX)'},
+    repFbpSub:{en:'Fixed FBP layout — Task Name on sheet 1',ar:'تخطيط FBP ثابت — اسم المهمة في الورقة الأولى'},
+    repMss:{en:'MSS - Projects Budget Utilization (XLSX)',ar:'MSS - استغلال ميزانية المشاريع (XLSX)'},
+    repMssSub:{en:'Fixed MSS layout — Requester on detail sheets',ar:'تخطيط MSS ثابت — مقدم الطلب في أوراق التفاصيل'},
     repPpt:{en:'PowerPoint (PPTX)',ar:'باوربوينت (PPTX)'},
     repPptSub:{en:'Executive slide deck',ar:'عرض شرائح تنفيذي'},
     buPptHint:{en:'Generate an executive PowerPoint deck using ALL the current page filters — cover, KPI overview, utilization by sector, budget composition, lines under pressure, actuals and supplier concentration, open obligations & commitments, and management insights. Native, editable slides. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء عرض شرائح تنفيذي (باوربوينت) وفق جميع عوامل تصفية الصفحة الحالية — غلاف ومؤشرات أداء واستخدام حسب القطاع وتكوين الموازنة والبنود تحت الضغط والفعلي وتركّز الموردين والالتزامات والتعهدات المفتوحة ورؤى الإدارة. شرائح أصلية قابلة للتحرير. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
@@ -1042,7 +1063,10 @@
 
     /* ── "The Binder" report-generation popup (v1.80.0) ── */
     rgGenBook:{en:'Generating Briefing Book (PDF)',ar:'جارٍ إنشاء الكتاب التنفيذي (PDF)'},
+    rgGenSpb:{en:'Generating Sector Performance Report (PDF)',ar:'جارٍ إنشاء تقرير أداء القطاعات (PDF)'},
     rgGenXlsx:{en:'Generating Excel Register (XLSX)',ar:'جارٍ إنشاء سجل إكسل (XLSX)'},
+    rgGenFbp:{en:'Generating FBP - Projects Budget Utilization (XLSX)',ar:'جارٍ إنشاء تقرير FBP - استغلال ميزانية المشاريع (XLSX)'},
+    rgGenMss:{en:'Generating MSS - Projects Budget Utilization (XLSX)',ar:'جارٍ إنشاء تقرير MSS - استغلال ميزانية المشاريع (XLSX)'},
     rgGenPpt:{en:'Generating PowerPoint deck (PPTX)',ar:'جارٍ إنشاء عرض باوربوينت (PPTX)'},
     rgElapsed:{en:'elapsed',ar:'الوقت المنقضي'},
     rgPolling:{en:'checking the run every {s} seconds',ar:'يتم فحص التشغيل كل {s} ثوانٍ'},
@@ -1328,6 +1352,29 @@
     /* ── Generate and Send (report distributions) + Email Logs + Recipients ── */
     navEmailLog:{en:'Email Logs',ar:'سجل الرسائل'},
     navRecipients:{en:'Report Recipients',ar:'مستلمو التقارير'},
+    /* ── Terms and Key definitions (report intro content, Settings) ── */
+    navTerms:{en:'Terms and Key definitions',ar:'الشروط والتعريفات الرئيسية'},
+    tkTitle:{en:'Terms and Key definitions',ar:'الشروط والتعريفات الرئيسية'},
+    tkSub:{en:'Rich-text definition documents printed as the first content entry of the related report (the document active within its start/end dates at the report period)',ar:'مستندات تعريفات منسقة تُطبع كأول بند محتوى في التقرير المرتبط (المستند النشط ضمن تاريخي البداية والنهاية في فترة التقرير)'},
+    tkNew:{en:'+ New document',ar:'+ مستند جديد'},
+    tkColTitle:{en:'Title',ar:'العنوان'},
+    tkAppliedTo:{en:'Applied to',ar:'ينطبق على'},
+    tkStart:{en:'Start date',ar:'تاريخ البداية'},
+    tkEnd:{en:'End date',ar:'تاريخ النهاية'},
+    tkStatus:{en:'Status',ar:'الحالة'},
+    tkUpdated:{en:'Updated',ar:'آخر تحديث'},
+    tkActive:{en:'Active',ar:'نشط'},
+    tkInactive:{en:'Inactive',ar:'غير نشط'},
+    tkNote:{en:'The report prints the ACTIVE document whose start/end window covers the report period end (full year = 31 December). Formatting is reproduced in the PDF exactly as typed.',ar:'يطبع التقرير المستند النشط الذي تغطي فترته نهاية فترة التقرير (السنة الكاملة = 31 ديسمبر). يُعاد إنتاج التنسيق في ملف PDF كما هو تماماً.'},
+    tkNoRows:{en:'No definition documents yet — create the first one.',ar:'لا توجد مستندات تعريفات بعد — أنشئ المستند الأول.'},
+    tkEditTitle:{en:'Edit definitions document',ar:'تحرير مستند التعريفات'},
+    tkContent:{en:'Definitions content (rich text)',ar:'محتوى التعريفات (نص منسق)'},
+    tkContentHint:{en:'Format the terms exactly as they should appear in the report — bold names, bullets, colors and sizes are all preserved.',ar:'نسّق الشروط تماماً كما يجب أن تظهر في التقرير — الأسماء الغامقة والتعداد والألوان والأحجام كلها محفوظة.'},
+    tkEndHint:{en:'Leave empty for open-ended validity',ar:'اتركه فارغاً لصلاحية مفتوحة'},
+    tkSaved:{en:'Definitions document saved',ar:'تم حفظ مستند التعريفات'},
+    tkDeleted:{en:'Definitions document deleted',ar:'تم حذف مستند التعريفات'},
+    tkDeleteConfirm:{en:'Delete this definitions document? The report will fall back to the next active document (or none).',ar:'حذف مستند التعريفات هذا؟ سيعود التقرير إلى المستند النشط التالي (أو لا شيء).'},
+    tkCreated:{en:'Created',ar:'أُنشئ'},
     gsBtn:{en:'Generate and Send ▾',ar:'إنشاء وإرسال ▾'},
     gsRunning:{en:'Sending…',ar:'جارٍ الإرسال…'},
     gsLvlSector:{en:'Sector Level',ar:'مستوى القطاع'},
@@ -1436,7 +1483,168 @@
     rlImpRun:{en:'Import',ar:'استيراد'},
     rlImpDone:{en:'Import finished: {c} created, {u} updated, {e} errors.',ar:'انتهى الاستيراد: {c} جديد، {u} محدث، {e} أخطاء.'},
     rlImpNoEmail:{en:'No email-bearing columns detected in this sheet.',ar:'لا توجد أعمدة بريد في هذه الورقة.'},
-    rlImpReplaceNote:{en:'Importing REPLACES the recipients of every matched scope row; other rows are untouched.',ar:'الاستيراد يستبدل مستلمي الصفوف المطابقة فقط؛ الصفوف الأخرى لا تُمس.'}
+    rlImpReplaceNote:{en:'Importing REPLACES the recipients of every matched scope row; other rows are untouched.',ar:'الاستيراد يستبدل مستلمي الصفوف المطابقة فقط؛ الصفوف الأخرى لا تُمس.'},
+
+    /* ── FD Dashboard / Budget Status (user sketch, mockup A "Ring Bands", GL/db/42) ── */
+    navFd:{en:'Budget Status',ar:'حالة الموازنة'},
+    fdTitle:{en:'Budget Status',ar:'حالة الموازنة'},
+    fdSub:{en:'Budget, Actual, Encumbrance and Fund Available by chapter — every entity',ar:'الموازنة والفعلي والالتزامات والرصيد المتاح حسب الباب — لجميع الجهات'},
+    fdSectors:{en:'Sectors',ar:'القطاعات'},
+    fdSectorsHint:{en:'Click one or more sectors to filter the chapters below',ar:'انقر على قطاع واحد أو أكثر لتصفية الأبواب أدناه'},
+    fdAllSectors:{en:'Showing all sectors',ar:'عرض جميع القطاعات'},
+    fdSelected:{en:'{n} selected',ar:'تم اختيار {n}'},
+    fdClear:{en:'Clear',ar:'مسح'},
+    fdUnitL:{en:'Entity',ar:'الجهة'},
+    fdAllUnits:{en:'All entities',ar:'جميع الجهات'},
+    fdEntDCT:{en:'DCT',ar:'دائرة الثقافة والسياحة'},
+    fdEntMUSEUMS:{en:'MSS',ar:'الخدمات المشتركة للمتاحف'},
+    fdEntALC:{en:'ALC',ar:'مركز أبوظبي للغة العربية'},
+    fdEntMASTERPIECES:{en:'Masterpieces',ar:'المقتنيات الفنية'},
+    fdEntUNCLASSIFIED:{en:'Unclassified',ar:'غير مصنف'},
+    fdBudget:{en:'Budget',ar:'الموازنة'},
+    fdActual:{en:'Actual',ar:'الفعلي'},
+    fdEnc:{en:'Encumbrance',ar:'الالتزامات'},
+    fdFund:{en:'Fund available',ar:'الرصيد المتاح'},
+    fdBudgetSub:{en:'YTD · Budget Group 1',ar:'تراكمي · مجموعة الموازنة 1'},
+    fdBudgetSubBg:{en:'YTD · Budget Group {g}',ar:'تراكمي · مجموعة الموازنة {g}'},
+    fdBudgetSubBgs:{en:'YTD · Budget Groups {g}',ar:'تراكمي · مجموعات الموازنة {g}'},
+    fdActualSub:{en:'of budget · GL actual',ar:'من الموازنة · الفعلي في الأستاذ العام'},
+    fdEncSub:{en:'of budget · GL encumbrance',ar:'من الموازنة · التزامات الأستاذ العام'},
+    fdRemains:{en:'of budget remains',ar:'من الموازنة متبقٍ'},
+    fdOverBudget:{en:'over budget',ar:'تجاوز الموازنة'},
+    fdUsed:{en:'used',ar:'مستخدم'},
+    fdCH1:{en:'Chapter 1',ar:'الباب الأول'},
+    fdCH2:{en:'Chapter 2',ar:'الباب الثاني'},
+    fdCH3:{en:'Chapter 3',ar:'الباب الثالث'},
+    fdCH4:{en:'Chapter 4',ar:'الباب الرابع'},
+    fdCH5:{en:'Chapter 5',ar:'الباب الخامس'},
+    fdAltCH1:{en:'Payroll',ar:'الرواتب والأجور'},
+    fdAltCH2:{en:'Opex',ar:'المصروفات التشغيلية'},
+    fdAltCH3:{en:'Capex',ar:'المصروفات الرأسمالية'},
+    fdAltCH4:{en:'Subsidy',ar:'الدعم'},
+    fdAltCH5:{en:'Aids & Grants',ar:'المساعدات والمنح'},
+    fdFootScope:{en:'Basis: Fusion GL balances at the selected period (YTD), Chapters 1–5 — Chapters 1–3 on Budget Group 1 (the same figures as the Financial Performance report), Chapter 4 on Budget Group 3, Chapter 5 on Budget Group 5. Fund available = Budget − Actual − Encumbrance. Budget = expense accounts (4xxxxx) only — Treasury-contribution (funding) accounts are never counted.',ar:'الأساس: أرصدة الأستاذ العام في فيوجن للفترة المحددة (تراكمي)، الأبواب 1–5 — الأبواب 1–3 على مجموعة الموازنة 1 (نفس أرقام تقرير الأداء المالي)، الباب 4 على مجموعة الموازنة 3، الباب 5 على مجموعة الموازنة 5. الرصيد المتاح = الموازنة − الفعلي − الالتزامات. الموازنة = حسابات المصروفات (4xxxxx) فقط — حسابات مساهمة الخزانة (التمويل) لا تُحتسب أبداً.'},
+    fdFootExcluded:{en:'Expense budget with no chapter classification (not in the bands — assign a Chapter in Settings › Chart of Accounts):',ar:'موازنة مصروفات بدون تصنيف باب (غير مدرجة في الأبواب — عيّن الباب في الإعدادات › دليل الحسابات):'},
+    fdGrand:{en:'Total',ar:'الإجمالي'},
+    fdTotalAlt:{en:'Chapters 1–5',ar:'الأبواب 1–5'},
+    fdNoData:{en:'No GL balances are loaded for this period.',ar:'لا توجد أرصدة محملة لهذه الفترة.'},
+    fdCombos:{en:'combinations',ar:'تركيبات'},
+    fdDrillHint:{en:'Click any figure to list its GL code combinations — hover a combination for the segment descriptions',ar:'انقر على أي رقم لعرض تركيبات حساب الأستاذ العام الخاصة به — مرّر المؤشر فوق التركيبة لعرض أوصاف المقاطع'},
+    fdDrillSectors:{en:'{n} sectors',ar:'{n} قطاعات'},
+    fdDepts:{en:'Departments (Cost Centres)',ar:'الإدارات (مراكز التكلفة)'},
+    fdDeptsHint:{en:'Cost centres of the selected sectors — click one or more to filter the chapters below',ar:'مراكز التكلفة للقطاعات المختارة — انقر على واحد أو أكثر لتصفية الأبواب أدناه'},
+    fdAllDepts:{en:'Showing all departments',ar:'عرض جميع الإدارات'},
+    fdDeptSearch:{en:'Filter departments…',ar:'تصفية الإدارات…'},
+    fdNoDepts:{en:'No departments match.',ar:'لا توجد إدارات مطابقة.'},
+    fdDrillDepts:{en:'{n} departments',ar:'{n} إدارات'},
+    /* presentation switch (v1.105.0): rows / tiles / map — one Search parameter drives both regions */
+    fdShowSummary:{en:'Show Summary',ar:'إظهار الملخص'},
+    fdPrint:{en:'Print',ar:'طباعة'},
+    fdPrintPdf:{en:'Dashboard as PDF',ar:'لوحة المعلومات بصيغة PDF'},
+    fdPrintPpt:{en:'Dashboard as PowerPoint slides',ar:'لوحة المعلومات كشرائح PowerPoint'},
+    fdLayoutL:{en:'Presentation',ar:'طريقة العرض'},
+    fdLayoutTiles:{en:'Composition tiles',ar:'بطاقات التكوين'},
+    fdLayoutRows:{en:'Ledger rows',ar:'صفوف دفترية'},
+    fdLayoutMap:{en:'Proportional map',ar:'خريطة نسبية'},
+    fdPresDescTiles:{en:'Cards with a composition bar',ar:'بطاقات بشريط تكوين'},
+    fdPresDescRows:{en:'Ranked bars on one scale',ar:'أشرطة مرتبة بمقياس واحد'},
+    fdPresDescMap:{en:'Treemap — area = budget',ar:'خريطة شجرية — المساحة = الموازنة'},
+    fdPresHintTiles:{en:'One card per sector or department: the budget as the big figure, its share of the total, a bar split into Actual · Encumbrance · Fund as shares of the budget, and a state pill with what is still free.',ar:'بطاقة لكل قطاع أو إدارة: الموازنة كرقم رئيسي، حصتها من الإجمالي، شريط مقسّم إلى الفعلي · الالتزامات · الرصيد كنسب من الموازنة، وشارة حالة تبيّن المتبقي.'},
+    fdPresHintRows:{en:'A ranked ledger: every bar is drawn on ONE shared scale (the longest = the largest budget) and split into Actual · Encumbrance · Fund, with the four figures in aligned columns. Best for precise comparison.',ar:'سجل مرتب: كل شريط مرسوم بمقياس واحد مشترك (الأطول = أكبر موازنة) ومقسّم إلى الفعلي · الالتزامات · الرصيد، مع الأرقام الأربعة في أعمدة متحاذية. الأنسب للمقارنة الدقيقة.'},
+    fdPresHintMap:{en:'A proportional map: tile area = share of budget, colour = % consumed (Actual + Encumbrance) from pale to deep, rust when over committed; departments are nested inside their sectors. Best for seeing where the money sits.',ar:'خريطة نسبية: مساحة المربع = الحصة من الموازنة، واللون = % المستهلك (الفعلي + الالتزامات) من الفاتح إلى الداكن، وبني محمر عند تجاوز الالتزام؛ الإدارات متداخلة داخل قطاعاتها. الأنسب لمعرفة أين تتركز الأموال.'},
+    fdPresState:{en:'State pill: On track below {near}% consumed · Tight from {near}% · Over committed above {over}% or a negative fund.',ar:'شارة الحالة: ضمن الحد أقل من {near}% مستهلك · قريب من الحد من {near}% · تجاوز الالتزام فوق {over}% أو رصيد سالب.'},
+    fdSortL:{en:'Sort',ar:'الترتيب'},
+    fdSortName:{en:'Sort: Name',ar:'الترتيب: الاسم'},
+    fdHintSecLead:{en:'Pick one or more sectors',ar:'اختر قطاعاً واحداً أو أكثر'},
+    fdHintSecBody:{en:'to filter the chapters below — nothing picked = every sector.',ar:'لتصفية الأبواب أدناه — بدون اختيار = جميع القطاعات.'},
+    fdHintDeptLead:{en:'Pick one or more departments',ar:'اختر إدارة واحدة أو أكثر'},
+    fdHintDeptBody:{en:'cost centres of the picked sectors — narrows the chapters further.',ar:'مراكز التكلفة للقطاعات المختارة — تضيّق نطاق الأبواب أكثر.'},
+    fdHintTiles:{en:'Bar = Actual · Encumbrance · Fund as shares of the budget; the pill shows what is still free.',ar:'الشريط = الفعلي · الالتزامات · الرصيد كنسب من الموازنة؛ الشارة تبيّن المتبقي.'},
+    fdHintRows:{en:'Bars share one scale — the longest is the largest budget.',ar:'الأشرطة بمقياس واحد — الأطول هو أكبر موازنة.'},
+    fdHintMap:{en:'Tile area = share of budget · colour = % consumed (Actual + Encumbrance).',ar:'مساحة المربع = الحصة من الموازنة · اللون = % المستهلك (الفعلي + الالتزامات).'},
+    fdHintSorted:{en:'Sorted by budget amount, largest first.',ar:'مرتبة حسب مبلغ الموازنة، الأكبر أولاً.'},
+    fdHintTop:{en:'Showing the top {n} — "Show all" lists the rest.',ar:'عرض أعلى {n} — «عرض الكل» يعرض البقية.'},
+    /* monthly-movement hint on the rings (Mockup 2, approach A — v1.107.0) */
+    fdTrTitle:{en:'{m} — monthly movement',ar:'{m} — الحركة الشهرية'},
+    fdTrSub:{en:'Strong = the month\'s movement · pale = balance brought forward · full width = {p} YTD {v}',ar:'الداكن = حركة الشهر · الفاتح = الرصيد المرحّل · العرض الكامل = {p} تراكمي {v}'},
+    fdTrMove:{en:'Month movement',ar:'حركة الشهر'},
+    fdTrBf:{en:'Brought forward',ar:'رصيد مرحّل'},
+    fdTrAvg:{en:'Avg month',ar:'متوسط الشهر'},
+    fdTrYtd:{en:'YTD',ar:'تراكمي'},
+    fdTrNone:{en:'No earlier periods are loaded for this year.',ar:'لا توجد فترات سابقة محمّلة لهذه السنة.'},
+    fdTrHint:{en:'hover a figure for its month-by-month movement',ar:'مرّر المؤشر فوق رقم لعرض حركته شهراً بشهر'},
+    segmentKey:{en:'GL segment',ar:'مقطع دفتر الأستاذ'},
+    defaultValue:{en:'Default value',ar:'القيمة الافتراضية'},
+    defaultValueHint:{en:'Used for every combination no rule matches (Entity only)',ar:'تُستخدم لكل تركيبة لا تنطبق عليها أي قاعدة (الجهة فقط)'},
+    defaultChip:{en:'Default',ar:'افتراضي'},
+    entityCol:{en:'Entity',ar:'الجهة'},
+    allEntities:{en:'All entities',ar:'جميع الجهات'},
+    unclassified:{en:'Unclassified',ar:'غير مصنف'},
+    entityRuleHint:{en:'Entity rules may read any of the 10 GL segments. A combination may match ONE rule only — the default value covers everything else. Saving refreshes the reports within about 15 seconds.',ar:'يمكن لقواعد الجهة قراءة أي من مقاطع دفتر الأستاذ العشرة. تنطبق قاعدة واحدة فقط على كل تركيبة — وتغطي القيمة الافتراضية ما تبقى. يحدّث الحفظ التقارير خلال نحو 15 ثانية.'},
+    savedRefreshing:{en:'Saved — reports pick this up in about 15 seconds',ar:'تم الحفظ — ستظهر التغييرات في التقارير خلال نحو 15 ثانية'},
+    fdNoBudgetNotice:{en:'No budget allocated — showing Ledger rows for spending and commitments.',ar:'لا توجد موازنة مخصصة — تُعرض المصروفات والارتباطات في صفوف دفترية.'},
+    fdTrCardHint:{en:'Hover a card for its month-by-month movement (Actual by default) — hover a figure inside it to switch the measure.',ar:'مرّر المؤشر فوق بطاقة لعرض حركتها شهراً بشهر (الفعلي افتراضياً) — مرّر فوق رقم داخلها لتبديل المقياس.'},
+    fdSector:{en:'Sector',ar:'القطاع'},
+    fdDept:{en:'Department',ar:'الإدارة'},
+    fdColScale:{en:'Budget to scale · Actual / Encumbrance / Fund',ar:'الموازنة بمقياس موحد · الفعلي / الالتزامات / الرصيد'},
+    fdOfTotal:{en:'of total',ar:'من الإجمالي'},
+    fdOfBudget:{en:'of budget',ar:'من الموازنة'},
+    fdCommitted:{en:'committed',ar:'ملتزم به'},
+    fdFree:{en:'free',ar:'متاح'},
+    fdFundShort:{en:'Fund',ar:'الرصيد'},
+    fdStOk:{en:'On track',ar:'ضمن الحد'},
+    fdStTight:{en:'Tight',ar:'قريب من الحد'},
+    fdStOver:{en:'Over committed',ar:'تجاوز الالتزام'},
+    fdShowing:{en:'Showing {a} of {b}',ar:'عرض {a} من {b}'},
+    fdShowAll:{en:'Show all {n} departments',ar:'عرض جميع الإدارات ({n})'},
+    fdShowTop:{en:'Show top {n} only',ar:'عرض أعلى {n} فقط'},
+    fdSortBudget:{en:'Sort: Budget',ar:'الترتيب: الموازنة'},
+    fdSortUsed:{en:'Sort: % used',ar:'الترتيب: % المستخدم'},
+    fdSortFree:{en:'Sort: % free',ar:'الترتيب: % المتاح'},
+    fdTmArea:{en:'Tile area = share of budget',ar:'مساحة المربع = الحصة من الموازنة'},
+    fdTmFill:{en:'Fill = % consumed (Actual + Encumbrance):',ar:'اللون = % المستهلك (الفعلي + الالتزامات):'},
+    fdTmOver:{en:'over committed',ar:'تجاوز الالتزام'},
+    /* ── Financial Performance Report (FMR_Dashboard.pdf replica, GL/db/37) ── */
+    navFmr:{en:'Financial Performance',ar:'الأداء المالي'},
+    fmrTitle:{en:'Financial Performance Report',ar:'تقرير الأداء المالي'},
+    fmrSub:{en:'Budget Overview — Entity & Sector Level',ar:'نظرة عامة على الموازنة — مستوى الجهة والقطاع'},
+    fmrEntityLevel:{en:'Budget Overview — Entity Level',ar:'نظرة عامة على الموازنة — مستوى الجهة'},
+    fmrSectorLevel:{en:'Budget Overview — Sector Level',ar:'نظرة عامة على الموازنة — مستوى القطاع'},
+    fmrTrend:{en:'YTD Trend by Type',ar:'الاتجاه التراكمي حسب النوع'},
+    fmrCurrentVariance:{en:'Current Month Variances',ar:'تباينات الشهر الحالي'},
+    fmrExpectedVariance:{en:'Expected Variances',ar:'التباينات المتوقعة'},
+    fmrNoteSave:{en:'Save',ar:'حفظ'},
+    fmrNoteEmpty:{en:'No variances recorded for this period yet.',ar:'لا توجد تباينات مسجلة لهذه الفترة بعد.'},
+    fmrNotePlaceholder:{en:'Type a note for this period…',ar:'اكتب ملاحظة لهذه الفترة…'},
+    fmrNoteUpdated:{en:'Updated {by} on {at}',ar:'حدّثه {by} في {at}'},
+    fmrEntityFilter:{en:'Entity',ar:'الجهة'},
+    fmrComments:{en:'Comments',ar:'التعليقات'},
+    fmrNoPlan:{en:'No plan uploaded',ar:'لا توجد خطة محملة'},
+    fmrPlanPartialNote:{en:'YTD Plan combines the Payroll GL Cashflow upload with the Opex/Capex project cashflow plan. An entity or sector with no uploaded plan shows "—" instead of 0%.',ar:'تجمع الخطة حتى تاريخه بين تحميل التدفق النقدي للرواتب وخطة التدفق النقدي للمشاريع (التشغيلية/الرأسمالية). الجهة أو القطاع بلا خطة محملة يظهر "—" بدلاً من 0%.'},
+    fmrUnclassifiedNote:{en:'Unclassified = budgeted GL combinations with no matching classification yet (mostly unspent).',ar:'غير مصنّف = تركيبات موازنة لم تُصنّف بعد (غالباً غير منفقة).'},
+    fmrSectorTbl:{en:'Sector',ar:'القطاع'},
+    fmrYtdPlan:{en:'YTD Plan',ar:'الخطة حتى تاريخه'},
+    fmrKpiDrillHint:{en:'Click to view supporting GL combinations',ar:'انقر لعرض التركيبات المحاسبية الداعمة'},
+    fmrGenReport:{en:'Generate Report',ar:'إنشاء تقرير'},
+    fmrReportSoon:{en:'Report generation coming soon',ar:'إنشاء التقارير قريباً'},
+    fmrRepPdfSub:{en:'FMR Budget Overview book',ar:'كتيب نظرة عامة على الميزانية'},
+    fmrRepXlsxSub:{en:'Sheet-per-section workbook',ar:'مصنف بورقة لكل قسم'},
+    fmrRepPptSub:{en:'Executive slide deck',ar:'عرض شرائح تنفيذي'},
+    fmrRepReady:{en:'Report downloaded',ar:'تم تنزيل التقرير'},
+    fmrRepFailed:{en:'Report download failed',ar:'فشل تنزيل التقرير'},
+    fmrHintBudget:{en:'YTD approved budget to the selected period. Scope: Budget Group 1 · Chapters 1–3 (Payroll, Opex, Capex) only.',ar:'الميزانية المعتمدة منذ بداية السنة حتى الفترة المختارة. النطاق: مجموعة الميزانية 1 · الفصول 1–3 (الرواتب، التشغيلية، الرأسمالية) فقط.'},
+    fmrHintActual:{en:'YTD GL actuals for the same scope. Actual vs Budget = Actual ÷ Budget × 100. Click to open the supporting GL combinations.',ar:'المصروف الفعلي من دفتر الأستاذ حتى الفترة لنفس النطاق. الفعلي مقابل الميزانية = الفعلي ÷ الميزانية × 100. انقر لعرض التركيبات الداعمة.'},
+    fmrHintPlan:{en:'YTD expenditure plan = the Payroll plan upload (Chapter 1) + the projects cashflow plan (Chapters 2–3), summed to the selected period. Plan vs Budget = Plan ÷ Budget × 100.',ar:'خطة الإنفاق التراكمية = خطة الرواتب المحمّلة (الفصل 1) + خطة التدفق النقدي للمشاريع (الفصلان 2 و3) حتى الفترة المختارة. الخطة مقابل الميزانية = الخطة ÷ الميزانية × 100.'},
+    fmrHintActPlan:{en:'Actual ÷ YTD Plan × 100 — the spending pace against the plan. When no plan is loaded, no figure is shown (never fabricated).',ar:'الفعلي ÷ الخطة التراكمية × 100 — وتيرة الإنفاق مقارنة بالخطة. لا يُعرض رقم عند عدم وجود خطة محمّلة.'},
+    fmrHintFunds:{en:'GL Funds Available at the selected period = Budget − actuals − encumbrances (the ledger figure, not re-derived).',ar:'الأموال المتاحة في دفتر الأستاذ عند الفترة المختارة = الميزانية − الفعلي − الارتباطات (رقم الدفتر كما هو).'},
+    fmrHintGauge:{en:'Gauge = Actual vs Budget %. The entity comes from the combination\'s entity-specific segment: ALC 4510600 · Museums 4510700 · Masterpieces = appropriation 301439 (carved out of DCT).',ar:'العداد = نسبة الفعلي مقابل الميزانية. تُحدد الجهة من مقطع الكيان في التركيبة: ALC 4510600 · المتاحف 4510700 · المقتنيات = الاعتماد 301439 (مستثناة من DCT).'},
+    fmrHintTrend:{en:'Budget vs Actual vs YTD Plan per type — Payroll = Chapter 1, Opex = Chapter 2, Capex = Chapter 3. Click any bar to open its supporting GL lines.',ar:'الميزانية مقابل الفعلي مقابل الخطة لكل نوع — الرواتب = الفصل 1، التشغيلية = الفصل 2، الرأسمالية = الفصل 3. انقر أي عمود لعرض بنوده الداعمة.'},
+    fmrHintSector:{en:'Sectors ranked by Actual vs YTD Plan % (highest pace first). The entity buttons filter the split; the Comments button opens that sector\'s period comments.',ar:'القطاعات مرتبة حسب نسبة الفعلي مقابل الخطة (الأعلى أولاً). أزرار الجهات ترشّح التقسيم؛ وزر التعليقات يفتح تعليقات القطاع للفترة.'},
+    fmrEntDct:{en:'DCT',ar:'الدائرة'},
+    fmrEntAlc:{en:'ALC',ar:'مركز اللغة العربية'},
+    fmrEntMuseums:{en:'Museums',ar:'المتاحف'},
+    fmrEntMasterpieces:{en:'Masterpieces',ar:'روائع فنية'},
+    fmrEntUnclassified:{en:'Unclassified',ar:'غير مصنّف'}
   };
 
   function VM() {
@@ -1461,6 +1669,8 @@
        NAV_GROUPS because the settings sub-tabs' hidden() functions read it
        (loaded once at boot from /butilcmt/meta/caps, further down) */
     self.cmtCaps = ko.observable({});
+    // Terms and Key definitions caps (NAV hidden() reads it; boot fetch below)
+    self.termsCaps = ko.observable({});
 
     /* ── navigation: three groups, each with its own sub-tabs ───────────
        Adding a page = one entry here; the group row, the sub row and the
@@ -1484,6 +1694,8 @@
           { id: 'emaillog',     labelKey: 'navEmailLog' } ] },
       { id: 'gl', labelKey: 'grpGl', items: [
           { id: 'dashboard', labelKey: 'navDashboard' },
+          { id: 'fmr',       labelKey: 'navFmr' },
+          { id: 'fd',        labelKey: 'navFd' },
           { id: 'actuals',   labelKey: 'navActuals' },
           { id: 'recon',     labelKey: 'navRecon' },
           { id: 'legacy',    labelKey: 'navLegacy' },
@@ -1499,9 +1711,29 @@
           { id: 'cmtroles',   labelKey: 'navCmtRoles',
             hidden: function () { return self.cmtCaps().canManageRoles !== 'Y'; } },
           { id: 'cmtperiods', labelKey: 'navCmtPeriods',
-            hidden: function () { return self.cmtCaps().canClosePeriod !== 'Y'; } } ] }
+            hidden: function () { return self.cmtCaps().canClosePeriod !== 'Y'; } },
+          // Terms and Key definitions -- rich-text report intro documents
+          // (GL_MANAGE_TERMS / SYS_ADMIN only; caps land from /terms/meta/caps)
+          { id: 'terms', labelKey: 'navTerms',
+            hidden: function () { return self.termsCaps().canManage !== 'Y'; } } ] }
     ];
     self.navGroups = NAV_GROUPS;
+    // ── URL hash deep links: #<tab id> or a friendly alias (#budget-status).
+    // go() mirrors the route into the hash, so F5 / bookmarks / shared links
+    // restore the same tab; unknown hashes fall back to the default page.
+    var HASH_ALIAS = { 'budget-status': 'fd' };   // inbound friendly names
+    var HASH_LABEL = { fd: 'budget-status' };     // outbound: what the bar shows
+    function routeFromHash() {
+      var h = (location.hash || '').replace(/^#/, '');
+      if (!h) return null;
+      try { h = decodeURIComponent(h); } catch (e) {}
+      if (HASH_ALIAS[h]) h = HASH_ALIAS[h];
+      for (var gi = 0; gi < NAV_GROUPS.length; gi++) {
+        var its = NAV_GROUPS[gi].items;
+        for (var ii = 0; ii < its.length; ii++) if (its[ii].id === h) return h;
+      }
+      return null;
+    }
     // derived from the view, so a deep link lands on the right group
     self.activeGroup = ko.computed(function () {
       var v = self.view();
@@ -1918,7 +2150,7 @@
 
     /* ── app switcher (jump to other i-Finance apps) ── */
     self.modules = [
-      { code: 'iF', name: 'Admin',            color: '#C74634', url: '/Admin/Jet/index.html' },
+      { code: 'iF', name: 'Admin',            color: '#C74634', url: '/dct/index.html' },
       { code: 'PC', name: 'Petty Cash',       color: '#2E7D32', url: '/PC/Jet/index.html' },
       { code: 'CC', name: 'Credit Cards',     color: '#B0721E', url: '/CC/Jet/index.html' },
       { code: 'FL', name: 'Freelancers',      color: '#7C4DBE', url: '/FL/Jet/index.html' },
@@ -1932,7 +2164,7 @@
     ];
     self.switcherOpen = ko.observable(false);
     self.toggleSwitcher = function () { self.switcherOpen(!self.switcherOpen()); };
-    self.goHome = function () { location.href = '/Admin/Jet/index.html'; };
+    self.goHome = function () { location.href = '/dct/index.html'; };
 
     /* ── styled full-segment hover popover for a combination row ── */
     self.tipRows = ko.observableArray([]);
@@ -2002,12 +2234,21 @@
       // Classifications, Segment Mapping and Explorer are now regions of the
       // Chart of Accounts (overview) page — redirect any legacy nav/deep-link.
       if (v === 'classifications' || v === 'mapping' || v === 'explorer') v = 'overview';
+      if (HASH_ALIAS[v]) v = HASH_ALIAS[v];
       self.view(v);
+      // keep the route in the URL so F5 restores the page (friendly name when one exists)
+      try { history.replaceState(null, '', '#' + (HASH_LABEL[v] || v)); } catch (e) {}
       if (v === 'overview') { if (!self.coaLoaded()) self.loadCoa(); }
       else if (v === 'actuals') {
         if (!self.acFiltersLoaded()) self.loadAcFilters().then(function () { self.runActuals(0); });
         else self.runActuals(0);
       } else if (v === 'dashboard') self.loadDashboard();
+      else if (v === 'fmr') {
+        if (!self.fmrLoaded()) self.loadFmr(); else self.runFmr();
+      }
+      else if (v === 'fd') {
+        if (!self.fdLoaded()) self.loadFd(); else self.runFd();
+      }
       else if (v === 'sectorperf') {
         if (!self.spFilters()) self.loadSpFilters().then(function () { self.runSectorPerf(); });
         else if (!self.spLoaded()) self.runSectorPerf();
@@ -2073,6 +2314,7 @@
         if (!self.elLoaded()) self.elRun();
       }
       else if (v === 'recipients') { if (!self.rlLoaded()) self.rlLoad(); }
+      else if (v === 'terms') { if (!self.tkLoaded()) self.tkLoad(); }
       else if (v === 'revcats') { if (!self.rcLoaded()) self.rcLoad(); }
       else if (v === 'cmtroles') { self.loadCmtRoles(); }
       else if (v === 'cmtperiods') {
@@ -2112,9 +2354,14 @@
     self.sectorOpts = ko.observableArray([]);
     self.chapterOpts = ko.observableArray([]);
     function dimByCode(c) { return self.dimensions().filter(function (d) { return d.code === c; })[0]; }
+    // the 10 canonical GL segments (GET /gl/segments, GL/db/47) -- Entity rules may read any of them
+    self.segments = ko.observableArray([]);
+    self.segName = function (g) { return g ? (self.lang() === 'ar' ? (g.nameAr || g.nameEn) : g.nameEn) : ''; };
+    self.segNameOf = function (key) { var g = self.segments().filter(function (x) { return x.key === key; })[0]; return g ? self.segName(g) : (key || ''); };
 
     /* ════ CLASSIFICATIONS ════ */
     self.clsType = ko.observable('SECTOR');
+    self.clsIsEntity = ko.computed(function () { return self.clsType() === 'ENTITY'; });
     self.values = ko.observableArray([]);
     self.clsLoading = ko.observable(false);
     self.loadValues = function () {
@@ -2130,19 +2377,21 @@
     self.vType = ko.observable('SECTOR'); self.vCode = ko.observable(''); self.vNameEn = ko.observable('');
     self.vNameAr = ko.observable(''); self.vAlt1 = ko.observable(''); self.vAlt2 = ko.observable(''); self.vAlt3 = ko.observable('');
     self.vTag = ko.observable(''); self.vParent = ko.observable(''); self.vOrder = ko.observable(0); self.vActive = ko.observable('Y');
+    self.vDefault = ko.observable('N');
     self.vIsHier = ko.computed(function () { var d = dimByCode(self.vType()); return d && d.isHierarchical === 'Y'; });
     self.parentOpts = ko.computed(function () {
       return self.values().filter(function (v) { return v.type === self.vType() && v.classValueId !== self.editingValueId(); });
     });
     self.addValue = function () {
       self.modalErr(''); self.editingValueId(null); self.vType(self.clsType()); self.vCode(''); self.vNameEn('');
-      self.vNameAr(''); self.vAlt1(''); self.vAlt2(''); self.vAlt3(''); self.vTag(''); self.vParent(''); self.vOrder(0); self.vActive('Y');
+      self.vNameAr(''); self.vAlt1(''); self.vAlt2(''); self.vAlt3(''); self.vTag(''); self.vParent(''); self.vOrder(0); self.vActive('Y'); self.vDefault('N');
       self.valueModal(true);
     };
     self.editValue = function (r) {
       self.modalErr(''); self.editingValueId(r.classValueId); self.vType(r.type); self.vCode(r.valueCode);
       self.vNameEn(r.nameEn); self.vNameAr(r.nameAr || ''); self.vAlt1(r.altName1 || ''); self.vAlt2(r.altName2 || '');
       self.vAlt3(r.altName3 || ''); self.vTag(r.tag || ''); self.vParent(r.parentValueId || ''); self.vOrder(r.displayOrder || 0); self.vActive(r.isActive);
+      self.vDefault(r.isDefault || 'N');
       self.valueModal(true);
     };
     self.closeValue = function () { self.valueModal(false); };
@@ -2151,11 +2400,11 @@
       if (!self.vCode() || !self.vNameEn()) { self.modalErr('Code and English name are required.'); return; }
       var body = { type: self.vType(), valueCode: self.vCode(), nameEn: self.vNameEn(), nameAr: self.vNameAr(),
         altName1: self.vAlt1(), altName2: self.vAlt2(), altName3: self.vAlt3(), tag: self.vTag(),
-        parentValueId: self.vParent() || null, displayOrder: Number(self.vOrder()) || 0, isActive: self.vActive() };
+        parentValueId: self.vParent() || null, displayOrder: Number(self.vOrder()) || 0, isActive: self.vActive(), isDefault: self.vDefault() };
       var p = self.editingValueId()
         ? api('PUT', '/class-values/' + self.editingValueId(), body)
         : api('POST', '/class-values', body);
-      p.then(function () { self.valueModal(false); toast(self.t('saved')); self.loadValues(); self.refreshFilters(); })
+      p.then(function () { self.valueModal(false); toast(self.t('savedRefreshing')); self.loadValues(); self.refreshFilters(); })
        .catch(fail);
     };
     self.deleteValue = function (r) {
@@ -2176,10 +2425,20 @@
     self.clsSaving = ko.observable(false);
     self.clsDrawerErr = ko.observable('');
 
+    // segment values for the drawer datalist -- any of the 10 keys (GL/db/48)
+    function clsLoadSegOptions(key) {
+      if (!key) { self.clsSegOptions([]); return Promise.resolve(); }
+      return api('GET', '/segments/' + key + '/values' + qs({ type: self.clsType(), limit: 500 }))
+        .then(function (r) { self.clsSegOptions(r.items || []); })
+        .catch(function () { self.clsSegOptions([]); });
+    }
     function clsRow(m) {
+      var dim = dimByCode(self.clsType());
       var r = {
         mapId: m ? m.mapId : null,
         isNew: ko.observable(!m),
+        segmentKey: ko.observable(m ? (m.segmentKey || '') : ((dim && dim.segmentKey) || '')),
+        segmentKeyName: m ? (m.segmentKeyName || '') : '',
         segmentValue: ko.observable(m ? m.segmentValue : ''),
         segmentDesc: ko.observable(m ? (m.segmentDesc || '') : ''),
         startDate: ko.observable(m ? m.startDate : today()),
@@ -2190,6 +2449,7 @@
       };
       function mark() { r.dirty(true); }
       r.startDate.subscribe(mark); r.endDate.subscribe(mark); r.notes.subscribe(mark);
+      r.segmentKey.subscribe(function (k) { if (r.isNew() && self.clsIsEntity()) { r.segmentValue(''); r.segmentDesc(''); clsLoadSegOptions(k); } });
       r.segmentValue.subscribe(function (v) {
         if (!r.isNew()) return;
         var o = self.clsSegOptions().filter(function (x) { return x.segmentValue === v; })[0];
@@ -2208,11 +2468,7 @@
       var nm = (self.lang() === 'ar' && v.nameAr) ? v.nameAr : v.nameEn;
       self.clsDrillTitle((nm || '') + ' · ' + (v.valueCode || ''));
       self.clsDrawer(true); self.clsDrillLoading(true);
-      var pOpts = d
-        ? api('GET', '/segments/' + d.segmentKey + '/values' + qs({ limit: 500 }))
-            .then(function (r) { self.clsSegOptions(r.items || []); })
-            .catch(function () { self.clsSegOptions([]); })
-        : Promise.resolve();
+      var pOpts = d ? clsLoadSegOptions(d.segmentKey) : Promise.resolve();
       Promise.all([pOpts, clsLoadRows(v)])
         .then(function () { self.clsDrillLoading(false); })
         .catch(function (e) { self.clsDrillLoading(false); self.clsDrawer(false); toast(e.message, true); });
@@ -2235,6 +2491,7 @@
       for (i = 0; i < rows.length; i++) {
         r = rows[i];
         if (r.isNew() && !r.segmentValue()) { self.clsDrawerErr(self.t('segRequired')); return; }
+        if (r.isNew() && self.clsIsEntity() && !r.segmentKey()) { self.clsDrawerErr(self.t('segmentKey') + ' ' + self.t('segRequired')); return; }
         if ((r.isNew() || r.dirty()) && !r.startDate()) { self.clsDrawerErr(self.t('startRequired')); return; }
       }
       var chain = Promise.resolve(), changed = 0;
@@ -2244,6 +2501,7 @@
           chain = chain.then(function () {
             return api('POST', '/mappings', {
               type: self.clsType(), segmentValue: row.segmentValue(), classValueId: v.classValueId,
+              segmentKey: self.clsIsEntity() ? row.segmentKey() : undefined,
               startDate: row.startDate(), endDate: row.endDate() || null, notes: row.notes()
             }).then(function (res) { row.mapId = res.mapId; row.isNew(false); row.dirty(false); });
           });
@@ -2260,7 +2518,7 @@
       if (!changed) { toast(self.t('nothingToSave')); return; }
       self.clsSaving(true);
       chain.then(function () {
-        toast(self.t('saved'));
+        toast(self.t('savedRefreshing'));
         self.loadValues(); self.refreshFilters();
         return clsLoadRows(v);
       }).then(function () { self.clsSaving(false); })
@@ -2274,14 +2532,17 @@
     self.mapSegment = ko.observable('');
     self.mappings = ko.observableArray([]);
     self.mapValueOpts = ko.observableArray([]);
+    self.mapSegKey = ko.observable('');          // Entity only: which GL segment the picked value belongs to
     self.loadSegOptions = function () {
       var d = dimByCode(self.mapType()); if (!d) return;
-      return api('GET', '/segments/' + d.segmentKey + '/values' + qs({ search: self.segSearch(), limit: 100 }))
+      var key = (d.code === 'ENTITY' && self.mapSegKey()) ? self.mapSegKey() : d.segmentKey;
+      return api('GET', '/segments/' + key + '/values' + qs({ type: d.code, search: self.segSearch(), limit: 100 }))
         .then(function (r) {
           self.segOptions((r.items || []).map(function (x) { x.label = x.segmentValue + ' · ' + (x.description || ''); return x; }));
         }).catch(fail);
     };
-    self.mapType.subscribe(function () { self.mapSegment(''); self.mappings([]); if (self.view() === 'overview') self.loadSegOptions(); });
+    self.mapType.subscribe(function () { var d = dimByCode(self.mapType()); self.mapSegKey(d ? d.segmentKey : ''); self.mapSegment(''); self.mappings([]); if (self.view() === 'overview') self.loadSegOptions(); });
+    self.mapSegKey.subscribe(function () { self.mapSegment(''); self.mappings([]); if (self.view() === 'overview' && self.mapType() === 'ENTITY') self.loadSegOptions(); });
     var segT; self.segSearch.subscribe(function () { clearTimeout(segT); segT = setTimeout(self.loadSegOptions, 300); });
     self.loadMappings = function () {
       if (!self.mapSegment()) { self.mappings([]); return; }
@@ -2314,11 +2575,12 @@
       self.modalErr('');
       if (!self.mValue() || !self.mStart()) { self.modalErr('Value and start date are required.'); return; }
       var body = { type: self.mapType(), segmentValue: self.mapSegment(), classValueId: Number(self.mValue()),
+        segmentKey: self.mapType() === 'ENTITY' ? (self.mapSegKey() || undefined) : undefined,
         startDate: self.mStart(), endDate: self.mEnd() || null, notes: self.mNotes() };
       var p = self.editingMapId()
         ? api('PUT', '/mappings/' + self.editingMapId(), body)
         : api('POST', '/mappings', body);
-      p.then(function () { self.mapModal(false); toast(self.t('saved')); self.loadMappings(); self.loadSegOptions(); })
+      p.then(function () { self.mapModal(false); toast(self.t('savedRefreshing')); self.loadMappings(); self.loadSegOptions(); })
        .catch(fail);
     };
     self.deleteMapping = function (r) {
@@ -2328,11 +2590,12 @@
 
     /* ════ EXPLORER ════ */
     self.expSearch = ko.observable(''); self.fSector = ko.observable(''); self.fChapter = ko.observable(''); self.asOf = ko.observable('');
+    self.fEntity = ko.observable(''); self.entityOpts = ko.observableArray([]);
     self.combos = ko.observableArray([]); self.comboTotal = ko.observable(0); self.comboOffset = ko.observable(0); self.comboLimit = 50;
     self.loadCombos = function (offset) {
       offset = Math.max(0, offset || 0); self.loading(true);
       return api('GET', '/combinations' + qs({ search: self.expSearch(), sector: self.fSector(), chapter: self.fChapter(),
-        asof: self.asOf(), limit: self.comboLimit, offset: offset }))
+        entity: self.fEntity(), asof: self.asOf(), limit: self.comboLimit, offset: offset }))
         .then(function (d) { self.combos(d.items || []); self.comboTotal(d.total || 0); self.comboOffset(offset); self.loading(false); })
         .catch(function (e) { self.loading(false); fail(e); });
     };
@@ -2340,13 +2603,14 @@
     function expReload() { clearTimeout(expT); expT = setTimeout(function () { self.loadCombos(0); }, 300); }
     self.expSearch.subscribe(expReload); self.fSector.subscribe(function () { self.loadCombos(0); });
     self.fChapter.subscribe(function () { self.loadCombos(0); }); self.asOf.subscribe(function () { self.loadCombos(0); });
+    self.fEntity.subscribe(function () { self.loadCombos(0); });
     self.comboRange = ko.computed(function () {
       if (!self.comboTotal()) return '';
       var a = self.comboOffset() + 1, b = Math.min(self.comboOffset() + self.comboLimit, self.comboTotal());
       return a + '–' + b + ' / ' + self.fmt(self.comboTotal());
     });
     self.exportCsv = function () {
-      api('GET', '/combinations' + qs({ search: self.expSearch(), sector: self.fSector(), chapter: self.fChapter(), asof: self.asOf(), limit: 500, offset: 0 }))
+      api('GET', '/combinations' + qs({ search: self.expSearch(), sector: self.fSector(), chapter: self.fChapter(), entity: self.fEntity(), asof: self.asOf(), limit: 500, offset: 0 }))
         .then(function (d) {
           var rows = d.items || [];
           var cols = ['ccString', 'costCenterCode', 'costCenterDesc', 'accountCode', 'accountDesc', 'appropriationCode', 'programCode', 'sectorName', 'chapterName', 'programName'];
@@ -2380,6 +2644,11 @@
     self.refreshFilters = function () {
       api('GET', '/class-values?type=SECTOR').then(function (d) { self.sectorOpts((d.items || []).filter(function (v) { return v.isActive === 'Y'; })); });
       api('GET', '/class-values?type=CHAPTER').then(function (d) { self.chapterOpts((d.items || []).filter(function (v) { return v.isActive === 'Y'; })); });
+      api('GET', '/class-values?type=ENTITY').then(function (d) {
+        var l = (d.items || []).filter(function (v) { return v.isActive === 'Y'; });
+        l.push({ valueCode: 'UNCLASSIFIED', nameEn: self.t('unclassified') });
+        self.entityOpts(l);
+      }).catch(function () {});
     };
 
     /* ════ formatting helpers (AED) ════ */
@@ -3940,6 +4209,67 @@
       }).catch(function (e) { self.buBookBusy(false); fail(e); });
     };
 
+    /* ── Sector Performance Report (SECTOR_PERF_BOOK via /gl/butil/sectorbook) —
+       the Briefing Book pack re-covered for distribution: DCT logo top-right
+       and a copyright line on EVERY page, simplified cover, prepared by
+       Financial Planning and Reporting. Same filter scope as the book. */
+    self.buSpbBusy = ko.observable(false);
+    function buSpbDownload(runId) {
+      return fetch(API + '/butil/sectorbook/' + runId + '/pdf',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('PDF download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Sector_Performance_Report_' + self.buYear() + '.pdf';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runBuSpb = function () {
+      if (self.buSpbBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      // user rule 2026-09-06: the report runs for exactly ONE sector
+      if (!self.buSector()) { toast(self.t('buSpbNeedSector'), true); return; }
+      self.buSpbBusy(true);
+      self.rgStart('rgGenSpb', 6);
+      // full page filter set (mirrors buParams) so the report scope = the page scope
+      api('POST', '/butil/sectorbook', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.buBuParam(),
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null,
+        ovr: self.buOvr() ? 'Y' : null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buSpbQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {                       // ~6 min ceiling
+            self.buSpbBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/butil/sectorbook/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasPdf) {
+                buSpbDownload(runId)
+                  .then(function () { self.buSpbBusy(false); toast(self.t('buSpbReady')); })
+                  .catch(function (e) { self.buSpbBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.buSpbBusy(false);
+                toast(self.t('buSpbFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });      // transient poll error: keep waiting
+          }, 6000);
+        })();
+      }).catch(function (e) { self.buSpbBusy(false); fail(e); });
+    };
+
     /* ── Excel register (BUDGET_UTIL_REGISTER via the /gl/butil/xlsx bridge) —
        the analysis companion of the Briefing Book: every detail list in its
        own worksheet (utilization lines, AP, GRN, open PO, open PR, pending). */
@@ -3998,6 +4328,126 @@
           }, 5000);
         })();
       }).catch(function (e) { self.buXlsxBusy(false); fail(e); });
+    };
+
+    /* ── FBP - Projects Budget Utilization (FBP_BUTIL_REGISTER via the
+       /gl/butil/fbpxlsx bridge, GL/db/52) — the register re-issued for the FBP
+       distribution: sheet 1 = the FIXED 21-column FBP layout (Task Name in
+       place of Task Number), so deliberately NO sheetcols is sent — the page's
+       Manage Columns view must never change this report. */
+    self.buFbpBusy = ko.observable(false);
+    function buFbpDownload(runId) {
+      return fetch(API + '/butil/fbpxlsx/' + runId + '/file',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('Excel download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'FBP_Projects_Budget_Utilization_' + self.buYear() + '.xlsx';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runBuFbp = function () {
+      if (self.buFbpBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.buFbpBusy(true);
+      self.rgStart('rgGenFbp', 5);
+      api('POST', '/butil/fbpxlsx', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.buBuParam(),
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null,
+        ovr: self.buOvr() ? 'Y' : null,
+        cmtmode: self.buCmtDisp() !== 'NONE' ? self.buCmtDisp() : null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {
+            self.buFbpBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/butil/fbpxlsx/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasFile) {
+                buFbpDownload(runId)
+                  .then(function () { self.buFbpBusy(false); toast(self.t('buFbpReady')); })
+                  .catch(function (e) { self.buFbpBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.buFbpBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });
+          }, 5000);
+        })();
+      }).catch(function (e) { self.buFbpBusy(false); fail(e); });
+    };
+
+    /* ── MSS - Projects Budget Utilization (MSS_BUTIL_REGISTER via the
+       /gl/butil/mssxlsx bridge, GL/db/53) — the register re-issued for the MSS
+       distribution: fixed 26-column sheet 1 (Task Number + Task Name),
+       Requester on the detail sheets, Task Name on Open PO/PR. Layout is baked
+       into the definition, so NO sheetcols is sent. */
+    self.buMssBusy = ko.observable(false);
+    function buMssDownload(runId) {
+      return fetch(API + '/butil/mssxlsx/' + runId + '/file',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('Excel download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'MSS_Projects_Budget_Utilization_' + self.buYear() + '.xlsx';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runBuMss = function () {
+      if (self.buMssBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.buMssBusy(true);
+      self.rgStart('rgGenMss', 5);
+      api('POST', '/butil/mssxlsx', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.buBuParam(),
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null,
+        ovr: self.buOvr() ? 'Y' : null,
+        cmtmode: self.buCmtDisp() !== 'NONE' ? self.buCmtDisp() : null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {
+            self.buMssBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/butil/mssxlsx/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasFile) {
+                buMssDownload(runId)
+                  .then(function () { self.buMssBusy(false); toast(self.t('buMssReady')); })
+                  .catch(function (e) { self.buMssBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.buMssBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });
+          }, 5000);
+        })();
+      }).catch(function (e) { self.buMssBusy(false); fail(e); });
     };
 
     /* ── PowerPoint deck (BUDGET_UTIL_BOOK rendered as PPTX via /gl/butil/ppt) —
@@ -4061,7 +4511,7 @@
     self.toggleGen = function () { self.genOpen(!self.genOpen()); return true; };
     self.closeGen = function () { self.genOpen(false); return true; };
     self.buGenBusy = ko.computed(function () {
-      return self.buBookBusy() || self.buXlsxBusy() || self.buPptBusy();
+      return self.buBookBusy() || self.buSpbBusy() || self.buXlsxBusy() || self.buFbpBusy() || self.buMssBusy() || self.buPptBusy();
     });
 
     /* ── "The Binder" report-generation popup (v1.80.0, user-picked study B) ──
@@ -4636,10 +5086,11 @@
       return { td: td, col: ctx.$data, row: ctx.$parent };
     }
     // the segment source differs by drill: Actuals rows resolve via acRowMap,
-    // Fund Movement rows via the drill response's own combos side-map (v1.95.0)
+    // Fund Movement / FMR trend rows via the drill response's own combos
+    // side-map (v1.95.0 pattern, extended to the FMR trend drill)
     function drillComboRow(info) {
       if (!(info && info.col && info.col.key === 'combination' && info.row)) return null;
-      return acRowMap[info.row.combination] || fmComboMap[info.row.combination] || null;
+      return acRowMap[info.row.combination] || fmComboMap[info.row.combination] || fmrComboMap[info.row.combination] || fdComboMap[info.row.combination] || null;
     }
     self.drillGridOver = function (d, e) {
       var info = drillResolveCell(e.target), cr = drillComboRow(info);
@@ -4923,7 +5374,7 @@
     }
     self.fmDrillOn = ko.observable(false);
     self.fmDrillSort = ko.observable('default');
-    var fmDrillParams = null, fmComboMap = {};
+    var fmDrillParams = null, fmComboMap = {}, fmrComboMap = {}, fdComboMap = {};
     function runFmDrill(params) {
       fmDrillParams = params;
       var p = Object.assign({}, params, { sort: self.fmDrillSort() });
@@ -6135,6 +6586,8 @@
       return api('GET', '/butilcmt/meta/caps').then(self.cmtCaps).catch(function () {});
     };
     self.loadCmtCaps();
+    // Terms and Key definitions caps -- shows the Settings tab for managers
+    api('GET', '/terms/meta/caps').then(self.termsCaps).catch(function () {});
 
     var CMT_LVL_KEY = { BUTIL_LINE: 'cmtLvlLine', SECTOR: 'cmtLvlSector', COST_CENTER: 'cmtLvlCc',
                         PROJECT: 'cmtLvlProject', TASK: 'cmtLvlTask', PO: 'cmtLvlPo',
@@ -8168,6 +8621,1039 @@
     })();
 
     /* ════════════════════════════════════════════════════════════════════
+       FD Dashboard — "Budget status" (2026-09-03). The user's notebook
+       sketch (final apps/BI/docs/FD Dashboard) rendered as mockup A "Ring
+       Bands" (picked out of three). GL-balances basis: GL/db/42
+       GET /fd/status applies the SAME period view + Budget-Group-1 +
+       Chapters-1-3 rules as the Financial Performance tab, so the two pages
+       always agree. ONE request returns the sector × entity × chapter cube;
+       sector-card clicks and the business-unit toggle aggregate client-side,
+       so filtering never waits on the server. v1.105.0: the Sectors and
+       Departments regions render in one of THREE presentations picked from
+       the Search region (tiles / rows / map) — see the presentation block.
+       ════════════════════════════════════════════════════════════════════ */
+    (function () {
+      self.fdLoaded = ko.observable(false);
+      self.fdBusy   = ko.observable(false);
+      self.fdError  = ko.observable('');
+      self.fdData   = ko.observable(null);
+      self.fdSel    = ko.observableArray([]);   // selected sector codes (any-of; empty = all)
+      self.fdEntity = ko.observable('ALL');     // ALL | DCT | MUSEUMS | ALC | MASTERPIECES
+
+      var fdUi = {};
+      try { fdUi = JSON.parse(localStorage.getItem('gl_fd_ui') || '{}'); } catch (ex) { fdUi = {}; }
+      if (!fdUi || typeof fdUi !== 'object' || Array.isArray(fdUi)) fdUi = {};
+      self.fdSecSearchOpen = ko.observable(fdUi.search !== false);
+      function saveFdUi() {
+        try { localStorage.setItem('gl_fd_ui', JSON.stringify({ search: self.fdSecSearchOpen(), layout: self.fdLayout ? self.fdLayout() : undefined })); } catch (ex) { /* Storage may be unavailable; retain this session's controls. */ }
+      }
+      self.toggleFdSec = function () {
+        self.fdSecSearchOpen(!self.fdSecSearchOpen());
+        saveFdUi();
+        return true;
+      };
+
+      self.fdYears = ko.observableArray((function () {
+        var y = new Date().getFullYear(), out = [];
+        for (var i = y - 2; i <= y + 1; i++) out.push(String(i));
+        return out;
+      })());
+      self.fdYear    = ko.observable('');
+      self.fdPeriods = ko.observableArray([]);
+      self.fdPeriod  = ko.observable('');
+      function rebuildFdPeriods() {
+        var y = self.fdYear(); if (!y) { self.fdPeriods([]); return; }
+        var fmt;
+        try { fmt = new Intl.DateTimeFormat(self.lang() === 'ar' ? 'ar' : 'en', { month: 'short' }); } catch (ex) { fmt = null; }
+        var out = [];
+        for (var m = 1; m <= 12; m++) {
+          var mm = ('0' + m).slice(-2);
+          var label = fmt ? fmt.format(new Date(Number(y), m - 1, 1)) : mm;
+          out.push({ period: mm + '-' + y, label: label + ' ' + y });
+        }
+        var nowY = String(new Date().getFullYear());
+        var cur = (nowY === y) ? (('0' + (new Date().getMonth() + 1)).slice(-2) + '-' + y) : out[out.length - 1].period;
+        self.fdPeriods(out);
+        // same KO law as the FMR page: <select options:fdPeriods> force-picks
+        // January the instant the list changes — win now and on the next tick
+        self.fdPeriod(cur);
+        setTimeout(function () { if (self.fdPeriod() !== cur) self.fdPeriod(cur); }, 0);
+      }
+      self.fdYear.subscribe(rebuildFdPeriods);
+
+      /* ── entities / sectors / chapters ─────────────────────────────── */
+      self.fdEntities = ko.computed(function () { var d = self.fdData(); return (d && d.entities) || []; });
+      self.fdEntName = function (code) {
+        if (code === 'ALL') return self.t('fdAllUnits');
+        var e = self.fdEntities().filter(function (x) { return x.code === code; })[0];
+        if (e) return (self.lang() === 'ar' && e.nameAr) ? e.nameAr : (e.name || code);
+        return STR['fdEnt' + code] ? self.t('fdEnt' + code) : code;
+      };
+
+      self.fdSearchSummary = ko.computed(function () {
+        if (self.fdSecSearchOpen()) return '';
+        var p = (self.fdPeriods() || []).filter(function (x) { return x.period === self.fdPeriod(); })[0];
+        var ent = self.fdEntity();
+        return [self.fdYear(), p ? p.label : '', self.fdEntName(ent)].filter(Boolean).join(' · ');
+      });
+
+      // rows in the current business-unit scope (sector filter NOT applied —
+      // the cards themselves show scope totals so the reader can pick)
+      /* ── approach A (v1.107.0, user): ONE request per YEAR. The response keeps
+         rows[] for the anchor period AND ships series[] = the same cube for every
+         loaded period of the year (m = {MM:[b,a,e,f,n]}). Any other period of the
+         year is derived here (fdRowsAt) — a period switch inside the year never
+         calls the server, and the ring hint sums the series under the scope. */
+      var fdNameMaps = ko.computed(function () {
+        var d = self.fdData(), sn = {}, cn = {};
+        if (!d) return { sn: sn, cn: cn };
+        (d.sectors || []).forEach(function (x) { sn[x.code] = { name: x.name, nameAr: x.nameAr }; });
+        (d.costCenters || []).forEach(function (x) { cn[x.code] = x.name; });
+        (d.rows || []).forEach(function (r) { if (!sn[r.sector]) sn[r.sector] = { name: r.sectorName }; if (!cn[r.costCenter]) cn[r.costCenter] = r.costCenterName; });
+        return { sn: sn, cn: cn };
+      });
+      function fdMM(period) { return period ? String(period).slice(0, 2) : ''; }
+      self.fdPeriodsLoaded = ko.computed(function () { var d = self.fdData(); return (d && d.periods) || []; });
+      function fdHasPeriod(p) { return self.fdPeriodsLoaded().indexOf(p) >= 0; }
+      function fdRowsAt(period) {
+        var d = self.fdData(); if (!d) return [];
+        if (period === d.period) return d.rows || [];
+        var mm = fdMM(period), maps = fdNameMaps(), out = [];
+        (d.series || []).forEach(function (x) {
+          var m = x.m && x.m[mm]; if (!m) return;
+          var sn = maps.sn[x.s] || {};
+          out.push({ sector: x.s, sectorName: sn.name || x.s, costCenter: x.c, costCenterName: maps.cn[x.c] || x.c,
+                     entity: x.e, chapter: x.ch, budget: m[0] || 0, actual: m[1] || 0, encumbrance: m[2] || 0,
+                     fundsAvailable: m[3] || 0, combinations: m[4] || 0 });
+        });
+        return out;
+      }
+      self.fdCurRows = ko.computed(function () {
+        var d = self.fdData(); if (!d) return [];
+        var p = self.fdPeriod();
+        return (p === d.period || fdHasPeriod(p)) ? fdRowsAt(p) : [];
+      });
+      var fdScopeRows = ko.computed(function () {
+        var ent = self.fdEntity();
+        return self.fdCurRows().filter(function (r) { return ent === 'ALL' || r.entity === ent; });
+      });
+      function fdSum(rows) {
+        var o = { budget: 0, actual: 0, encumbrance: 0, fundsAvailable: 0, combinations: 0 };
+        rows.forEach(function (r) {
+          o.budget += r.budget || 0; o.actual += r.actual || 0; o.encumbrance += r.encumbrance || 0;
+          o.fundsAvailable += r.fundsAvailable || 0; o.combinations += r.combinations || 0;
+        });
+        return o;
+      }
+      self.fdIsSel = function (code) { return self.fdSel.indexOf(code) >= 0; };
+      self.fdToggleSector = function (code) {
+        if (self.fdIsSel(code)) self.fdSel.remove(code); else self.fdSel.push(code);
+        fdPruneDepts();
+        return true;
+      };
+      self.fdClearSectors = function () { self.fdSel([]); fdPruneDepts(); return true; };
+      self.fdSelSummary = ko.computed(function () {
+        var n = self.fdSel().length;
+        return n ? self.t('fdSelected').replace('{n}', n) : self.t('fdAllSectors');
+      });
+      self.fdSectorName = function (s) { return (self.lang() === 'ar' && s.nameAr) ? s.nameAr : s.name; };
+
+      // sector cards: every sector of the loaded period, totals in the
+      // current business-unit scope, budget-desc; a sector with nothing in
+      // scope (e.g. a DCT-only sector under MSS) or with all-zero figures
+      // ("Museums": 7 empty combinations) is hidden — nothing to pick
+      self.fdSectors = ko.computed(function () {
+        var d = self.fdData(); if (!d) return [];
+        var rows = fdScopeRows(), by = {};
+        rows.forEach(function (r) { (by[r.sector] = by[r.sector] || []).push(r); });
+        var lov = (d.sectors || []).slice(), seen = {};
+        lov.forEach(function (s) { seen[s.code] = 1; });
+        Object.keys(by).forEach(function (k) { if (!seen[k]) lov.push({ code: k, name: by[k][0].sectorName || k }); });
+        return lov.map(function (s) {
+          var t = fdSum(by[s.code] || []);
+          return { code: s.code, name: s.name, nameAr: s.nameAr, budget: t.budget, actual: t.actual,
+                   encumbrance: t.encumbrance, fundsAvailable: t.fundsAvailable, has: !!by[s.code] };
+        }).filter(function (s) { return s.has && (s.budget || s.actual || s.encumbrance); })
+          .sort(function (a, b) { return b.budget - a.budget; });
+      });
+      self.fdSetEntity = function (code) {
+        self.fdEntity(code);
+        // drop picks that have nothing in the new scope (their card is gone)
+        var codes = self.fdSectors().map(function (s) { return s.code; });
+        self.fdSel(self.fdSel().filter(function (c) { return codes.indexOf(c) >= 0; }));
+        fdPruneDepts();
+        return true;
+      };
+
+      /* ── departments (cost centres) — second card region (user, 2026-09-03):
+         the cost centres of the picked sectors (all sectors when none picked),
+         scope totals, budget-desc, multi-select any-of; a text filter narrows
+         the CARDS only, never the figures. A pick that no longer belongs to
+         the picked sectors / business unit is dropped (fdPruneDepts). */
+      self.fdCcSel = ko.observableArray([]);
+      self.fdDeptQ = ko.observable('');
+      self.fdIsDeptSel = function (code) { return self.fdCcSel.indexOf(code) >= 0; };
+      self.fdToggleDept = function (code) {
+        if (self.fdIsDeptSel(code)) self.fdCcSel.remove(code); else self.fdCcSel.push(code);
+        return true;
+      };
+      self.fdClearDepts = function () { self.fdCcSel([]); return true; };
+      var fdDeptsAll = ko.computed(function () {
+        var d = self.fdData(); if (!d) return [];
+        var sel = self.fdSel(), by = {};
+        fdScopeRows().forEach(function (r) {
+          if (!sel.length || sel.indexOf(r.sector) >= 0) (by[r.costCenter] = by[r.costCenter] || []).push(r);
+        });
+        var lov = (d.costCenters || []).slice(), seen = {};
+        lov.forEach(function (c) { seen[c.code] = 1; });
+        Object.keys(by).forEach(function (k) { if (!seen[k]) { var r0 = by[k][0]; lov.push({ code: k, name: r0.costCenterName || k, sector: r0.sector, sectorName: r0.sectorName }); } });
+        return lov.map(function (c) {
+          var t = fdSum(by[c.code] || []);
+          return { code: c.code, name: c.name, sector: c.sector, sectorName: c.sectorName,
+                   budget: t.budget, actual: t.actual, encumbrance: t.encumbrance, fundsAvailable: t.fundsAvailable, has: !!by[c.code] };
+        }).filter(function (c) { return c.has && (c.budget || c.actual || c.encumbrance); })
+          .sort(function (a, b) { return b.budget - a.budget; });
+      });
+      self.fdDepts = ko.computed(function () {
+        var q = (self.fdDeptQ() || '').trim().toLowerCase();
+        return fdDeptsAll().filter(function (c) { return !q || (c.code + ' ' + c.name).toLowerCase().indexOf(q) >= 0; });
+      });
+      self.fdDeptsTotal = ko.computed(function () { return fdDeptsAll().length; });
+      function fdPruneDepts() {
+        var codes = fdDeptsAll().map(function (c) { return c.code; });
+        self.fdCcSel(self.fdCcSel().filter(function (c) { return codes.indexOf(c) >= 0; }));
+      }
+      self.fdDeptSelSummary = ko.computed(function () {
+        var n = self.fdCcSel().length;
+        return n ? self.t('fdSelected').replace('{n}', n) : self.t('fdAllDepts');
+      });
+
+      /* ── presentation switch (v1.105.0, user): ONE Search-region parameter
+         drives BOTH regions — 'tiles' (composition cards, default) · 'rows'
+         (ledger, every bar on one shared scale) · 'map' (proportional treemap,
+         area = budget, fill = % consumed). Remembered in this browser
+         (gl_fd_ui.layout). State pills and map heat reuse the vs-Budget
+         thresholds BUD_UTIL_NEAR_PCT / BUD_UTIL_OVER_PCT, echoed by GL/db/42
+         as thresholds{near,over} — no new settings. */
+      self.fdLayout = ko.observable(['rows', 'tiles', 'map'].indexOf(fdUi.layout) >= 0 ? fdUi.layout : 'tiles');
+      self.fdLayoutOpts = ko.computed(function () {
+        return [{ v: 'tiles', l: self.t('fdLayoutTiles') }, { v: 'rows', l: self.t('fdLayoutRows') }, { v: 'map', l: self.t('fdLayoutMap') }];
+      });
+      self.fdNoBudget = function (scope) {
+        if (self.fdLayout() !== 'map') return false;
+        var rows = scope === 'sectors' ? self.fdSectors() : self.fdDepts();
+        return rows.length > 0 && rows.every(function (r) { return !r.budget; });
+      };
+      self.fdIs = function (k, scope) { return (scope && self.fdNoBudget(scope) ? 'rows' : self.fdLayout()) === k; };
+      self.fdThr = ko.computed(function () {
+        var d = self.fdData(), t = (d && d.thresholds) || {};
+        return { near: Number(t.near) || 90, over: Number(t.over) || 100 };
+      });
+      self.fdScopeBudget = ko.computed(function () { return fdSum(fdScopeRows()).budget; });
+      self.fdSetLayout = function (v) { self.fdLayout(v); return true; };
+      // radio option cards (v1.106.0) + the formatted reading hint for the picked one
+      self.fdPresOpts = ko.computed(function () {
+        return [{ v: 'tiles', l: self.t('fdLayoutTiles'), d: self.t('fdPresDescTiles') },
+                { v: 'rows',  l: self.t('fdLayoutRows'),  d: self.t('fdPresDescRows') },
+                { v: 'map',   l: self.t('fdLayoutMap'),   d: self.t('fdPresDescMap') }];
+      });
+      function fdKeyFor(k, tiles, rows, map) { return k === 'rows' ? rows : k === 'map' ? map : tiles; }
+      self.fdPresHint = ko.computed(function () {
+        var k = self.fdLayout(), th = self.fdThr();
+        return { title: self.t(fdKeyFor(k, 'fdLayoutTiles', 'fdLayoutRows', 'fdLayoutMap')),
+                 body:  self.t(fdKeyFor(k, 'fdPresHintTiles', 'fdPresHintRows', 'fdPresHintMap')),
+                 state: k === 'map' ? '' : self.t('fdPresState').replace(/\{near\}/g, th.near).replace('{over}', th.over) };
+      });
+      // one-line reading tip inside the coloured region strips
+      self.fdHintTip = ko.computed(function () { return self.t(fdKeyFor(self.fdLayout(), 'fdHintTiles', 'fdHintRows', 'fdHintMap')); });
+      // explicit sort on BOTH regions (user, v1.106.0): budget amount (default, largest
+      // first) · % used · % free · name; the map is always by budget — that is its area
+      self.fdSortOpts = ko.computed(function () {
+        return [{ v: 'budget', l: self.t('fdSortBudget') }, { v: 'used', l: self.t('fdSortUsed') },
+                { v: 'free', l: self.t('fdSortFree') }, { v: 'name', l: self.t('fdSortName') }];
+      });
+      self.fdSecSort = ko.observable('budget');
+      function fdSortList(l, k) {
+        l = l.slice();
+        if (k === 'used') l.sort(function (a, b) { return self.fdPct(b.actual, b.budget) - self.fdPct(a.actual, a.budget) || b.budget - a.budget; });
+        else if (k === 'free') l.sort(function (a, b) { return self.fdPct(b.fundsAvailable, b.budget) - self.fdPct(a.fundsAvailable, a.budget) || b.budget - a.budget; });
+        else if (k === 'name') l.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+        else l.sort(function (a, b) { return (Number(b.budget) || 0) - (Number(a.budget) || 0); });
+        return l;
+      }
+      self.fdSectorsSorted = ko.computed(function () { return fdSortList(self.fdSectors(), self.fdSecSort()); });
+      self.fdSectorNameOf = function (code) {
+        var s = self.fdSectors().filter(function (x) { return x.code === code; })[0];
+        return s ? self.fdSectorName(s) : code;
+      };
+      self.fdConsumed = function (r) {
+        var b = Number(r.budget) || 0;
+        return b ? ((Number(r.actual) || 0) + (Number(r.encumbrance) || 0)) / b * 100 : 0;
+      };
+      // 3-state verdict on the consumed share (Actual + Encumbrance) of budget:
+      // over = fund negative or consumed > over%; tight = consumed >= near%
+      self.fdState = function (r) {
+        var th = self.fdThr(), c = self.fdConsumed(r);
+        if ((Number(r.fundsAvailable) || 0) < 0 || c > th.over + 0.0001) return 'over';
+        return c >= th.near ? 'tight' : 'ok';
+      };
+      self.fdStateCss = function (r) { var k = self.fdState(r); return { ok: k === 'ok', tight: k === 'tight', over: k === 'over' }; };
+      self.fdStateLabel = function (r) { var k = self.fdState(r); return self.t(k === 'over' ? 'fdStOver' : k === 'tight' ? 'fdStTight' : 'fdStOk'); };
+      self.fdFreeTxt = function (r) { var f = self.fdPct(r.fundsAvailable, r.budget); return (f < 0 ? '−' : '') + Math.abs(f) + '% ' + self.t('fdFree'); };
+      self.fdShare = function (a, b) {
+        b = Number(b) || 0; if (!b) return '0%';
+        var v = (Number(a) || 0) / b * 100;
+        return (v > 0 && v < 1 ? v.toFixed(1) : Math.round(v)) + '%';
+      };
+      // compact figure for cards / rows / map — honours "Figures in" except
+      // Exact (a 10-digit figure cannot live in a 200px tile; the exact value
+      // stays in the tooltip and the ledger sub-line)
+      self.fdBig = function (v) { return self.buUnit() === 'X' ? self.compact(v) : self.buNum(v); };
+      // composition bar segments (share of budget, clamped so they never overflow)
+      self.fdSeg = function (r) {
+        var b = Number(r.budget) || 0, a = 0, e = 0, f = 0;
+        if (b > 0) {
+          a = Math.max(0, Math.min(100, (Number(r.actual) || 0) / b * 100));
+          e = Math.max(0, Math.min(100 - a, (Number(r.encumbrance) || 0) / b * 100));
+          f = Math.max(0, Math.min(100 - a - e, (Number(r.fundsAvailable) || 0) / b * 100));
+        }
+        return { a: a + '%', e: e + '%', f: f + '%', over: (Number(r.fundsAvailable) || 0) < 0 };
+      };
+      self.fdTip = function (r) {
+        return self.t('fdBudget') + ' ' + self.money(r.budget) + ' · ' + self.t('fdActual') + ' ' + self.money(r.actual)
+             + ' · ' + self.t('fdEnc') + ' ' + self.money(r.encumbrance) + ' · ' + self.t('fdFund') + ' ' + self.money(r.fundsAvailable);
+      };
+      var fdMaxSector = ko.computed(function () { return Math.max.apply(null, [1].concat(self.fdSectors().map(function (s) { return s.budget; }))); });
+      var fdMaxDept   = ko.computed(function () { return Math.max.apply(null, [1].concat(fdDeptsAll().map(function (c) { return c.budget; }))); });
+      // ledger rows: bar length = budget on ONE shared scale (longest = largest budget in the region)
+      self.fdRowW = function (r, isDept) {
+        var m = isDept ? fdMaxDept() : fdMaxSector();
+        return Math.max(0, Math.min(100, (Number(r.budget) || 0) / m * 100)) + '%';
+      };
+      self.fdSelChips = ko.computed(function () {
+        var sel = self.fdSel();
+        return self.fdSectors().filter(function (s) { return sel.indexOf(s.code) >= 0; });
+      });
+
+      // departments: sort (tiles) + top-N with "Show all" (rows 12 / tiles 18;
+      // the map always draws every department — that is its point)
+      self.fdDeptSort = ko.observable('budget');
+      self.fdDeptShowAll = ko.observable(false);
+      self.fdDeptTopN = ko.computed(function () { return self.fdLayout() === 'rows' ? 12 : 18; });
+      self.fdDeptsSorted = ko.computed(function () { return fdSortList(self.fdDepts(), self.fdDeptSort()); });
+      self.fdDeptTopTxt = ko.computed(function () {
+        return (self.fdLayout() !== 'map' && !self.fdDeptShowAll() && self.fdDeptsSorted().length > self.fdDeptTopN())
+          ? self.t('fdHintTop').replace('{n}', self.fdDeptTopN()) : '';
+      });
+      self.fdDeptsShown = ko.computed(function () {
+        var l = self.fdDeptsSorted();
+        return (self.fdLayout() === 'map' || self.fdDeptShowAll()) ? l : l.slice(0, self.fdDeptTopN());
+      });
+      self.fdDeptHasMore = ko.computed(function () { return self.fdLayout() !== 'map' && self.fdDeptsSorted().length > self.fdDeptTopN(); });
+      self.fdToggleDeptAll = function () { self.fdDeptShowAll(!self.fdDeptShowAll()); return true; };
+      self.fdDeptMoreTxt = ko.computed(function () {
+        return self.fdDeptShowAll() ? self.t('fdShowTop').replace('{n}', self.fdDeptTopN())
+                                    : self.t('fdShowAll').replace('{n}', self.fdDeptsSorted().length);
+      });
+      self.fdDeptCountTxt = ko.computed(function () {
+        var n = self.fdCcSel().length;
+        if (n) return self.t('fdSelected').replace('{n}', n);
+        return self.t('fdShowing').replace('{a}', self.fdDeptsShown().length).replace('{b}', self.fdDeptsTotal());
+      });
+      self.fdLayout.subscribe(function () { saveFdUi(); self.fdDeptShowAll(false); setTimeout(fdMeasureAll, 30); });
+
+      /* ── proportional map: squarified treemap, laid out in pixels from the
+         measured region width (fdMeasure binding + resize); tiles are
+         positioned with inset-inline-start so the map mirrors in RTL ── */
+      self.fdMapW = ko.observable(1100);
+      self.fdMapH = { sectors: 330, depts: 380 };
+      function fdMeasureAll() {
+        var el = document.querySelector('#pg-fd .fd-tm-wrap[data-measure]');
+        if (el && el.clientWidth && el.clientWidth !== self.fdMapW()) self.fdMapW(el.clientWidth);
+      }
+      var fdRt; window.addEventListener('resize', function () { clearTimeout(fdRt); fdRt = setTimeout(fdMeasureAll, 120); });
+      self.view.subscribe(function (v) { if (v === 'fd') setTimeout(fdMeasureAll, 30); });
+      ko.bindingHandlers.fdMeasure = { init: function (el) { el.setAttribute('data-measure', '1'); setTimeout(fdMeasureAll, 0); } };
+      function fdWorst(row, side, scale) {
+        var s = 0; row.forEach(function (i) { s += i.v * scale; });
+        var th = s / side, w = 0;
+        row.forEach(function (i) { var len = i.v * scale / th; w = Math.max(w, th / len, len / th); });
+        return w;
+      }
+      function fdSquarify(items, x, y, w, h) {
+        var out = [], rest = items.filter(function (i) { return i.v > 0; }).sort(function (a, b) { return b.v - a.v; });
+        if (!rest.length || w <= 0 || h <= 0) return out;
+        var total = 0; rest.forEach(function (i) { total += i.v; });
+        var scale = w * h / total, cx = x, cy = y, cw = w, ch = h;
+        while (rest.length) {
+          var vert = cw >= ch, side = vert ? ch : cw, row = [], best = Infinity;
+          while (rest.length) {
+            var cand = row.concat([rest[0]]), wr = fdWorst(cand, side, scale);
+            if (wr <= best || !row.length) { row = cand; best = wr; rest.shift(); } else break;
+          }
+          var area = 0; row.forEach(function (i) { area += i.v * scale; });
+          var th = area / side, off = 0;
+          row.forEach(function (i) {
+            var len = i.v * scale / th;
+            out.push({ it: i.r, x: vert ? cx : cx + off, y: vert ? cy + off : cy, w: vert ? th : len, h: vert ? len : th });
+            off += len;
+          });
+          if (vert) { cx += th; cw -= th; } else { cy += th; ch -= th; }
+        }
+        return out;
+      }
+      var FD_HEAT = ['#DCE9E3', '#9CC3B3', '#4F8A75', '#2C5044', '#9E3B33'];
+      function fdHeatLo() { return Math.max(60, self.fdThr().near - 10); }
+      self.fdHeatBands = ko.computed(function () {
+        var th = self.fdThr(), lo = fdHeatLo();
+        return [{ c: FD_HEAT[0], l: '<60%' }, { c: FD_HEAT[1], l: '60–' + lo + '%' }, { c: FD_HEAT[2], l: lo + '–' + th.near + '%' },
+                { c: FD_HEAT[3], l: th.near + '–' + th.over + '%' }, { c: FD_HEAT[4], l: self.t('fdTmOver') }];
+      });
+      function fdHeat(r) {
+        var c = self.fdConsumed(r), k = self.fdState(r);
+        var i = k === 'over' ? 4 : k === 'tight' ? 3 : c >= fdHeatLo() ? 2 : c >= 60 ? 1 : 0;
+        return { bg: FD_HEAT[i], dark: i >= 2 };
+      }
+      // treemap weights: area = budget; an item with NO budget but real
+      // activity (actual / encumbrance on an unbudgeted cost centre) cannot
+      // have zero area or it would vanish from the map — it gets a sliver
+      // (0.6% of the largest item) and, being over committed, paints rust
+      function fdMapItems(list) {
+        var mx = 0; list.forEach(function (r) { mx = Math.max(mx, Number(r.budget) || 0); });
+        var floor = mx * 0.006;
+        return list.map(function (r) {
+          var b = Number(r.budget) || 0;
+          return { v: b > 0 ? b : ((r.actual || r.encumbrance) ? floor : 0), r: r };
+        });
+      }
+      function fdTile(r, b, isDept) {
+        var hh = fdHeat(r), big = b.w > 118 && b.h > 84, mid = b.w > 72 && b.h > 30;
+        return { r: r, x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h), bg: hh.bg, dark: hh.dark,
+                 big: big, mid: !big && mid, sub: b.h > 44, code: isDept && b.h > 100 };
+      }
+      self.fdSectorTiles = ko.computed(function () {
+        if (self.fdLayout() !== 'map') return [];
+        return fdSquarify(fdMapItems(self.fdSectors()), 0, 0, self.fdMapW(), self.fdMapH.sectors)
+          .map(function (b) { return fdTile(b.it, b, false); });
+      });
+      self.fdDeptGroups = ko.computed(function () {
+        if (self.fdLayout() !== 'map') return [];
+        var by = {}, order = [];
+        self.fdDeptsSorted().forEach(function (c) { if (!by[c.sector]) { by[c.sector] = []; order.push(c.sector); } by[c.sector].push(c); });
+        var items = {}; order.forEach(function (k) { items[k] = fdMapItems(by[k]); });
+        var groups = fdSquarify(order.map(function (k) { var v = 0; items[k].forEach(function (i) { v += i.v; }); return { v: v, r: k }; }),
+                                0, 0, self.fdMapW(), self.fdMapH.depts);
+        return groups.map(function (g) {
+          var strip = (g.h > 46 && g.w > 60) ? 20 : 0;
+          // a sliver group (e.g. Unclassified, 17x3 px) still lists every
+          // department: no padding below 12 px and never a zero-size inner box
+          var pad = (g.w > 12 && g.h > 12) ? 2 : 0;
+          return { code: g.it, name: self.fdSectorNameOf(g.it), x: Math.round(g.x), y: Math.round(g.y), w: Math.round(g.w), h: Math.round(g.h), strip: strip,
+                   tiles: fdSquarify(items[g.it], g.x + pad, g.y + strip + pad, Math.max(g.w - 2 * pad, 1), Math.max(g.h - strip - 2 * pad, 1))
+                            .map(function (b) { return fdTile(b.it, b, true); }) };
+        });
+      });
+      self.fdTileStyle = function (t) { return 'inset-inline-start:' + t.x + 'px;top:' + t.y + 'px;width:' + t.w + 'px;height:' + t.h + 'px;background:' + t.bg; };
+      self.fdGrpStyle  = function (g) { return 'inset-inline-start:' + g.x + 'px;top:' + g.y + 'px;width:' + g.w + 'px;height:' + g.h + 'px'; };
+      self.fdShortName = function (c) { return String(c.name || '').replace(/^(DCT|Museums|ALC)\s[-–]\s/, ''); };
+
+      // rows after ALL filters (business unit ∩ sectors ∩ departments) — what
+      // the bands, the drills and the total foot show
+      self.fdRows = ko.computed(function () {
+        var sel = self.fdSel(), cc = self.fdCcSel();
+        return fdScopeRows().filter(function (r) {
+          return (!sel.length || sel.indexOf(r.sector) >= 0) && (!cc.length || cc.indexOf(r.costCenter) >= 0);
+        });
+      });
+      self.fdChapters = ko.computed(function () {
+        var d = self.fdData(); if (!d) return [];
+        var rows = self.fdRows();
+        return (d.chapters || []).map(function (c) {
+          var t = fdSum(rows.filter(function (r) { return r.chapter === c.code; }));
+          var nm = self.t('fd' + c.code), alt = self.t('fdAlt' + c.code);
+          t.code = c.code;
+          t.name = (!nm || nm === 'fd' + c.code) ? c.name : nm;
+          t.alt  = (!alt || alt === 'fdAlt' + c.code) ? (c.alt || '') : alt;
+          return t;
+        });
+      });
+      self.fdTotals   = ko.computed(function () { return fdSum(self.fdRows()); });
+      // Total band on top of the chapter rings (v1.111.0, user): the SAME
+      // scope as the chapter bands summed — code '' = no chapter predicate, so
+      // its drill (/fd/lines) and its hover ladder cover Chapters 1-3 together
+      self.fdTotalBand = ko.computed(function () {
+        if (!self.fdChapters().length) return null;
+        var t = fdSum(self.fdRows());
+        t.code = ''; t.total = true; t.name = self.t('fdGrand'); t.alt = self.t('fdTotalAlt');
+        return t;
+      });
+      self.fdExcluded = ko.computed(function () {
+        var d = self.fdData(); if (!d) return null;
+        var p = self.fdPeriod();
+        if (p === d.period) return d.excluded || null;
+        return (d.excludedByPeriod && d.excludedByPeriod[fdMM(p)]) || null;
+      });
+      self.fdHasData  = ko.computed(function () { return self.fdCurRows().length > 0; });
+
+      /* ── figure helpers ─────────────────────────────────────────────── */
+      self.fdPct = function (a, b) { b = Number(b) || 0; return b ? Math.round((Number(a) || 0) / b * 100) : 0; };
+      self.fdBarW = function (a, b) { return Math.max(0, Math.min(100, self.fdPct(a, b))) + '%'; };
+      var FD_C = 2 * Math.PI * 38;   // ring r=38 in a 92x92 viewBox
+      self.fdRingDash = function (v, bud) {
+        var p = (Number(bud) || 0) > 0 ? Math.max(0, Math.min(1, (Number(v) || 0) / Number(bud))) : 0;
+        return (p * FD_C).toFixed(1) + ' ' + FD_C.toFixed(1);
+      };
+      // budget group of a band (v1.112.0): from the server's scope.budgetGroupByChapter
+      // ('CH1:1|...|CH4:3|CH5:5') — never hard-coded client-side; the Total band lists every group
+      self.fdBgOf = function (code) {
+        var d = self.fdData(), map = {}, gs = [];
+        ((d && d.scope && d.scope.budgetGroupByChapter) || '').split('|').forEach(function (kv) {
+          var a = kv.split(':'); if (a[0] && a[1]) map[a[0]] = a[1];
+        });
+        if (code) return map[code] || '1';
+        for (var k in map) if (gs.indexOf(map[k]) < 0) gs.push(map[k]);
+        return gs.length ? gs.sort().join(' / ') : '1';
+      };
+      self.fdBudgetSubOf = function (t) {
+        return self.t(t.code ? 'fdBudgetSubBg' : 'fdBudgetSubBgs').replace('{g}', self.fdBgOf(t.code));
+      };
+      self.fdFundSub = function (t) {
+        return t.fundsAvailable < 0 ? self.t('fdOverBudget')
+             : (self.fdPct(t.fundsAvailable, t.budget) + '% ' + self.t('fdRemains'));
+      };
+
+      /* sector card icons — inline SVG (stroke = currentColor, so they take
+         the .fd-ico disc colour); keyed on DCT_GL_CLASS_VALUE sector codes */
+      var FD_ICONS = {
+        building: '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-5h6v5M8 7h2M14 7h2M8 11h2M14 11h2"/></svg>',
+        mask: '<svg viewBox="0 0 24 24"><path d="M4 5c2.5 1 5.5 1.5 8 1.5S17.5 6 20 5v6.5c0 4.5-3.5 8-8 8s-8-3.5-8-8Z"/><path d="M8.5 10.5c.8-.6 1.7-.6 2.5 0M13 10.5c.8-.6 1.7-.6 2.5 0M9 15c1.8 1.4 4.2 1.4 6 0"/></svg>',
+        compass: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 5.3-5.3 2.2 2.2-5.3Z"/></svg>',
+        brief: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M3 12h18"/></svg>',
+        mega: '<svg viewBox="0 0 24 24"><path d="M4 10v4h3l7 4V6l-7 4Z"/><path d="M17 9.5a3.5 3.5 0 0 1 0 5M8 14l1.5 5"/></svg>',
+        target: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>',
+        museum: '<svg viewBox="0 0 24 24"><path d="M3 9.5 12 4l9 5.5M4 10h16M6 10v8M10 10v8M14 10v8M18 10v8M3 20h18"/></svg>',
+        book: '<svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5V5.5M8 7h8"/></svg>',
+        shield: '<svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 9.5 4-1.5 7-5 7-9.5V6Z"/><path d="m9.5 12 1.8 1.8L15 10"/></svg>',
+        scale: '<svg viewBox="0 0 24 24"><path d="M12 4v16M6 20h12M5 8h14"/><path d="M5 8 3 13h4ZM19 8l-2 5h4Z"/></svg>',
+        wrench: '<svg viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0 5.2 5.2L10 21.5l-3-3L16.7 8.7"/><path d="M14.5 6.5 17 4l3 3-2.5 2.5"/></svg>',
+        clip: '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h6M9 18h3"/></svg>',
+        lab: '<svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 15h9"/></svg>',
+        grid: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>'
+      };
+      var FD_SECTOR_ICON = {
+        TOURISM: 'compass', CULTURE: 'mask', SUPPORT_SERVICE: 'building', EXECUTIVE_OFFICE: 'brief',
+        STRATEGIC_MARKETING_COMMUNICATION: 'mega', STRATEGIC_AFFAIRS: 'target',
+        LOUVRE_ABU_DHABI: 'museum', AD_GUGGENHEIM_MUSEUM: 'museum', ZAYED_NATIONAL_MUSEUM: 'museum',
+        NATURAL_HISTORY_MUSEUM: 'museum', MUSEUM_SHARED_SERVICES: 'museum', MUSEUMS: 'museum',
+        TEAMLAB: 'lab', ALC: 'book', INTERNAL_AUDIT: 'shield', LEGAL_GOVERNMENT_AFFAIRS: 'scale',
+        PROJECTS_MANAGEMENT_ENGINEERING: 'wrench', TENDERING_AND_PROJECTS_CONTROL: 'clip'
+      };
+      self.fdSectorIcon = function (code) { return FD_ICONS[FD_SECTOR_ICON[code] || 'grid']; };
+
+      /* ── figure drill (GL/db/43 GET /fd/lines) ───────────────────────
+         Every ring / the Fund square opens the SHARED drill drawer with that
+         chapter's rows at full 10-segment combination grain, under the SAME
+         scope the band shows (period, business unit, picked sectors) — so the
+         drawer total == the figure clicked. The response's combos{} side-map
+         feeds the drawer's delegated Combination popover (drillComboRow →
+         fdComboMap), the same styled 10-segment hint the butil drills use. */
+      var FD_METRIC_KEY = { budget: 'fdBudget', actual: 'fdActual', encumbrance: 'fdEnc', fundsavailable: 'fdFund' };
+      self.fdOpenDrill = function (item, metric) {
+        var ent = self.fdEntity(), sel = self.fdSel(), cc = self.fdCcSel();
+        var names = self.fdSectors().filter(function (x) { return sel.indexOf(x.code) >= 0; })
+                        .map(function (x) { return self.fdSectorName(x); });
+        var scope = sel.length ? (names.length <= 3 ? names.join(', ') : self.t('fdDrillSectors').replace('{n}', names.length))
+                               : self.t('fdAllSectors');
+        if (cc.length) {
+          var dn = fdDeptsAll().filter(function (x) { return cc.indexOf(x.code) >= 0; }).map(function (x) { return x.name; });
+          scope += ' · ' + (dn.length <= 2 ? dn.join(', ') : self.t('fdDrillDepts').replace('{n}', dn.length));
+        }
+        self.drillTitle(item.name + (item.alt ? ' · ' + item.alt : '') + ' — ' + self.t(FD_METRIC_KEY[metric] || metric));
+        self.drillSub(self.t('fdTitle') + ' · ' + self.fdPeriod() + ' · ' + self.fdEntName(ent) + ' · ' + scope);
+        self.drillCtx('');
+        self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+        self.fdTrShow(false);
+        self.drillDrawer(true); self.drillLoading(true);
+        api('GET', '/fd/lines' + qs({ period: self.fdPeriod(), chapter: item.code, metric: metric,
+                                     entity: ent === 'ALL' ? '' : ent, sector: sel.length ? sel.join('|') : '',
+                                     costcenter: cc.length ? cc.join('|') : '' }))
+          .then(function (d) { fdComboMap = d.combos || {}; fillDrill(d); })
+          .catch(drillFail);
+        return true;
+      };
+
+      /* ── ring hint: monthly movement (Mockup 2, v1.107.0) ──────────────
+         Hover a ring / the Fund square → fixed popover: one bar per loaded
+         period up to the selected one, split into balance brought forward
+         (pale) + the month's movement (strong; red when negative), figures at
+         the right. Built from series[] under the band's OWN scope (business
+         unit ∩ sectors ∩ departments) — the last row equals the ring figure. */
+      self.fdShowSummary = ko.observable(false);
+      self.fdTrShow = ko.observable(false);
+      self.fdShowSummary.subscribe(function (show) { if (!show) self.fdTrOut(); });
+      self.fdTrX = ko.observable(0); self.fdTrY = ko.observable(0);
+      self.fdTrData = ko.observable(null);
+      var FD_TR_IDX = { budget: 0, actual: 1, encumbrance: 2, fundsavailable: 3 };
+      var FD_TR_KEY = { budget: 'fdBudget', actual: 'fdActual', encumbrance: 'fdEnc', fundsavailable: 'fdFund' };
+      function fdMonthLabel(mm, y) {
+        try { return new Intl.DateTimeFormat(self.lang() === 'ar' ? 'ar' : 'en', { month: 'short' }).format(new Date(Number(y), Number(mm) - 1, 1)); }
+        catch (ex) { return mm; }
+      }
+      var FD_TR_FIELD = { budget: 'budget', actual: 'actual', encumbrance: 'encumbrance', fundsavailable: 'fundsAvailable' };
+      // ONE ladder builder (v1.108.0): keep(x) picks the series keys in scope,
+      // bold = the popover's subject (a chapter band, a sector, a department);
+      // item (cards only) adds the 4-measure chip strip so the card's whole
+      // picture rides with the ladder. Everything is summed from series[] —
+      // a card hover costs no request (≈0.1 ms over the 283 keys)
+      function fdTrBuild(metric, keep, bold, item) {
+        var d = self.fdData(); if (!d || !d.series) return null;
+        var idx = FD_TR_IDX[metric], curMM = fdMM(self.fdPeriod()), y = String(d.year);
+        var per = (d.periods || []).map(fdMM).filter(function (mm) { return mm <= curMM; });
+        var sums = {}; per.forEach(function (mm) { sums[mm] = 0; });
+        d.series.forEach(function (x) {
+          if (!keep(x)) return;
+          per.forEach(function (mm) { var m = x.m[mm]; if (m) sums[mm] += (m[idx] || 0); });
+        });
+        var rows = [], prev = 0, maxAbs = 0;
+        per.forEach(function (mm) {
+          var v = sums[mm];
+          rows.push({ mm: mm, label: fdMonthLabel(mm, y), ytd: v, mov: v - prev, cur: mm === curMM });
+          maxAbs = Math.max(maxAbs, Math.abs(v), Math.abs(prev));
+          prev = v;
+        });
+        // one scale for the ladder: full width = the largest YTD balance of the year so far
+        rows.forEach(function (r) {
+          var bf = r.ytd - r.mov, neg = r.mov < 0;
+          var bfW = maxAbs ? Math.min(100, Math.abs(bf) / maxAbs * 100) : 0;
+          var movW = maxAbs ? Math.min(100, Math.abs(r.mov) / maxAbs * 100) : 0;
+          r.neg = neg;
+          r.bfW = bfW;                                       // pale = balance brought forward
+          r.movW = Math.min(movW, neg ? bfW : 100 - bfW);    // strong = the month's movement
+          r.movStart = neg ? Math.max(0, bfW - r.movW) : bfW; // a decrease is drawn INSIDE the pale, in red
+          r.movTxt = (r.mov >= 0 ? '+' : '−') + self.fdBig(Math.abs(r.mov));
+          r.ytdTxt = self.fdBig(r.ytd) + ' ' + self.t('fdTrYtd');
+        });
+        var last = rows.length ? rows[rows.length - 1] : null;
+        var pl = (self.fdPeriods() || []).filter(function (x) { return x.period === self.fdPeriod(); })[0];
+        var metrics = item ? Object.keys(FD_TR_FIELD).map(function (k) {
+          return { m: k, l: self.t(FD_TR_KEY[k]), v: self.fdBig(item[FD_TR_FIELD[k]]), on: k === metric };
+        }) : null;
+        return { metric: metric, chapter: bold,
+                 title: self.t('fdTrTitle').replace('{m}', self.t(FD_TR_KEY[metric])),
+                 sub: self.t('fdTrSub').replace('{p}', pl ? pl.label : self.fdPeriod()).replace('{v}', last ? self.fdBig(last.ytd) : '—'),
+                 rows: rows, avgTxt: last && rows.length ? self.fdBig(last.ytd / rows.length) : '—', metrics: metrics };
+      }
+      // chapter band: business unit ∩ picked sectors ∩ picked departments (= the band's own scope)
+      self.fdTrend = function (item, metric) {
+        var ent = self.fdEntity(), sel = self.fdSel(), cc = self.fdCcSel();
+        return fdTrBuild(metric, function (x) {
+          return (!item.code || x.ch === item.code) && (ent === 'ALL' || x.e === ent)
+              && (!sel.length || sel.indexOf(x.s) >= 0) && (!cc.length || cc.indexOf(x.c) >= 0);
+        }, item.name + (item.alt ? ' · ' + item.alt : ''), null);
+      };
+      // sector card: business unit only — a sector's figure ignores the department picks (same scope as fdSectors)
+      self.fdTrendSector = function (s, metric) {
+        var ent = self.fdEntity();
+        return fdTrBuild(metric, function (x) { return x.s === s.code && (ent === 'ALL' || x.e === ent); }, self.fdSectorName(s), s);
+      };
+      // department card: business unit ∩ picked sectors (same scope as fdDeptsAll)
+      self.fdTrendDept = function (c, metric) {
+        var ent = self.fdEntity(), sel = self.fdSel();
+        return fdTrBuild(metric, function (x) {
+          return x.c === c.code && (ent === 'ALL' || x.e === ent) && (!sel.length || sel.indexOf(x.s) >= 0);
+        }, c.code + ' · ' + c.name, c);
+      };
+      function fdTrPlace(el, n, mx) {
+        var r = el.getBoundingClientRect(), W = 460, H = 118 + 30 * Math.max(1, n) + (mx ? 44 : 0);
+        var x = r.left, y = r.bottom + 8;
+        if (x + W > window.innerWidth - 8) x = Math.max(8, window.innerWidth - 8 - W);
+        if (y + H > window.innerHeight - 8) y = Math.max(8, r.top - 8 - H);
+        self.fdTrX(x); self.fdTrY(y);
+      }
+      var fdTrEl = null, fdTrN = 0, fdTrMx = false;
+      function fdTrShowAt(el, t) {
+        fdTrEl = el; fdTrN = t.rows.length; fdTrMx = !!t.metrics;
+        self.fdTrData(t); fdTrPlace(el, fdTrN, fdTrMx); self.fdTrShow(true);
+      }
+      self.fdTrOver = function (item, metric, e) {
+        if (!self.fdShowSummary()) return self.fdTrOut();
+        var t = self.fdTrend(item, metric); if (t) fdTrShowAt(e.currentTarget, t);
+        return true;
+      };
+      // sector / department cards (all three presentations): entering the card
+      // = Actual; a figure inside it = that measure. Always anchored on the
+      // CARD (not the figure) so the popover never jumps while the pointer
+      // moves across the card; the card's mouseleave hides it
+      self.fdTrCard = function (kind, item, metric, e) {
+        if (!self.fdShowSummary()) return self.fdTrOut();
+        var el = e.currentTarget, card = (el.closest && el.closest('.fd-tile,.fd-lg-row,.fd-tm')) || el;
+        var t = kind === 'dept' ? self.fdTrendDept(item, metric || 'actual') : self.fdTrendSector(item, metric || 'actual');
+        if (t) fdTrShowAt(card, t);
+        return true;
+      };
+      self.fdTrOut = function () { self.fdTrShow(false); fdTrEl = null; return true; };
+      // the popover is position:fixed — keep it glued to its ring / card while the page scrolls
+      window.addEventListener('scroll', function () { if (self.fdTrShow() && fdTrEl) fdTrPlace(fdTrEl, fdTrN, fdTrMx); }, true);
+
+      // Same authenticated enqueue -> poll -> download workflow as Projects Budget Utilization.
+      self.fdPrintOpen = ko.observable(false);
+      self.fdPrintBusy = ko.observable(false);
+      self.toggleFdPrint = function () { self.fdPrintOpen(!self.fdPrintOpen()); return true; };
+      self.runFdReport = function (fmt) {
+        self.fdPrintOpen(false);
+        if (self.fdPrintBusy() || self.fdBusy() || self.fdError() || !self.fdHasData() || ['PDF','PPTX'].indexOf(fmt) < 0) return;
+        var period = self.fdPeriod(); // freeze the request, including the download filename
+        var params = { period:period, format:fmt, entity:self.fdEntity(),
+          sectors:self.fdSel().join('|'), departments:self.fdCcSel().join('|'),
+          presentation:self.fdLayout(), unit:self.buUnit(), lang:self.lang(),
+          sector_sort:self.fdSecSort(), department_sort:self.fdDeptSort(), department_search:self.fdDeptQ() };
+        self.fdPrintBusy(true);
+        function failed(e) { self.fdPrintBusy(false); toast(e.message || String(e), true); }
+        return api('POST', '/fd/report', params).then(function (d) {
+          var runId = d.runId, tries = 0;
+          toast(self.t('buBookQueued') + runId);
+          function poll() {
+            if (++tries > 72) { failed(new Error(self.t('buBookTimeout') + runId + ')')); return; }
+            setTimeout(function () {
+              api('GET', '/fd/report/' + runId).then(function (s) {
+                if (s.status === 'FAILED') { failed(new Error(self.t('buBookFailed') + (s.error || ''))); return; }
+                if (s.status !== 'SUCCESS' || !s.hasFile) { poll(); return; }
+                fetch(API + '/fd/report/' + runId + '/file', {headers:{Authorization:'Bearer ' + TOKEN}})
+                  .then(function (r) { if (!r.ok) throw new Error(self.t('fmrRepFailed') + ' (HTTP ' + r.status + ')'); return r.blob(); })
+                  .then(function (b) {
+                    var u = URL.createObjectURL(b), a = document.createElement('a');
+                    a.href = u; a.download = 'Budget_Status_' + period + (fmt === 'PPTX' ? '.pptx' : '.pdf');
+                    document.body.appendChild(a); a.click(); a.remove();
+                    setTimeout(function () { URL.revokeObjectURL(u); }, 1000);
+                    self.fdPrintBusy(false); toast(self.t('fmrRepReady'));
+                  }).catch(failed);
+              }).catch(function () { poll(); });
+            }, 5000);
+          }
+          poll();
+        }).catch(failed);
+      };
+
+      /* ── loading ────────────────────────────────────────────────────── */
+      var fdRequestId = 0;
+      self.runFd = function () {
+        var requestId = ++fdRequestId;
+        if (!self.fdPeriod()) { self.fdBusy(false); return Promise.resolve(); }
+        self.fdBusy(true); self.fdError('');
+        return api('GET', '/fd/status' + qs({ period: self.fdPeriod() }))
+          .then(function (d) { if (requestId !== fdRequestId) return; self.fdData(d); fdPruneDepts(); self.fdBusy(false); self.fdLoaded(true); })
+          .catch(function (e) { if (requestId !== fdRequestId) return; self.fdBusy(false); self.fdError((e && e.message) || String(e)); });
+      };
+      self.loadFd = function () {
+        // default period = the Budget vs Actual page's own rule (GET
+        // /actuals/filters defaultPeriod), same as the FMR tab — never the
+        // browser's "today", which can run ahead of the last extract
+        return api('GET', '/actuals/filters').then(function (d) {
+          var per = d.defaultPeriod || (('0' + (new Date().getMonth() + 1)).slice(-2) + '-' + new Date().getFullYear());
+          var want = per.slice(3);
+          self.fdYear(want);
+          setTimeout(function () { if (self.fdYear() !== want) self.fdYear(want); }, 0);
+          rebuildFdPeriods();
+          self.fdPeriod(per);
+          setTimeout(function () { if (self.fdPeriod() !== per) self.fdPeriod(per); }, 0);
+          return self.runFd();
+        }).catch(function (e) { self.fdError((e && e.message) || String(e)); });
+      };
+      self.fdReset = function () { self.fdShowSummary(false); self.fdSel([]); self.fdCcSel([]); self.fdDeptQ(''); self.fdDeptShowAll(false); self.fdSecSort('budget'); self.fdDeptSort('budget'); self.fdEntity('ALL'); return self.loadFd(); };
+      self.fdPeriod.subscribe(function (p) {
+        if (!self.fdLoaded()) return;
+        var d = self.fdData();
+        // inside the loaded year = derived client-side (no request); otherwise fetch that year
+        if (d && fdHasPeriod(p)) { ++fdRequestId; self.fdBusy(false); self.fdError(''); fdPruneDepts(); self.fdTrShow(false); return; }   // periods[] includes the anchor
+        self.runFd();
+      });
+    })();
+
+    /* ════════════════════════════════════════════════════════════════════
+       FINANCIAL PERFORMANCE REPORT (FMR) — Budget Overview, Entity + Sector
+       level, replicating docs/Reports/FMR/FMR_Dashboard.pdf pages 2-3 over
+       GL/db/37 (/gl/fmr/entity, /gl/fmr/sector, /gl/fmr/notes). Entity/type
+       classification rules and the Payroll Plan 2026 load are documented in
+       that script's header — DCT/ALC/Museums/Masterpieces come from the
+       ES + appropriation segments, Payroll/Opex/Capex/CWIP from chapter_code;
+       an Unclassified bucket keeps unmatched budget visible instead of
+       silently folding it into DCT/Other (a real ~9bn AED slice of budget
+       has no COA-snapshot row yet, mostly unspent).
+       ════════════════════════════════════════════════════════════════════ */
+    (function () {
+      self.fmrLoaded = ko.observable(false);
+      self.fmrBusy   = ko.observable(false);
+      self.fmrError  = ko.observable('');
+
+      var FMR_ENT_KEY = { DCT: 'fmrEntDct', ALC: 'fmrEntAlc', MUSEUMS: 'fmrEntMuseums',
+                           MASTERPIECES: 'fmrEntMasterpieces', UNCLASSIFIED: 'fmrEntUnclassified' };
+      self.fmrEntName = function (code) {
+        var k = FMR_ENT_KEY[code]; if (k) return self.t(k);
+        var e = (self.fmrEntities() || []).filter(function (x) { return x.code === code; })[0];
+        return e ? (e.name || code) : code;
+      };
+
+      /* entity gauge icons (2026-09-02, user: "professional icons to gauge") —
+         inline SVG so they inherit the brand color from the .sp-gauge-ico disc */
+      var FMR_ENT_ICONS = {
+        DCT: '<svg viewBox="0 0 24 24"><path d="M12 2 3.5 5.5v2h17v-2L12 2zm-6.5 7v8.5H4V21h16v-3.5h-1.5V9h-3v8.5h-2V9h-3v8.5h-2V9h-3z"/></svg>',
+        ALC: '<svg viewBox="0 0 24 24"><path d="M12 5.4C10.5 4.35 8.45 3.9 6.5 3.9c-1.75 0-3.6.35-5 1.2v13.9c1.4-.85 3.25-1.2 5-1.2 1.95 0 4 .45 5.5 1.5 1.5-1.05 3.55-1.5 5.5-1.5 1.75 0 3.6.35 5 1.2V5.1c-1.4-.85-3.25-1.2-5-1.2-1.95 0-4 .45-5.5 1.5zm9 11.25c-1.1-.35-2.3-.55-3.5-.55-1.7 0-3.35.3-4.5.95V7.1c1.15-.65 2.8-.95 4.5-.95 1.2 0 2.4.2 3.5.55v9.95z"/></svg>',
+        MUSEUMS: '<svg viewBox="0 0 24 24"><path d="M12 1.5 2 6.5V8h20V6.5l-10-5zM4 9.5v8H2.75V21h18.5v-3.5H20v-8h-2.6v8h-2.9v-8h-2.6v8H9v-8H6.5v8H4v-8z"/></svg>',
+        MASTERPIECES: '<svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm3.4 3.6a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 0 1 0-3.4zM6.6 17.2l3.7-4.8 2.5 3.1 3.4-4.4 1.2 1.5V17.2H6.6z"/></svg>'
+      };
+      self.fmrEntIcon = function (code) { return FMR_ENT_ICONS[code] || FMR_ENT_ICONS.DCT; };
+
+      /* Generate Report dropdown — PDF / Excel / PowerPoint via GL_FMR_REPORT
+         (GL/db/41 bridge + reporting/db/40 definition), the butil .gen pattern */
+      self.fmrGenOpen = ko.observable(false);
+      self.fmrGenBusy = ko.observable(false);
+      self.toggleFmrGen = function () { self.fmrGenOpen(!self.fmrGenOpen()); return true; };
+      self.closeFmrGen = function () { self.fmrGenOpen(false); return true; };
+      function fmrReportDownload(runId, fmt) {
+        var ext = fmt === 'PPTX' ? '.pptx' : (fmt === 'XLSX' ? '.xlsx' : '.pdf');
+        return fetch(API + '/fmr/report/' + runId + '/file',
+                     { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+          .then(function (r) {
+            if (!r.ok) { throw new Error(self.t('fmrRepFailed') + ' (HTTP ' + r.status + ')'); }
+            return r.blob();
+          })
+          .then(function (b) {
+            var u = URL.createObjectURL(b);
+            var a = document.createElement('a');
+            a.href = u;
+            a.download = 'Financial_Performance_Report_' + (self.fmrPeriod() || '') + ext;
+            a.click(); URL.revokeObjectURL(u);
+          });
+      }
+      self.runFmrReport = function (fmt) {
+        if (self.fmrGenBusy()) return;
+        if (!self.fmrPeriod()) { toast(self.t('cmtPeriodL'), true); return; }
+        self.fmrGenBusy(true);
+        api('POST', '/fmr/report', { period: self.fmrPeriod(), format: fmt }).then(function (d) {
+          var runId = d.runId;
+          toast(self.t('buBookQueued') + runId);
+          var tries = 0;
+          (function poll() {
+            if (++tries > 60) {
+              self.fmrGenBusy(false);
+              toast(self.t('buBookTimeout') + runId + ')', true);
+              return;
+            }
+            setTimeout(function () {
+              api('GET', '/fmr/report/' + runId).then(function (s) {
+                if (s.status === 'SUCCESS' && s.hasFile) {
+                  fmrReportDownload(runId, fmt)
+                    .then(function () { self.fmrGenBusy(false); toast(self.t('fmrRepReady')); })
+                    .catch(function (e) { self.fmrGenBusy(false); toast(e.message, true); });
+                } else if (s.status === 'FAILED') {
+                  self.fmrGenBusy(false);
+                  toast(self.t('buBookFailed') + (s.error || ''), true);
+                } else { poll(); }
+              }).catch(function () { poll(); });
+            }, 5000);
+          })();
+        }).catch(function (e) { self.fmrGenBusy(false); toast(e.message || String(e), true); });
+      };
+
+      /* collapsible Search region — same pattern as Budget Utilization's
+         own bu-sec/toggleBuSec (own localStorage key, this page's Year+
+         Period aren't part of gl_bu_ui). */
+      var fmrUi = {};
+      try { fmrUi = JSON.parse(localStorage.getItem('gl_fmr_ui') || '{}'); } catch (ex) { fmrUi = {}; }
+      self.fmrSecSearchOpen = ko.observable(fmrUi.search !== false);
+      self.toggleFmrSec = function () {
+        self.fmrSecSearchOpen(!self.fmrSecSearchOpen());
+        localStorage.setItem('gl_fmr_ui', JSON.stringify({ search: self.fmrSecSearchOpen() }));
+        return true;
+      };
+      self.fmrSearchSummary = ko.computed(function () {
+        if (self.fmrSecSearchOpen()) return '';
+        var p = (self.fmrPeriods() || []).filter(function (x) { return x.period === self.fmrPeriod(); })[0];
+        return [self.fmrYear(), p ? p.label : ''].filter(Boolean).join(' · ');
+      });
+      self.fmrReset = function () { self.loadFmr(); };
+
+      self.fmrYears = ko.observableArray((function () {
+        var y = new Date().getFullYear(), out = [];
+        for (var i = y - 2; i <= y + 1; i++) out.push(String(i));
+        return out;
+      })());
+      self.fmrYear   = ko.observable('');
+      self.fmrPeriods = ko.observableArray([]);
+      self.fmrPeriod  = ko.observable('');
+
+      self.fmrEntityData  = ko.observable(null);
+      self.fmrSectorsRaw  = ko.observableArray([]);
+      self.fmrNotesRaw    = ko.observableArray([]);
+
+      self.fmrOverall  = ko.computed(function () { var d = self.fmrEntityData(); return (d && d.overall) || {}; });
+      self.fmrEntities = ko.computed(function () { var d = self.fmrEntityData(); return (d && d.entities) || []; });
+      self.fmrTrend    = ko.computed(function () { var d = self.fmrEntityData(); return (d && d.trend) || []; });
+
+      self.fmrTrendMax = ko.computed(function () {
+        var m = 0;
+        self.fmrTrend().forEach(function (t) { m = Math.max(m, t.budget || 0, t.actual || 0, t.plan || 0); });
+        return m || 1;
+      });
+      self.fmrBarH = function (v) { return Math.max(0, (v || 0) * 100 / self.fmrTrendMax()) + '%'; };
+
+      /* build the MM-YYYY period list for the picked year (reuses the same
+         12-month + "current" idea as the rest of GL — no server round trip
+         needed since any MM-YYYY is a valid period param) */
+      function rebuildFmrPeriods() {
+        var y = self.fmrYear(); if (!y) { self.fmrPeriods([]); return; }
+        var fmt;
+        try { fmt = new Intl.DateTimeFormat(self.lang() === 'ar' ? 'ar' : 'en', { month: 'short' }); } catch (ex) { fmt = null; }
+        var out = [];
+        for (var m = 1; m <= 12; m++) {
+          var mm = ('0' + m).slice(-2);
+          var label = fmt ? fmt.format(new Date(Number(y), m - 1, 1)) : mm;
+          out.push({ period: mm + '-' + y, label: label + ' ' + y });
+        }
+        var nowY = String(new Date().getFullYear());
+        var cur = (nowY === y) ? (('0' + (new Date().getMonth() + 1)).slice(-2) + '-' + y) : out[out.length - 1].period;
+        self.fmrPeriods(out);
+        // the <select options:fmrPeriods, value:fmrPeriod> binding force-picks
+        // its FIRST option (January) the instant fmrPeriods changes, clobbering
+        // whatever this function is about to set — a same-year guard can't
+        // tell that apart from a deliberate pick, so just always win, twice
+        // (once now, once next tick after the select's own write-back).
+        self.fmrPeriod(cur);
+        setTimeout(function () { if (self.fmrPeriod() !== cur) self.fmrPeriod(cur); }, 0);
+      }
+      self.fmrYear.subscribe(rebuildFmrPeriods);
+
+      // entity filter for the Sector-level table (Select all = empty selection)
+      self.fmrSectorEntitySel = ko.observableArray([]);
+      self.fmrEntityFilterOpts = [
+        { code: 'DCT' }, { code: 'ALC' }, { code: 'MUSEUMS' }, { code: 'MASTERPIECES' }, { code: 'UNCLASSIFIED' }
+      ];
+      self.fmrToggleEntityFilter = function (code) {
+        var i = self.fmrSectorEntitySel.indexOf(code);
+        if (i >= 0) self.fmrSectorEntitySel.splice(i, 1); else self.fmrSectorEntitySel.push(code);
+      };
+      self.fmrSectorEntitySel.subscribe(function () { runFmrSectors(); });
+
+      self.fmrSectors = ko.computed(function () { return self.fmrSectorsRaw(); });
+
+      function fmrNoteOf(typ) {
+        return (self.fmrNotesRaw() || []).filter(function (n) { return n.noteType === typ; })[0] || null;
+      }
+      self.fmrNoteCurrentText = ko.observable('');
+      self.fmrNoteExpectedText = ko.observable('');
+      self.fmrNoteCurrentMeta = ko.computed(function () {
+        var n = fmrNoteOf('CURRENT_VARIANCE');
+        return (n && n.updatedBy) ? self.t('fmrNoteUpdated').replace('{by}', n.updatedBy).replace('{at}', n.updatedAt) : '';
+      });
+      self.fmrNoteExpectedMeta = ko.computed(function () {
+        var n = fmrNoteOf('EXPECTED_VARIANCE');
+        return (n && n.updatedBy) ? self.t('fmrNoteUpdated').replace('{by}', n.updatedBy).replace('{at}', n.updatedAt) : '';
+      });
+
+      function runFmrEntity() {
+        return api('GET', '/fmr/entity' + qs({ period: self.fmrPeriod() })).then(function (d) {
+          self.fmrEntityData(d);
+        });
+      }
+      function runFmrSectors() {
+        var sel = self.fmrSectorEntitySel();
+        return api('GET', '/fmr/sector' + qs({ period: self.fmrPeriod(), entity: sel.length ? sel.join('|') : '' }))
+          .then(function (d) { self.fmrSectorsRaw(d.sectors || []); });
+      }
+      function runFmrNotes() {
+        return api('GET', '/fmr/notes' + qs({ period: self.fmrPeriod() })).then(function (d) {
+          self.fmrNotesRaw(d.items || []);
+          var c = fmrNoteOf('CURRENT_VARIANCE'), e = fmrNoteOf('EXPECTED_VARIANCE');
+          self.fmrNoteCurrentText(c ? c.text : '');
+          self.fmrNoteExpectedText(e ? e.text : '');
+        });
+      }
+      self.runFmr = function () {
+        self.fmrBusy(true); self.fmrError('');
+        return Promise.all([runFmrEntity(), runFmrSectors(), runFmrNotes()])
+          .then(function () { self.fmrBusy(false); self.fmrLoaded(true); })
+          .catch(function (e) { self.fmrBusy(false); self.fmrError((e && e.message) || String(e)); });
+      };
+      self.loadFmr = function () {
+        // the <select options:fmrYears, value:fmrYear> binding force-selects
+        // its FIRST option (2 years ago) the moment it initialises if the
+        // bound observable is still '' — same KO law as cfTplYear/buType:
+        // set the real default here (page-open time, after that binding has
+        // already fired) and re-assert once more on the next tick in case a
+        // later re-render repeats it. The default PERIOD mirrors the Budget
+        // vs Actual page's own rule (GET /actuals/filters defaultPeriod =
+        // current calendar month if it has data, else the latest loaded
+        // period) rather than blindly picking "this month", which can be
+        // ahead of the last extract.
+        return api('GET', '/actuals/filters').then(function (d) {
+          var per = d.defaultPeriod || (('0' + (new Date().getMonth() + 1)).slice(-2) + '-' + new Date().getFullYear());
+          var want = per.slice(3);
+          self.fmrYear(want);
+          setTimeout(function () { if (self.fmrYear() !== want) self.fmrYear(want); }, 0);
+          rebuildFmrPeriods();
+          self.fmrPeriod(per);
+          setTimeout(function () { if (self.fmrPeriod() !== per) self.fmrPeriod(per); }, 0);
+          return self.runFmr();
+        });
+      };
+      self.fmrPeriod.subscribe(function () { if (self.fmrLoaded()) self.runFmr(); });
+
+      self.fmrSaveNote = function (noteType) {
+        var text = noteType === 'CURRENT_VARIANCE' ? self.fmrNoteCurrentText() : self.fmrNoteExpectedText();
+        api('PUT', '/fmr/notes', { period: self.fmrPeriod(), noteType: noteType, text: text })
+          .then(function () { toast(self.t('saved') || 'Saved'); runFmrNotes(); })
+          .catch(function (e) { toast(e.message, true); });
+      };
+
+      // Sector row "Comments" — opens the SAME SECTOR-level thread the
+      // Budget Utilization page uses (db/v2/125), so a note left here shows
+      // up there too and vice versa; no separate comment store for this page.
+      self.fmrOpenSectorComments = function (row) {
+        self.openCmt({ level: 'SECTOR', year: self.fmrYear(), period: self.fmrPeriod() || '',
+          ekey: row.code || '', name: row.name || '',
+          title: self.t('fmrSectorTbl') + ' — ' + (row.name || ''), sub: '' });
+      };
+
+      // YTD Trend bar (Budget/Actual/Plan × Payroll/Opex/Capex) -> its
+      // supporting lines, in the SAME shared drill drawer every other GL
+      // page already uses (drillCols/drillRows/fillDrill from GL/db/37's
+      // GET /fmr/trend/lines, which returns the generic {columns,rows,
+      // total,count} shape those observables already expect) -- no new UI.
+      var FMR_TREND_CHAPTER = { PAYROLL: 'CH1', OPEX: 'CH2', CAPEX: 'CH3' };
+      var FMR_METRIC_LABEL = { budget: 'spBudget', actual: 'spActual', plan: 'fmrYtdPlan' };
+      self.fmrOpenTrendDrill = function (item, metric) {
+        self.drillTitle(item.name + ' — ' + self.t(FMR_METRIC_LABEL[metric] || metric));
+        self.drillSub(self.t('fmrTrend') + ' · ' + self.fmrPeriod());
+        self.drillCtx('');
+        self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+        self.drillDrawer(true); self.drillLoading(true);
+        api('GET', '/fmr/trend/lines' + qs({ period: self.fmrPeriod(), chapter: FMR_TREND_CHAPTER[item.type], metric: metric }))
+          .then(function (d) { fmrComboMap = d.combos || {}; fillDrill(d); })
+          .catch(drillFail);
+      };
+
+      /* Entity-level KPI tiles (Budget/Actual/YTD Plan/Actual vs Plan %/
+         Funds Available) -> the SAME /fmr/trend/lines endpoint, called with
+         NEITHER chapter NOR entity (the KPI band's own scope is the grand
+         total across every chapter and every entity) so every drill reads
+         chapter-then-account across the whole entity level. "Actual vs Plan
+         %" has no lines of its own -- it opens the Plan side of the ratio
+         (Actual already has its own tile). */
+      var FMR_KPI_METRIC = { budget: 'budget', actual: 'actual', plan: 'plan', actualvsplan: 'plan', fundsavailable: 'fundsavailable' };
+      var FMR_KPI_LABEL  = { budget: 'spBudget', actual: 'spActual', plan: 'fmrYtdPlan', actualvsplan: 'spActVsPlanPct', fundsavailable: 'spFundsAvail' };
+      self.fmrOpenKpiDrill = function (kpi) {
+        self.drillTitle(self.t(FMR_KPI_LABEL[kpi] || kpi) + ' — ' + self.t('fmrEntityLevel'));
+        self.drillSub(self.t('fmrTrend') + ' · ' + self.fmrPeriod());
+        self.drillCtx('');
+        self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+        self.drillDrawer(true); self.drillLoading(true);
+        api('GET', '/fmr/trend/lines' + qs({ period: self.fmrPeriod(), metric: FMR_KPI_METRIC[kpi] || kpi }))
+          .then(function (d) { fmrComboMap = d.combos || {}; fillDrill(d); })
+          .catch(drillFail);
+      };
+    })();
+
+    /* ════════════════════════════════════════════════════════════════════
        GENERATE AND SEND — scoped Budget Utilization reports emailed to the
        predefined To/Cc/Bcc lists (GL/db/27 + reporting/db/39). Level menu →
        tree-select drawer → recipient confirmation → batch send + live poll.
@@ -8434,9 +9920,17 @@
     self.rcDeleteCategory=function(){if(!self.rcCatId()||!confirm(self.t('delete')+'?'))return;api('DELETE','/revenue-categories/'+self.rcCatId()).then(function(){self.rcCategoryModal(false);self.rcLoad();}).catch(fail);};
 
     self.rcRuleModal=ko.observable(false);self.rcRuleCategory=ko.observable(null);self.rcRuleSource=ko.observable('AR_TRANSACTION');self.rcRulePriority=ko.observable(100);
-    self.rcDimensions=[{key:'transactionType',label:'rcTransType'},{key:'transactionSource',label:'rcTransSource'},{key:'revenueType',label:'rcRevenueType'},{key:'costCenter',label:'rcCostCenter'},{key:'glAccount',label:'rcGlAccount'},{key:'projectNumber',label:'rcProject'},{key:'taskNumber',label:'rcTask'},{key:'customerNumber',label:'rcCustomer'}];
+    self.rcDimensions=[{key:'transactionType',kind:'TRANSACTION_TYPE',label:'rcTransType'},{key:'transactionSource',kind:'TRANSACTION_SOURCE',label:'rcTransSource'},{key:'revenueType',kind:'REVENUE_TYPE',label:'rcRevenueType'},{key:'costCenter',kind:'COST_CENTER',label:'rcCostCenter'},{key:'glAccount',kind:'GL_ACCOUNT',label:'rcGlAccount'},{key:'projectNumber',kind:'PROJECT',label:'rcProject'},{key:'taskNumber',kind:'TASK',label:'rcTask'},{key:'customerNumber',kind:'CUSTOMER',label:'rcCustomer'}];
     self.rcRuleValues={};self.rcDimensions.forEach(function(d){self.rcRuleValues[d.key]=ko.observable('ALL');});
-    self.rcNewRule=function(){self.rcRuleCategory(null);self.rcRuleSource('AR_TRANSACTION');self.rcRulePriority(100);self.rcDimensions.forEach(function(d){self.rcRuleValues[d.key]('ALL');});self.rcRuleModal(true);};
+    self.rcLovOpen=ko.observable('');self.rcLovQuery=ko.observable('');self.rcLovItems=ko.observableArray([]);self.rcLovBusy=ko.observable(false);var rcLovTimer=null;
+    self.rcCloseLov=function(){self.rcLovOpen('');self.rcLovQuery('');self.rcLovItems([]);if(rcLovTimer){clearTimeout(rcLovTimer);rcLovTimer=null;}};
+    self.rcLovDisabled=function(d){return d.key==='taskNumber'&&self.rcRuleValues.projectNumber()==='ALL';};
+    self.rcLovSelectedLabel=function(d){var v=self.rcRuleValues[d.key]();return v==='ALL'?'ALL — All values':v;};
+    self.rcLoadLov=function(d){if(self.rcLovDisabled(d)){self.rcCloseLov();return;}self.rcLovBusy(true);var p='?kind='+encodeURIComponent(d.kind)+'&search='+encodeURIComponent(self.rcLovQuery().trim());if(d.key==='taskNumber')p+='&project='+encodeURIComponent(self.rcRuleValues.projectNumber());api('GET','/revenue-categories/lov'+p).then(function(x){if(self.rcLovOpen()===d.key)self.rcLovItems(x.items||[]);}).catch(fail).then(function(){self.rcLovBusy(false);});};
+    self.rcToggleLov=function(d){if(self.rcLovDisabled(d))return;if(self.rcLovOpen()===d.key){self.rcCloseLov();return;}self.rcLovOpen(d.key);self.rcLovQuery('');self.rcLovItems([]);self.rcLoadLov(d);setTimeout(function(){var n=document.querySelector('.rc-lov-menu .rc-lov-search');if(n)n.focus();},0);};
+    self.rcLovSearch=function(d){if(rcLovTimer)clearTimeout(rcLovTimer);rcLovTimer=setTimeout(function(){self.rcLoadLov(d);},250);};
+    self.rcLovPick=function(d,item){self.rcRuleValues[d.key](item.value);if(d.key==='projectNumber')self.rcRuleValues.taskNumber('ALL');self.rcCloseLov();};
+    self.rcNewRule=function(){self.rcRuleCategory(null);self.rcRuleSource('AR_TRANSACTION');self.rcRulePriority(100);self.rcDimensions.forEach(function(d){self.rcRuleValues[d.key]('ALL');});self.rcCloseLov();self.rcRuleModal(true);};
     self.rcSaveRule=function(){if(!self.rcRuleCategory()){toast(self.t('required'),true);return;}var b={categoryId:Number(self.rcRuleCategory()),source:self.rcRuleSource(),priority:Number(self.rcRulePriority())||100};self.rcDimensions.forEach(function(d){b[d.key]=self.rcRuleValues[d.key]().trim()||'ALL';});api('POST','/revenue-categories/rules',b).then(function(){self.rcRuleModal(false);self.rcLoad();}).catch(fail);};
     self.rcDeleteRule=function(r,e){if(e)e.stopPropagation();if(!confirm(self.t('delete')+'?'))return;api('DELETE','/revenue-categories/rules/'+r.ruleId).then(self.rcLoad).catch(fail);};
 
@@ -8690,9 +10184,108 @@
       chunk(0);
     };
 
+    /* ── Terms and Key definitions (Settings; report intro content) ────
+       One rich-text DOCUMENT per record (user decision 2026-09-06) with a
+       validity window + lookup status + applied-to report scope; the ACTIVE
+       document at the report's period end prints as content entry 01 of the
+       Sector Performance Report with the author's formatting (Quill HTML,
+       CLOB server-side). Quill is loaded as a UMD script BEFORE require.js
+       (index.html boot chain); if it failed to load the drawer degrades to
+       a raw-HTML textarea so editing is never blocked. */
+    self.tkLoaded = ko.observable(false);
+    self.tkBusy = ko.observable(false);
+    self.tkRows = ko.observableArray([]);
+    self.tkAppliedLov = ko.observableArray([]);
+    self.tkStatusLov = ko.observableArray([]);
+    self.tkDrawer = ko.observable(false);
+    self.tkEdit = ko.observable(null);
+    self.tkSaving = ko.observable(false);
+    self.tkQuillOk = ko.observable(!!window.Quill);
+    var tkQuill = null;
+    self.tkLovLabel = function (o) { return self.lang() === 'ar' ? (o.nameAr || o.name) : o.name; };
+    self.tkLoad = function () {
+      self.tkBusy(true);
+      var reqs = [api('GET', '/terms')];
+      if (!self.tkAppliedLov().length) reqs.push(api('GET', '/terms/meta/lookups'));
+      Promise.all(reqs).then(function (r) {
+        self.tkRows((r[0].items || []).map(function (it) {
+          it.endDate = it.endDate || ''; it.updatedBy = it.updatedBy || '';
+          it.updatedAt = it.updatedAt || ''; return it;
+        }));
+        if (r[1]) { self.tkAppliedLov(r[1].appliedTo || []); self.tkStatusLov(r[1].statuses || []); }
+        self.tkLoaded(true);
+      }).catch(fail).then(function () { self.tkBusy(false); });
+    };
+    function tkBlank() {
+      return { termId: null, title: ko.observable(''), appliedTo: ko.observable('SECTOR_PERF'),
+               status: ko.observable('ACTIVE'), startDate: ko.observable(''), endDate: ko.observable(''),
+               contentHtml: ko.observable(''), createdBy: '', createdAt: '' };
+    }
+    function tkInitQuill(html) {
+      if (!window.Quill) { self.tkQuillOk(false); return; }
+      self.tkQuillOk(true);
+      // the editor host renders inside the drawer's ko-if -- init after paint
+      setTimeout(function () {
+        var host = document.getElementById('tk-quill');
+        if (!host) return;
+        if (!tkQuill) {
+          tkQuill = new window.Quill(host, {
+            theme: 'snow',
+            modules: { toolbar: [
+              [{ header: [1, 2, 3, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ color: [] }, { background: [] }],
+              [{ size: ['small', false, 'large', 'huge'] }],
+              [{ list: 'ordered' }, { list: 'bullet' }],
+              [{ indent: '-1' }, { indent: '+1' }],
+              [{ align: [] }, { direction: 'rtl' }],
+              ['clean']
+            ] }
+          });
+        }
+        tkQuill.setContents(tkQuill.clipboard.convert({ html: html || '' }), 'silent');
+      }, 0);
+    }
+    self.tkNew = function () {
+      var e = tkBlank();
+      e.startDate(new Date().toISOString().slice(0, 10));
+      self.tkEdit(e); self.tkDrawer(true); tkInitQuill('');
+    };
+    self.tkOpen = function (row) {
+      api('GET', '/terms/' + row.termId).then(function (d) {
+        var e = tkBlank();
+        e.termId = d.termId;
+        e.title(d.title || ''); e.appliedTo(d.appliedTo); e.status(d.status);
+        e.startDate(d.startDate || ''); e.endDate(d.endDate || '');
+        e.contentHtml(d.contentHtml || '');
+        e.createdBy = d.createdBy || ''; e.createdAt = d.createdAt || '';
+        self.tkEdit(e); self.tkDrawer(true); tkInitQuill(d.contentHtml || '');
+      }).catch(fail);
+    };
+    self.tkSave = function () {
+      var e = self.tkEdit(); if (!e) return;
+      if (!e.title().trim()) { toast(self.t('tkColTitle'), true); return; }
+      if (!e.startDate()) { toast(self.t('tkStart'), true); return; }
+      var html = (self.tkQuillOk() && tkQuill) ? tkQuill.getSemanticHTML() : e.contentHtml();
+      var body = { title: e.title().trim(), appliedTo: e.appliedTo(), status: e.status(),
+                   startDate: e.startDate(), endDate: e.endDate() || null, contentHtml: html };
+      self.tkSaving(true);
+      var req = e.termId ? api('PUT', '/terms/' + e.termId, body) : api('POST', '/terms', body);
+      req.then(function () { toast(self.t('tkSaved')); self.tkDrawer(false); self.tkLoad(); })
+         .catch(fail).then(function () { self.tkSaving(false); });
+    };
+    self.tkDelete = function () {
+      var e = self.tkEdit(); if (!e || !e.termId) return;
+      if (!window.confirm(self.t('tkDeleteConfirm'))) return;
+      api('DELETE', '/terms/' + e.termId)
+        .then(function () { toast(self.t('tkDeleted')); self.tkDrawer(false); self.tkLoad(); })
+        .catch(fail);
+    };
+
     /* ── init ── */
     api('GET', '/boot').then(function (d) {
       self.dimensions(d.dimensions || []);
+      api('GET', '/segments').then(function (g) { self.segments(g.items || []); }).catch(function () {});
       // KO nulls a <select> value when options were empty at bind time; re-assert.
       if (!self.clsType()) self.clsType('SECTOR');
       if (!self.mapType()) self.mapType('SECTOR');
@@ -8703,7 +10296,7 @@
       self.refreshFilters();
       // load whatever the landing page is through the SAME path a nav click
       // takes, so the default page can change without touching init again
-      self.go(self.view());
+      self.go(routeFromHash() || self.view());
       self.ready(true);
     }).catch(function (e) { fail(e); self.ready(true); });
   }

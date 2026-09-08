@@ -1,0 +1,12 @@
+[Unit]
+Description=Run DCT VM maintenance monthly
+
+[Timer]
+OnCalendar=*-*-01 03:30:00 Asia/Dubai
+RandomizedDelaySec=30m
+Persistent=true
+AccuracySec=1m
+Unit=dct-vm-maintenance.service
+
+[Install]
+WantedBy=timers.target

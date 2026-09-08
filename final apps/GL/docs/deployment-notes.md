@@ -3,6 +3,184 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-09-07 — URL hash deep links + Budget Status direct link (v1.121.0, frontend-only + 1 nginx line).** GL now routes from `location.hash`: `#<tab id>` (or the friendly alias `#budget-status` → `fd`) opens that tab, `go()` mirrors the route back into the hash via `history.replaceState` (F5 / bookmarks / shared links restore the tab; unknown hashes fall back to `butil`; alias map `HASH_ALIAS`/`HASH_LABEL` next to `NAV_GROUPS`). **Login round-trip**: the session gate + 401 redirect send `?return=<path+hash>` to `/dct/index.html`, and Admin's `onLogin` (4.7.30) honours a same-origin relative `?return=` (blocks `//host` and `/ords`) — so a session-less user who opens the link signs in and lands straight on Budget Status. Short URL: `https://129.151.159.189/budget-status` (nginx 302 in webtier/ifinance.conf). The distributable link: `https://129.151.159.189/GL/Jet/index.html#budget-status`. Smoke `tests/deeplink_browser_smoke.py` — local 10/10 + PROD 11/11 (incl. the open-redirect guard + short URL).
+
+- **2026-09-08 (2) — MSS report: Task Name beside EVERY Task Number (v1.122.1, reporting/db/46 re-run + hint text).**
+  User request: Task Name on ALL sheets carrying Task Number — sheets 1/4/5 already had it, so
+  db/46 grew surgeries adding it (always right after Task Number) to **sheet 2** (both UNION
+  legs — tnm join added to the AP view leg AND the cost-adjustment leg, `NULL`-free: UNION
+  column alignment means BOTH legs must emit it), **sheet 3** (tnm CTE + join before the
+  `WHERE x.project_number NOT LIKE '#%'` anchor), **sheet 6** (tnm join chained after pendrq),
+  **sheet 7** (inline tnm join on the comments SQL — no scope CTE there) and **sheet 8**
+  (the PBT line carries its OWN `task_name`, kept in the inner query since 2026-08-30 — just
+  exposed, marker `MSS_ADD bttn`). getsql/keyof/key-assert extended to sections 6–7 (keys
+  `comments`/`budget_trx`). Frontend = buMssHint wording only (EN+AR). Fill on the live run:
+  sheet 2 = 5,364/5,364 · sheet 3 = 5,133/5,133 · sheet 8 = 4,627/4,627. Webtier GL-only
+  overlay **20260908162307** (rollback 20260908113029). Tests: `mss_register_api_smoke.py`
+  **38/38** (Task Name position + fill on every sheet) · `mss_register_browser_smoke.py`
+  **12/12 EN+AR** deployed. Deploy gotcha (recurred): a Python TEXT-mode read of a CRLF .sql
+  converts it LF — always read `newline=''` and re-emit CRLF.
+- **2026-09-08 — MSS - Projects Budget Utilization report (v1.122.0, NEW reporting/db/46 + NEW GL/db/53 + frontend).**
+  Sibling of the FBP report, per the marked-up sample
+  `docs/Reports/FMR/MSS Budget_Utilization_Register_2026.xlsx` (red fill = drop, green = add).
+  ① NEW **`reporting/db/46_rpt_mss_butil_register.sql`** = definition **`MSS_BUTIL_REGISTER`**,
+  a copy of BUDGET_UTIL_REGISTER patched **per SECTION**: each section's SQL is pulled out with
+  `JSON_VALUE` (⚠ **a JSON path must be a LITERAL** — `'$.sections['||i||']'` = ORA-40597; one
+  static path per index), patched with **asserted REPLACEs** (a missing pattern RAISES -20001
+  naming the spot, so db/25 drift fails loudly instead of silently dropping a column — caught
+  the live section key being `pending`, not `pend`, on the first run) and written back with
+  `JSON_TRANSFORM SET`. Sheet 1 = **fixed 26-column wrap** (marker `MSS_FIXED_COLS`): Task
+  Number KEPT + Task Name added; Appropriation Code/Name, Dct Program Code/Name, Ytd Budget,
+  Budget Status + all 8 plan columns dropped; EBS Account, Budget Utilization Pct/Variance,
+  Utilization Pct + the Fund Movement pair kept (`fund_movement_amount__pn` keeps the sign
+  tint). **Requester** (user decisions 2026-09-08, header "Requester", after Organization /
+  after Preparer Buyer on sheet 6): sheet 2 AP = the **matched PO line's requester** (user rule
+  — never the AP header field, which is empty in practice: 1 of 11,900 in 2026; rqmap CTE =
+  the LINE-GRAIN PO RULE linkage → `po_distributions.requestor_name`, joined by invoice_number
+  **AND invoice_date** — number alone fanned 3 collision rows across suppliers; Direct rows
+  legitimately blank, ~0.1% carry their own netted-out PO's requester); sheet 3 GRN = the `b`
+  map's `MAX(requestor_name)` (5,108/5,108 filled on the smoke run); sheet 4 Open PO = per
+  (PO, line) LISTAGG DISTINCT (2,024/2,030); sheet 5 Open PR = per requisition from
+  `pr_distributions.requester` (1,938/1,938); sheet 6 Pending = PR leg `pr_lines` per
+  (requisition, line) ∪ PO leg per (order, line) COALESCEd (1,412/1,415). **Task Name** also
+  added on sheets 4+5 (tnm map, after Task Number). Sheet 6's earlier deferred columns stay
+  deferred; sheets 7–8 untouched. **Re-run db/46 after any db/25 re-run** (refresh restores the
+  copy, then re-patches — idempotent). ② NEW **`GL/db/53_gl_mss_register_ords.sql`** additive
+  bridge (**GL post-05 re-run list = 07..53**): `POST /gl/butil/mssxlsx` + `GET /:id` +
+  `/:id/file`, `report_code = 'MSS_BUTIL_REGISTER'`-scoped, NO sheetcols, gated
+  GL_RUN_BRIEFING_BOOK. ③ Frontend: Generate Report ▾ entry 5 of 6 (📙, after FBP) →
+  `runBuMss`; i18n repMss/repMssSub/buMssHint/buMssReady/rgGenMss EN+AR. **Deploy gotcha:**
+  cloning a CRLF .sql by reading it in Python TEXT mode writes it back LF-only → the SQLcl
+  swallowing hazard; read with `newline=''` and re-emit CRLF. Webtier GL-only overlay (see
+  STATUS log; built on the parallel session's 20260907231739 /dct-cutover release — version
+  taken 1.122.0 because 1.121.0 was claimed by that session). Tests:
+  `tests/mss_register_api_smoke.py` **30/30** (guardrails, triple run-code scoping, sheetcols
+  ignored, live run → per-sheet layout + requester-fill asserts) ·
+  `tests/mss_register_browser_smoke.py` **12/12 EN+AR**.
+- **2026-09-07 — FBP - Projects Budget Utilization report (v1.120.0, NEW reporting/db/45 + NEW GL/db/52 + frontend).**
+  User request (per the marked-up sample `docs/Reports/FMR/FBP-Budget_Utilization_Register_2026.xlsx`):
+  a distribution copy of the Excel register named **"FBP - Projects Budget Utilization"** with
+  every red-filled sample header removed and **Task Name in place of Task Number** on sheet 1,
+  runnable from the Budget Utilization page's Generate Report menu. ① NEW
+  **`reporting/db/45_rpt_fbp_butil_register.sql`** = definition **`FBP_BUTIL_REGISTER`**, a
+  verbatim copy of BUDGET_UTIL_REGISTER (db/25) whose copied `bu_lines` SQL is then wrapped in a
+  **FIXED 21-column projection** (budget_combination … task_name … fund_available, comments —
+  the sample's kept headers, in order; marker `FBP_FIXED_COLS`) via
+  `JSON_TRANSFORM(source_ref, SET '$.sections[0].sql' = …)`, so the layout is baked into the
+  DEFINITION and holds on EVERY entry point (GL bridge, BI run drawer, schedules) — user
+  decision: fixed layout, the page's Manage-Columns view must never affect it (params replace,
+  never merge, at enqueue — `NVL(p_params, l_params)` — so a params-level default would NOT
+  survive a BI-drawer run; the SQL wrap does). Sheets 2–8 stay verbatim copies ⇒ **re-run
+  db/45 after any db/25 re-run**. Sheet 6's two yellow sample headers (Last action date /
+  Pending Days from last action) were explicitly DEFERRED — the BIP pending snapshot carries no
+  last-action data. ② NEW **`GL/db/52_gl_fbp_register_ords.sql`** additive gl.rest bridge
+  (**GL post-05 re-run list = 07..52**): `POST /gl/butil/fbpxlsx` (full butil filter set +
+  cmtmode always written, **deliberately NO sheetcols forwarding**) + `GET /:id` + `GET
+  /:id/file`, all scoped `report_code = 'FBP_BUTIL_REGISTER'`, gated GL_RUN_BRIEFING_BOOK like
+  the register. ③ Frontend: Generate Report ▾ gains entry 4 of 5 **"FBP - Projects Budget
+  Utilization (XLSX)"** (📗, after Excel Register) → `runBuFbp` (runBuXlsx clone minus
+  sheetcols; Binder popup label `rgGenFbp`; download `FBP_Projects_Budget_Utilization_<year>.xlsx`);
+  i18n repFbp/repFbpSub/buFbpHint/buFbpReady/rgGenFbp EN+AR. Deploys: db/45 via Linux SQLcl
+  `prod_mcp` (no MERGE, UNISTR Arabic, block <10KB — parse-checked the wrapped SQL via
+  DBMS_SQL as PROD), GL/db/52 fresh prod_mcp session, webtier GL-only overlay
+  **20260907144600** (rollback 20260906194839). Tests: `tests/fbp_register_api_smoke.py`
+  **18/18** (guardrails, run-code scoping both directions, sheetcols ignored, live run #1103 →
+  1.8MB workbook: 8 sheets, sheet 1 = exactly the 21 agreed columns in order w/ Task Name and
+  all 19 red-marked columns absent, sheets 2/6 untouched) · `tests/fbp_register_browser_smoke.py`
+  **12/12 EN+AR** local + deployed (menu entry, hint, enqueue busy + Binder label, RTL).
+  Browser-smoke gotcha: the page sets `buYear()` only after `/butil/filters` lands — wait for
+  it before clicking a Generate entry or the year-required toast eats the click.
+- **2026-09-06 — Terms and Key definitions (v1.118.0, NEW db/v2/129 + GL/db/51 + reporting/db/42 re-run + template + datasource.py LOB fix).**
+  User-approved design (one rich-text DOCUMENT per record · Quill editor · GL_MANAGE_TERMS
+  privilege · **period-end date basis**). ① NEW table **`DCT_GL_REPORT_TERMS`** (db/v2/129):
+  title + `applied_to` (lookup `GL_TERMS_APPLIED_TO`, seeded `SECTOR_PERF` = Sector Performance)
+  + `content_html` **CLOB** (never length-limited — user requirement) + start/end date +
+  lookup-first status (`GL_TERMS_STATUS` ACTIVE/INACTIVE) + privilege **`GL_MANAGE_TERMS`** +
+  the 7 initial terms seeded as one ACTIVE document (YTD Budget/Actual/Plan, Encumbrance,
+  Fund Available, Actual/Budget %, Actual/Plan %). ② NEW **GL/db/51** additive gl.rest routes
+  `GET/POST /gl/terms` · `GET/PUT/DELETE /gl/terms/:id` · `GET /gl/terms/meta/caps|lookups`
+  (reads = GL_VIEW_BUDGET_UTILIZATION NULL-legacy; writes = GL_MANAGE_TERMS/SYS_ADMIN; HTML
+  sanitised on save — script blocks / on* attrs / javascript: stripped). **GL post-05 re-run
+  list = 07..51.** ③ reporting/db/42 re-run now **PREPENDS a "terms" section** into the copied
+  SECTOR_PERF_BOOK source_ref after every refresh (string surgery on `"sections":[`, INSTR
+  guard): the ACTIVE document whose start/end window covers the report **period end** (full
+  year = 31-Dec) prints as **content entry 01 "Terms and Key definitions"** — the template's
+  contents index + part numbers all shifted +1 (Overview = 02 … Observations = 08). ④ UI:
+  new **Settings → Terms and Key definitions** tab (capability-hidden via `/terms/meta/caps`,
+  manager-only), register + `.dw-tk` drawer with the **Quill 2.0.3 rich-text editor**
+  (vendored `GL/Jet/lib/quill/`, loaded as a UMD script BEFORE require.js in the index.html
+  boot chain — lazy AMD load would hit the anonymous-define collision; drawer degrades to a
+  raw-HTML textarea if Quill fails to load). Saved HTML renders in the PDF with the exact
+  formatting (`.terms-doc` + ql-* CSS in the report template).
+  **THREE GOTCHAS burned here:** ⑴ a block-local PL/SQL function (clean_html) referenced
+  INSIDE the SQL UPDATE = invisible to SQL DML = compile error = **uncatchable 555** — resolve
+  content in PL/SQL first; ⑵ **`dct_rest.parse_body` truncates the body at 32,767 bytes**
+  (DBMS_LOB.SUBSTR + VARCHAR2) and the WHEN OTHERS fallback parses `{}` so a >32K PUT silently
+  keeps every stored value — large-body handlers must do the PAY/db/12 full-CLOB parse
+  (`DBMS_LOB.CONVERTTOCLOB` + `APEX_JSON.parse(CLOB)`); ⑶ Playwright must write through
+  **Quill's document model** (`Quill.find(node)` + `clipboard.convert`) — raw `.ql-editor`
+  innerHTML bypasses the Delta that `getSemanticHTML()` serialises, saving `<p></p>`.
+  Deploy order: db/v2/129 → GL/db/51 (fresh session) → reporting/db/42 → datasource.py fleet
+  sync + rpt-worker restart ×3 (CLOB rows materialised at fetch) → template upload + fallback
+  copies → webtier GL overlay **20260906154050** (rollback 20260906111321, APP_VERSION 1.118.0).
+  Tests: `terms_api_smoke.py` **19/19** · `terms_browser_smoke.py` **17/17 EN+AR** · live
+  render run #1054 (terms print as Part 1 with formatting; contents renumbered).
+- **2026-09-06 — Sector Performance Report (v1.115.0, NEW GL/db/50 + reporting/db/42 + template + render_pdf.py hook).**
+  New **Generate Report ▾ menu entry "Sector Performance Report (PDF)"** on the Budget Utilization
+  page: report code **`SECTOR_PERF_BOOK`** = the Budget Utilization Briefing Book pack re-covered
+  for distribution, per the user's annotated cover mock-up — ① **DCT logo top-right on EVERY page**
+  (embedded PNG data-URI from `docs/photos/DCT logo.webp`), ② title "Sector Performance Report",
+  ③ subtitle = "YTD MM-YYYY" (plain "Budget Year YYYY" when no period), ④⑤⑥ parameter chips,
+  description paragraph and Generated block REMOVED from the cover, ⑦ prepared-by "Financial
+  Planning and **Reporting**", ⑧ user-approved copyright line at the bottom of EVERY page:
+  *"© <generation year> Department of Culture and Tourism — Abu Dhabi. All rights reserved.
+  Confidential — for internal use only."* The per-part `.foot` document name follows suit.
+  **Mechanism — NEW generic opt-in runner hook** (`reporting/runner/render_pdf.py`, fleet-synced
+  vm180-182 + rpt-worker restart ×3): a template embeds
+  `<template id="pdf-header" data-margin="24mm">` / `<template id="pdf-footer" data-margin="16mm">`
+  blocks; `_extract_pdf_chrome` cuts them out of the flowing HTML and passes them to Chromium's
+  `displayHeaderFooter`, which repeats them on every printed page **inside the page margins** —
+  flowing content (long registers included) can never overlap them; `data-margin` overrides that
+  side's page margin to make the room (top 14→24mm, so the cover height dropped 172→166mm to stay
+  on one page). Existing reports are untouched (no blocks = old behaviour; an unprocessed
+  `<template>` renders nothing on the WeasyPrint path). Template `sector_perf_book.html.j2`
+  (repo `reporting/runner/templates/` + uploaded to `DCT_RPT_TEMPLATE`, 96,761 bytes incl. the
+  ~27KB quantized-PNG logo). **`reporting/db/42`** seeds SECTOR_PERF_BOOK as a column-for-column
+  copy of BUDGET_UTIL_BOOK (source_ref/params/param_spec verbatim, PDF-only, own pdf_template) —
+  **re-run 42 after any reporting/db/21 re-run** to refresh the copy. **`GL/db/50`** = additive
+  bridge `POST /gl/butil/sectorbook` + `GET …/:id` + `GET …/:id/pdf` (GL_RUN_BRIEFING_BOOK gate,
+  full butil filter set, report-code-scoped run lookups — a SECTOR_PERF_BOOK run 404s on the
+  /butil/book/:id routes and vice versa). Frontend: `runBuSpb()` + `buSpbBusy` folded into
+  `buGenBusy`/"The Binder" popup (`rgGenSpb`), download name `Sector_Performance_Report_<year>.pdf`.
+  **GL post-05 re-run list now includes 50.** Tests: `tests/sector_book_api_smoke.py` (guardrails +
+  live fleet run + PDF download) + local Chromium render QA of cover/register/last pages.
+  **Feedback round same day (template-only, re-uploaded to DCT_RPT_TEMPLATE + fleet fallback
+  copies; no render_pdf.py / DB / frontend change):** ① cover logo OVERLAPPED the teal band —
+  measured on the rasterized PDF: the header box has a ~5.5mm inherent top offset, so the
+  15mm logo + 5mm padding ended at 24.9mm while the band starts at 24.0mm; now 13mm logo +
+  2mm padding = bottom 20.0mm, **4.1mm clearance** (calibrate header geometry by MEASURING a
+  rasterized page, never from the declared mm); ② cover title on ONE line ("Sector Performance
+  Report", `<br>` removed); ③ NEW `Sector: …` line under the YTD subtitle (`.cv-sector`; brackets removed per a follow-up user comment same day — template-only re-upload, no worker restart) —
+  the page's sector filter, pipe-lists rendered comma-separated, "All Sectors" when unfiltered.
+  **ONE-SECTOR rule (user-approved "both ends", v1.116.0 — GL/db/50 re-run + reporting/db/42
+  re-run + frontend):** the report runs for exactly ONE sector. Server: `POST /butil/sectorbook`
+  400s when `sector` is missing OR a pipe-list (guard sits BEFORE the period check — tests
+  probing bad periods must send a sector). Definition: db/42's post-copy `JSON_MERGEPATCH`
+  stamps `sector.required=true` + a "Required —" hint into the copied PARAM_SPEC_JSON
+  (re-applied every run, AFTER the copy refresh — the copied hint said "Optional", so patch
+  hint/hint_ar too) ⇒ the BI Run-Parameters drawer enforces it as well. Frontend: the menu
+  entry is `enable:buSector`-bound (greyed, subtitle + title flip to "Select a sector in Search
+  first" until the single-select Sector filter holds a value — the filter was ALREADY
+  single-select, so multi-sector was never possible) + a `runBuSpb` toast guard. The cover's
+  "Sector: …" line therefore always names the one sector. Webtier GL-only overlay
+  **20260906061035** (rollback 20260906020630). Smokes: `sector_book_api_smoke.py` (missing-
+  sector + pipe-list 400s; sector taken from `/butil/filters`) + `sector_book_browser_smoke.py`
+  15/15 EN+AR (disabled → pick sector → enabled → enqueue).
+
+- **2026-09-03 — `/gl/combinations` current-data performance (db/44 + canonical db/05):** current-date requests now read the hourly refreshed indexed `DCT_GL_COA_SNAP`; explicit `asof=YYYY-MM-DD` requests still read effective-dated `DCT_GL_COA_V`. Production equivalence before deploy: 10,109 rows, identical classification checksum, zero full-row differences. DB benchmark: live view 2.13–2.96s versus snapshot 0.046–0.057s. No financial result cache or stale fallback was added.
+
+- **2026-09-03 — `/gl/fmr/sector` current-COA performance (db/45 + canonical db/37):** the live Budget/Actual view remains the financial source; its current segment filtering now joins `DCT_GL_COA_SNAP` by `CC_ID` instead of parsing segment 4/6 repeatedly with regular expressions. Production equivalence for 09-2026: 19 sectors; Budget 8,477,793,017; Actual 4,302,647,467.51; Plan 5,233,447,657.42; identical result checksum. Controlled full-query benchmark: 2.168s before versus 1.940s after (10.5%); isolated Actual leg: 1.827s versus 0.760s (58.4%). No financial result cache was added. Re-run db/44 and db/45 after their canonical handler owners.
+
 - **2026-08-30 (2) — Fund Movement drill: combination popover + status pills (v1.95.0, GL/db/34 re-run + frontend).**
   User feedback on the new drill: ① the **Code Combination column now shows the SAME styled
   10-segment popover** as the Actuals drill — the `GET /butil/lines/fundmove` response gained a
@@ -3048,3 +3226,1319 @@ fm_browser_smoke.py 40/40 EN+AR.
   Rollback-only model smoke created Main + Sub + Rule + inherited Role grant,
   then confirmed zero test rows remained. Webtier release `20260831232838`;
   live version/HTML/JS/CSS markers verified and unauthenticated API returns 401.
+
+## Financial Performance Report — Budget Overview, Entity + Sector level — 2026-09-01 (v1.99.0, GL/db/37)
+
+Replicates `docs/Reports/FMR/FMR_Dashboard.pdf` pages 2-3 (the DCT corporate
+Power BI "Budget Overview" pages) as a new live GL nav tab, sourced from the
+same data the **Budget vs Actual** page already reads
+(`prod.dct_budget_actual_period_v`) plus the GL Cashflow plan table
+(`prod.dct_gl_budget_cashflow` / `dct_gl_cashflow_v`). Scope per the user:
+Entity + Sector level only (not Revenue/Payroll/Ageing, which live in other
+modules).
+
+- **Entity classification (new — not a GL dimension before this)**, confirmed
+  against live `dct_gl_coa_v` with the user:
+  `appropriation_code='301439'` (FA1439 art-collectibles fund) → **Masterpieces**
+  (carved out first, since its 4 combinations sit under ES=4510000);
+  `entity_specific_code` `4510700`/`4510600` → **Museums**/**ALC**; else → **DCT**.
+  A real ~9.18bn AED slice of 08-2026 budget (679 combinations, ~AED 100K
+  actual — essentially unspent) has no row yet in `dct_gl_coa_snap` — reported
+  as its own **Unclassified** bucket rather than folded into DCT, so
+  `entities[]` always sums exactly to `overall{}` (which never joins the snap
+  table, so it is unaffected by snapshot coverage). Join key is **`cc_id`**,
+  not `cc_string` — `cc_string` is unindexed on the period view and that join
+  alone took several seconds; `cc_id` is instant and has full coverage parity.
+  Type classification (Payroll/Opex/Capex/CWIP) reuses the existing
+  `chapter_code` already on both views (CH1/CH2/CH3/CH6); CH4/CH5/STIMULUS
+  fold into **Other**, NULL chapter_code is its own **Unclassified** trend
+  bucket (same coverage gap, ~9.84bn budget, kept visible not dropped).
+- **Plan data**: `dct_gl_budget_cashflow` already carries `entity_specific_code`
+  + `appropriation_code` directly (no join needed) and `dct_gl_cashflow_v`
+  adds `chapter_code`. Per the user, `docs/Reports/FMR/Payroll Plan 2026.xlsx`
+  (300 rows: one cost centre `4510220` "DCT — People & Performance" × 25 GL
+  accounts × 12 months, Chapter 1/Payroll, AED 1,150,000,000 total) was loaded
+  2026-09-01 via a one-off Python-generated SQLcl INSERT script (plain
+  `INSERT`, not `MERGE` — this ADB's Linux SQLcl silently drops MERGE-bearing
+  blocks) into `dct_gl_budget_cashflow`, using the exact combination the user
+  specified: `451.070103.<CostCenterCode>.1.<GLAccount>.4510000.100103.000.
+  000000.000000`, `cf_type='APPROVED'`. Verified `SUM(cf_amount)` matches the
+  workbook exactly. Opex/Capex/CWIP and every Sector besides Support Service
+  have **no plan yet** — they ship `hasPlan='N'` (reported, never fabricated,
+  same convention as the Budget Utilization page's `planUnmatched`). Because
+  only Payroll has real plan data so far, the page's **overall** and **DCT**
+  Actual-vs-Plan% reads inflated (~500%, comparing full actual to a
+  Payroll-only plan) until Finance uploads Opex/Capex plans via the existing
+  Cashflow page.
+- **New additive `GL/db/37_gl_fmr_ords.sql`** (no new views — aggregation SQL
+  embedded directly in the handlers, `33`/`34` pattern): `GET /gl/fmr/entity`,
+  `GET /gl/fmr/sector`, `GET`/`PUT /gl/fmr/notes`. Reads = any valid session
+  (matches `GET /gl/actuals`); notes write = `GL_MANAGE_DOF_NOTES` (reused,
+  legacy `SYS_ADMIN`). New tiny table `dct_gl_fmr_note` (year+period+type,
+  upsert, empty text deletes) backs the PDF's "Current Month Variances" /
+  "Expected Variances" narrative panels. **The PDF's "Under/Over Spend
+  Comments" buttons are NOT a new comment store** — the Sector table's
+  Comments button opens the **existing** `SECTOR`-level thread from Budget
+  Utilization Comments (`db/v2/125`, `GL/db/26`'s routes, `self.openCmt(...)`)
+  keyed on the same sector code, so a note left from either page is the same
+  thread. **GL post-05 re-run list is now 07..37.**
+- **PL/SQL gotcha (caught live, matches CLAUDE.md's PLS-00231 note)**: a
+  function declared *locally inside the handler's own DECLARE block* cannot
+  be called from a SQL statement issued by that same block (`PLS-00231
+  function ... may not be used in SQL`) — first draft used
+  `ent_of()`/`type_of()` helper functions inside `WHERE`/`GROUP BY`, which
+  compiled fine (ORDS doesn't validate handler bodies at
+  `DEFINE_HANDLER` time) but 555'd on every call. Fixed by inlining the
+  classification as a `CASE` expression directly in the SQL; only `pct()`
+  (called from plain PL/SQL, never inside a query) stayed a local function.
+- **Frontend** (`final apps/GL/Jet/`, APP_VERSION 1.99.0): new nav tab
+  **Financial Performance** in the General Ledger group, right before Budget
+  vs Actual. KPI band + 5 entity gauges reuse the Sector Performance report's
+  existing `.bu-kpis`/`.sp-gauge`/`spGaugeDash()` pattern verbatim; the YTD
+  trend chart reuses its `.sp-cols`/`.sp-b` CSS-height bars (Budget/Actual/Plan
+  per type) instead of introducing Chart.js (this app draws every chart as
+  hand-built SVG/CSS by convention). Two **KO LAWS caught live** while wiring
+  the year/period pickers: (1) a `<select options:X, value:Y>` binding
+  force-selects its FIRST option and writes it back the instant it
+  initialises if `Y` is still `''` — same rule as `cfTplYear`/`buType` — so a
+  `!self.fmrYear()`-style "only default if empty" guard can never catch it;
+  fixed by always setting the real default in `loadFmr()` plus a
+  `setTimeout(...,0)` re-assert. (2) The default **period** mirrors the
+  Budget vs Actual page's own rule (`GET /actuals/filters` `defaultPeriod` —
+  current calendar month if it has data, else the latest loaded period)
+  rather than the browser's real "today", which was ahead of the last
+  extract (Sep-2026 client clock vs data loaded only through Aug-2026) and
+  produced an empty page. Sector "Comments" button inside a `foreach` needs
+  `$root.t(...)`, not bare `t(...)` — bare calls only resolve at the
+  page-level (non-`foreach`) binding context; missed once, caught by the
+  browser smoke run (`fmrError` surfaced the exact KO binding exception).
+  Verified: `fmr_browser_smoke.py` 10/10 EN+AR (5 gauges, KPI figures,
+  6 trend columns, sector table + entity-filter narrowing, note save
+  round-trip, Comments button opens the shared Budget-Utilization-Comments
+  drawer, clean AR toggle with no console errors).
+
+### FMR v2 correction — Budget Group=1 filter + Chapter 2/3 plan from project cashflow — 2026-09-01 (GL/db/37 re-run, no frontend change)
+
+User caught two real bugs live after go-live:
+
+- **Budget/Actual were not filtered to Budget Group = 1**, the platform-wide
+  rule (Budget Group defaults to '1' everywhere; group 8 is 0 in this data so
+  it wasn't the visible symptom, but groups 3/5 — Chapters 4/5,
+  Subsidy/Aids&Grants, ~738M — were being summed in). Fixed with
+  `REGEXP_SUBSTR(p.cc_string,'[^.]+',1,4) = '1'` (position 4 of the canonical
+  `entity.program.cc.BG.account.es.appr.ic.f1.f2` string) on every
+  Budget/Actual query. **Overall budget went from 18,670.8M to the correct
+  17,932.4M** (08-2026).
+- **Same regex trick replaces the `dct_gl_coa_snap` LEFT JOIN for entity
+  classification** (position 6 = entity_specific_code, always present in
+  `cc_string` — no coverage-gap dependency). This retires the v1
+  "UNCLASSIFIED entity" bucket entirely (it was a join artifact, not a real
+  gap — those ~9.18bn AED rows are legitimate BG=1 DCT budget with generic
+  `appropriation='000000'`, just missing from the transaction-derived
+  snapshot). `entities[]` is now DCT/ALC/Museums/Masterpieces only (4, was
+  5) and sums exactly to `overall{}`. **The UNCLASSIFIED *type/trend* bucket
+  stays** — that one is a real gap (appropriation `'000000'` genuinely has no
+  chapter mapped).
+- **Plan for Opex (Chapter 2) and Capex (Chapter 3) now reads the SAME
+  already-populated project-grain plan the Budget Utilization page uses**
+  (per the user: "chapter 2 and 3 plan should come from project cashflow
+  details") — `prod.dct_budget_utilization_v` (its `BUDGET_COMBINATION`
+  column carries the entity segment; `CHAPTER` is text `'Chapter 2'`/
+  `'Chapter 3'`, a DIFFERENT vocabulary from the actuals view's `CH2`/`CH3`
+  codes) JOINed to `prod.dct_project_cf_butil_v` (db/v2/126,
+  `PLAN_APPR_ANNUAL`/`_YTD`). Payroll (Chapter 1) keeps reading the GL
+  Cashflow upload as before; the two sources are summed per entity/sector/
+  type. **YTD requires `prod.dct_gl_class_pkg.set_butil_end(<end of
+  period>)` before querying `dct_project_cf_butil_v`, cleared on every exit
+  path (including the exception handler)** — left unset, `PLAN_APPR_YTD`
+  silently equals `PLAN_APPR_ANNUAL` (verified live: Chapter 2 YTD dropped
+  from 4,015.7M annual to 2,368.0M once the context was set for 08-2026).
+  Sector attribution for this leg joins `dct_gl_class_value`
+  (`class_type_code='SECTOR'`) on `name_en = dct_budget_utilization_v.sector`
+  (verified 0 unmatched names against live 2026 data). Result: overall
+  Actual-vs-Plan% dropped from a nonsensical 521% to a sane **96.3%**
+  (08-2026) now that Plan actually covers all three chapters instead of
+  Payroll alone.
+- No new privilege/table changes; no frontend file changed — the page reads
+  the same response shape (just fewer/more-correct rows), so the fix took
+  effect on next page load with no redeploy needed. Re-verified via
+  `fmr_smoke.py` (direct ORDS calls): entity sum, trend sum and the sector
+  register all reconcile to the corrected `overall.budget`.
+
+### FMR v3 — Chapter 1/2/3-only scope + MSS GL Plan upload — 2026-09-01 (GL/db/37 re-run)
+
+Two more user requests same day, both live-verified:
+
+- **Scope narrowed to Chapters 1/2/3 only, everywhere** ("exclude chapter
+  4,5 - only chapter 1,2,3") — `p.chapter_code IN ('CH1','CH2','CH3')` added
+  to the overall/entities/sector Budget+Actual queries (on top of the v2
+  Budget-Group=1 filter). `trend[]` dropped CWIP/Other/Unclassified entirely
+  (3 rows now, not 6 — they were always 0 or now out of scope). Verified:
+  overall budget **8,461,984,756** = sum of the 4 entities = sum of the 3
+  trend rows, all three ways of summing agree.
+- **452201 check (user asked to confirm)**: verified `dct_budget_actual_period_v`
+  and `dct_budget_utilization_v` carry ZERO rows for account 452201 — the
+  2026-08-02 platform exclusion at the base views already propagates through
+  to both FMR data sources, no code change needed.
+- **MSS GL Plan 2026.xlsx loaded** (`docs/Reports/FMR/`, 3,311 raw rows /
+  2,351 distinct GL-combination×period keys after aggregation — the sheet
+  carries Project/Task detail that collapses onto the SAME combination for
+  multiple rows, e.g. several projects sharing one cost-centre+account; a
+  first load attempt hit `ORA-00001` on `UQ_GLCF` from exactly this, fixed by
+  `GROUP BY` (cc, account, appropriation, period) and `SUM(Value)` before
+  inserting — total preserved exactly, 1,869,900,067.54) into
+  `dct_gl_budget_cashflow`: `451.070602.<CC>.1.<Account>.4510700.<row's own
+  Appropriation>.000.000000.000000`. **Appropriation taken from the row, NOT
+  hardcoded to the user's example `200104`** — the sheet mixes Chapter 2
+  rows (appropriation 200104, 925.1M) and Chapter 3 rows (appropriation
+  300105, 944.8M) in a clean 1:1 relationship with Chapter, so hardcoding
+  200104 would have mis-booked 944.8M of Capex plan as Opex. All 28 cost
+  centres already resolve to a real sector in `dct_gl_coa_snap` (0 unmapped)
+  so the Sector-level plan attributes correctly with no extra work.
+- **GL/db/37 generalized**: the GL-cashflow ("Payroll upload") plan leg was
+  hard-restricted to the PAYROLL trend row; now every trend type queries it
+  (via `dct_gl_cashflow_v.chapter_code = y.chcode`, since the raw table has
+  no chapter column) so Opex/Capex pick up BOTH plan sources — the existing
+  project-cashflow leg AND this new GL-cashflow upload — summed. Entity- and
+  overall-level GL-cashflow sums were already chapter-unfiltered, so they
+  picked up the MSS data automatically with no query change. Verified:
+  Museums entity plan 0 → **590.3M** (hasPlan N → Y), Opex trend plan
+  2,368.0M → 2,766.4M (+398.4M) and Capex 946.2M → 1,138.2M (+192.0M), the
+  two increases summing exactly to Museums' +590.3M — three-way reconciled.
+
+### FMR v4 — Plan label rename + Masterpieces project-cashflow classification bug — 2026-09-01 (GL/db/37 re-run + frontend v1.99.1)
+
+- **Label only**: "Plan" renamed to **"YTD Plan"** on the FMR page's KPI
+  tile, entity-gauge chips, trend legend/bars, and sector table header —
+  added a page-scoped `fmrYtdPlan` i18n key rather than touching the shared
+  `spPlan` key (Sector Performance report still says plain "Plan"). No data
+  change — the figure was already YTD and stays YTD; a same-session "make it
+  Annual" instruction was walked back by the user before any deploy (the
+  in-progress Annual edit was reverted, never shipped).
+- **Real bug, user-caught**: Masterpieces showed plan=0 despite project
+  `4511000829` (chapter 3, appropriation `301439`, `dct_project_cf_butil_v`
+  PLAN_APPR_ANNUAL=YTD=868,032,100) genuinely having plan data. Root cause:
+  the project-cashflow plan leg's entity CASE (on `budget_combination`) only
+  checked `entity_specific_code` (position 6) for Museums/ALC, never checked
+  `appropriation_code` (position 7) for Masterpieces the way the
+  Budget/Actual leg already did — so a Masterpieces project sitting under
+  ES=4510000 (DCT) fell through to DCT via the catch-all `ELSE`. Fixed in
+  both spots that build this CASE (entity handler's per-entity plan query +
+  sector handler's entity-filter predicate) by checking
+  `REGEXP_SUBSTR(budget_combination,'[^.]+',1,7)='301439'` FIRST, mirroring
+  the Budget/Actual-side rule exactly. Verified: Masterpieces plan 0 →
+  868,032,100 (hasPlan N→Y), DCT plan dropped by the exact same 868,032,100,
+  overall total unchanged (entity-independent) — the money moved to the
+  right bucket, nothing created or lost.
+
+### FMR v5 — YTD Trend chart drill-down — 2026-09-01 (GL/db/37 re-run + frontend v1.99.3)
+
+Each Budget/Actual/Plan bar on the Entity-Level trend chart is now clickable
+and opens the **existing shared `.dw-drawer`** (user: "use the drawer page")
+— no new UI. New additive route `GET /gl/fmr/trend/lines?period=&chapter=
+CH1|CH2|CH3&metric=budget|actual|plan` returns the generic `{columns,rows,
+total,count}` shape the drawer's `drillCols`/`drillRows`/`fillDrill` already
+consume (the `col()` builder pattern from `07_gl_budget_util_ords.sql`), so
+the frontend needed only a `fmrOpenTrendDrill(item, metric)` call — no new
+drawer markup. Budget/Actual drill = the GL-combination rows behind that
+chapter (cost centre, account, sector, appropriation, budget, actual, capped
+500 by amount). Plan drill = a UNION of the GL-cashflow leg (Payroll/MSS
+upload) and the project-cashflow leg (Opex/Capex), same two sources the
+trend figure itself sums. **Gotcha caught before shipping**: the new
+endpoint didn't call `prod.dct_gl_class_pkg.set_butil_end(...)` — without it
+`plan_appr_ytd` silently reads full-year, so the drill's Opex plan total
+(4,414M) didn't match the trend chart's own YTD figure (2,766M) until the
+same `set_butil_end`/`clear_butil_end` pair used by the main handlers was
+added here too. Verified: all 9 combinations (3 chapters × 3 metrics)
+reconcile exactly between `/fmr/trend/lines` `total` and `/fmr/entity`
+`trend[]`. Browser-verified: drawer opens with the right title/rows, Export
+CSV works for free (shared drawer chrome), no console errors.
+
+### FMR v6 — full GL combination column on the trend drill — 2026-09-01 (GL/db/37 re-run + frontend v1.99.4)
+
+Added a leading **Combination** column to `/gl/fmr/trend/lines` (both the
+Budget/Actual branch, `cc_string`, and the Plan branch, `cc_string` for the
+GL-cashflow rows / `budget_combination` for the project-cashflow rows) plus
+a `combos` side-object resolving every distinct combination against
+`dct_gl_coa_snap` — the exact pattern already used by the Fund Movement
+drill (`GL/db/34`, `col()`/dedupe/`l_seen` table). **Zero new frontend UI**:
+the shared drill drawer already special-cases a column with `key==='combination'`
+and shows the styled 10-segment "SEGMENTS" popover on hover
+(`drillGridOver`/`drillComboRow`) — only had to (1) declare `fmrComboMap`
+alongside the existing `fmComboMap` in the outer scope, (2) add it to
+`drillComboRow`'s `acRowMap || fmComboMap || fmrComboMap` fallback chain,
+and (3) populate it from `d.combos` in `fmrOpenTrendDrill`'s response
+handler before calling the shared `fillDrill(d)`. Browser-verified: hovering
+the Combination cell shows Entity/Cost Center/Account/Appropriation/Budget
+Group/Entity Specific/Future 1/Future 2/Intercompany/Program, matching the
+same popover used on the Actuals and Fund Movement drills pixel-for-pixel.
+
+### FMR v7 — drill Export CSV was silently truncated at 500 rows — 2026-09-01 (GL/db/37 re-run, no frontend change)
+
+`/gl/fmr/trend/lines` capped both branches at `FETCH FIRST 500 ROWS ONLY` —
+fine for on-screen viewing but `drillExportCsv()` (shared drawer chrome)
+just serializes whatever's already loaded into `drillRows()`, so the CSV
+silently matched the 500-row page cap instead of the drawer's own
+count`/total`. Raised the cap to 5000 in both branches — real volumes here
+top out at 1,940 rows (Opex plan, the largest of the 9 metric×chapter
+combinations), so every combination now returns its FULL row set with
+plenty of headroom, not just a bigger cap. No frontend change: the fix is
+entirely server-side, since the export path always exported "whatever
+loaded" correctly — it just never had the full set to work with.
+
+### DCT_GL_COA_V — budget-only combinations were invisible platform-wide — 2026-09-01 (GL/db/38, view redefine, no frontend change)
+
+Root cause (user-diagnosed): two independent Fusion extracts feed the CoA
+layer. **GL Balances** (`GL_SRC_BALANCES`/`GL_BALANCES_CC`) carries every
+combination under budgetary control, budget-only included. **Combinations**
+(`GL_SRC_COMBINATIONS` = `ATD_GL_ACCOUNTS_COMBINATIONS`) carries ONLY
+combinations that have had an actual journal entry posted — budget with zero
+postings never appears there. `DCT_GL_COA_V` (source of the Combinations
+Explorer AND every Sector/Chapter/DCT-Program classification join
+platform-wide) selected `FROM gl_src_combinations` alone, so any budget-only
+combination was invisible to the Explorer and unclassified everywhere else.
+Verified example `451.070101.4510311.1.411181.4510700.100103.000.000000.000000`:
+8 rows / AED 513 budget YTD each in `dct_budget_actual_period_v`, zero rows
+in `dct_gl_coa_snap`. 632 of ~10.1k distinct combinations in `GL_BALANCES_CC`
+had no match in the snapshot.
+
+**Fix**: `DCT_GL_COA_V`'s FROM is now a `UNION ALL` of (a) the real Fusion
+combinations, byte-identical to before, and (b) any `GL_BALANCES_CC.cc_string`
+with no match among the real ones (segments read straight off that already-
+canonical, already-zero-padded `cc_string` via `REGEXP_SUBSTR`, wrapped in
+`TO_NUMBER` — `gl_src_combinations`' segment columns are NUMBER, confirmed
+via `all_tab_columns`, so the UNION ALL legs must match or ORA-01790 fires).
+The 10 per-segment description joins and 3 Sector/Chapter/DCT-Program
+classification joins downstream needed **zero changes** — they already
+resolve at the single-segment level, never the whole-combination level; that
+is what makes this fix work without touching any other query. `cc_id` has no
+Fusion counterpart for a never-posted combo, so a stable negative hash of
+`cc_string` stands in (`-(1+ORA_HASH(cc_string,2147483646))` — real Fusion
+`cc_id`s are always positive, verified `MIN=197618`, zero collision risk by
+construction; deterministic, so the same synthetic id every refresh). The
+moment a real journal entry lands, Fusion assigns a real `cc_id`, the combo
+appears in `gl_src_combinations`, the `NOT EXISTS` guard goes false, and the
+real row silently takes over on the next refresh — self-healing, no
+duplicate, no manual cleanup.
+
+Column list/order is unchanged (no new column), so `dct_gl_coa_stage` /
+`dct_gl_coa_snap` needed no DDL change and `prod.dct_actuals_refresh`
+(db/v2/118) re-ran unmodified. **Perf gotcha**: the `NOT EXISTS` probe must
+compare against a `/*+ MATERIALIZE */`-hinted CTE of the real combinations'
+own computed `cc_string` — probing the live `DCT_GL_COA_V`/raw
+`gl_src_combinations` per candidate row (10 `dct_gl_class_pkg.norm()` calls
+each) timed out; materializing once first made it instant, same lesson as
+`otbi-atd/db/80`.
+
+Deployed: row count 9,477 → **10,109** (+632, exact match). Verified against
+the example combo — resolves with full description + Sector `Natural
+History Museum` / Chapter `Chapter 1`. Backups taken before the change:
+view DDL at `final apps/GL/db/_backups/dct_gl_coa_v_ddl_backup_20260901.sql`,
+snapshot data at `prod.dct_gl_coa_snap_bak20260901`. 9 dependent objects
+(`DCT_GL_RECON_FACT_V`, `TASKS_V`, `DCT_GL_PLAN_SAMPLE_PKG`, `PROJECTS_V`,
+`DCT_ACTUAL_V`, `DCT_KPI_PKG`, `AP_INVOICE_DISTRIBUTIONS_V`,
+`DCT_PROJECT_SPEND_V`, `DCT_SECTOR_ACTUAL_MONTH_V`) were INVALID going into
+this deploy (pre-existing, unrelated ATD-reload drift, confirmed unchanged
+in count across the failed-then-succeeded run) — recompiled clean afterward.
+
+### DCT_GL_COA_V — Chapter classification restricted to expense accounts (4xxxx) — 2026-09-01 (GL/db/39, view redefine, no frontend change)
+
+User-diagnosed follow-up to the GL/db/38 fix above: Chapter (Payroll/Opex/
+Capex) is meant as an **expense** classification, but the CHAPTER join keyed
+purely off the appropriation segment, with no account-type gate — so any
+combination on a Chapter-mapped appropriation got a Chapter even on a
+non-expense account. Example `451.000000.4510210.1.327012.4510000.202061.
+000.000000.000000` (account `327012`, leading digit 3 = Revenue / the
+"budgetary-control offset" mirror pattern) was resolving to `Chapter 2`
+purely because appropriation `202061` maps there. Platform-wide: 22
+combinations carried a Chapter despite a non-4 account (2 Assets, 1
+Liability, 19 Revenue/offset) — the 19 alone carried **AED 8.85 billion** of
+budget in `GL_BALANCES_CC`, the exact double-counting exposure any Chapter
+rollup without its own `account='4'` filter would be open to.
+
+**Discussed and decided (2026-09-01, before implementing):** the fix does
+**not** belong in the mapping table (`dct_gl_seg_class_map` — "appropriation
+202061 = Chapter 2" is a true, standalone fact about that appropriation, not
+wrong on its own) and does **not** belong in the shared resolver
+(`dct_gl_class_pkg.resolve_value_id` — used generically for Sector/Chapter/
+DCT-Program alike, and Sector/Program have no account-type concept at all).
+It belongs at the point where a mapping gets **applied to a real
+combination** — i.e. the join. One new `AND` condition on the existing
+CHAPTER join: `SUBSTR(norm(c.gl_account,6),1,1) = '4'` — the exact same rule
+the view's own `account_type` CASE already encodes, just applied to Chapter
+resolution too.
+
+Verified: the example combo's `chapter_code`/`chapter_name` are now NULL;
+zero non-expense combinations carry a Chapter platform-wide; a real expense
+line on the SAME appropriation (`422401`, Expense) still correctly resolves
+to Chapter 2 — only the misattribution is removed, real Payroll/Opex/Capex
+lines are untouched. Row count unchanged (10,109 — same combinations, only
+Chapter attribution changed). 0 invalid dependents. Backups: pre-fix view
+DDL at `final apps/GL/db/_backups/dct_gl_coa_v_ddl_backup_20260901_post38.sql`,
+snapshot copy at `prod.dct_gl_coa_snap_bak20260901b`.
+
+### DCT_GL_COA_V — Chapter also excludes account 452201 platform-wide — 2026-09-01 (GL/db/40, view redefine, no frontend change)
+
+User follow-up ("very very important"): account `452201` "Revenue Transfer to
+Treasury" is a **standing platform-wide exclusion** — already filtered out of
+every balance-bearing view: `GL_BALANCES_CC` itself drops the raw row
+(`NVL(REGEXP_SUBSTR(cc_string,'[^.]+',1,5),'x')<>'452201'`, confirmed in its
+live DDL), and `DCT_EBS_BALANCE_MAPPED_V`/`DCT_GL_CASHFLOW_V` do the same
+(2026-08-02 rule, [[project_gl_452201_bg_rules]]). No dollar amount for it
+reaches FMR, Budget Utilization, or anywhere else today — confirmed 0 rows
+in `dct_budget_actual_period_v` for this account.
+
+But `DCT_GL_COA_V` (classification metadata, not amounts) still lists 4 real
+`452201` combinations — currently blank-Chapter only by coincidence (their
+appropriation is `000000`, unmapped). Since 452201 starts with digit 4,
+GL/db/39's new expense-only gate alone would still let a Chapter through the
+moment Fusion posts a 452201 combination against a chapter-mapped
+appropriation. Added one more `AND` to the same CHAPTER join:
+`prod.dct_gl_class_pkg.norm(c.gl_account,6) <> '452201'` — mirrors the exact
+exclusion `GL_BALANCES_CC` already applies, now also at the classification
+layer.
+
+Verified: all 4 `452201` combinations show `chapter_code`/`chapter_name` =
+NULL; GL/db/39's expense-only rule still holds (0 non-expense combos with a
+Chapter); a real expense line on the same appropriation the example combo
+used (`422401`, non-452201) still correctly resolves to Chapter 2. Row count
+unchanged (10,109). 0 invalid dependents. Backups: pre-fix view DDL at
+`final apps/GL/db/_backups/dct_gl_coa_v_ddl_backup_20260901_post39.sql`,
+snapshot copy at `prod.dct_gl_coa_snap_bak20260901c`.
+
+### Budget Utilization — negFund threshold rounds to 1 decimal — 2026-09-02 (GL/db/35 re-run, no frontend change)
+
+User: the over-budget warning band was firing on pure float noise (GRN
+receipts landing a few fils above YTD budget, e.g. project 4511000175 —
+see the 2026-09-01 diagnosis) and the banner's whole-AED rounding made a
+sub-1-AED difference read as "over-spent by 1". Fix: every place the negFund
+flag compares `fund_available` (± procash/cost-adj) against zero now wraps
+the expression in `ROUND(...,1)` first — 3 call sites (the totals COUNT/SUM,
+the `negfund=Y` WHERE filter used by both `/butil` and its row loop) — plus
+the displayed `fundAvailable`/`fundAvailableExProcash` (totals AND per-row)
+are now themselves `ROUND(...,1)`, so the flag and the number shown always
+agree. Effect: a true sub-0.05 AED float remainder no longer flags at all;
+a genuine (if small) shortfall like -0.2 or -0.4 AED still correctly flags,
+now with a clean 1-decimal number instead of a misleading whole-AED-rounded
+one. Verified live: project 4511000175's two lines now show `fundAvailable`
+-0.2 / -0.4 (was -0.2464346 / -0.39992), `negFundTotal` -0.6 (was the
+misleading whole-AED "-1"). GL post-05 re-run list unchanged (07..35).
+
+### Budget Utilization — negFund materiality raised to whole AED — 2026-09-02 (2) (GL/db/35 re-run, no frontend change)
+
+SUPERSEDES the 1-decimal threshold above (same day). User follow-up on the
+same two lines: "there is no difference between budget and GRN actual, so
+it's suppose to be 0 — why still showing". Correct — the page displays whole
+AED, so Budget 104,725 vs GRN 104,725.2464346 render identically while the
+1-decimal flag still fired at -0.2/-0.4. Sub-AED fractions are now treated
+as zero end-to-end: the 4 negFund test sites compare `ROUND(expr) < 0`
+(whole AED — only a genuine ≥ 0.5 AED shortfall flags) and the displayed
+`fundAvailable`/`fundAvailableExProcash` (totals + per-row) snap to exactly
+0 when `ABS(raw) < 0.5`, keeping 1-decimal display for real values. Verified
+live: project 4511000175 → negFund 0, both lines fundAvailable 0 (raw GRN
+still carries the fils, untouched); default DCT-OPEX scope negFund 0 is
+GENUINE (raw view has 0 lines < -0.5 under that type — the old 16.75M
+over-spend was cleared by the approved costing adjustments); 7 real
+over-budget lines under other project types (worst -19.6M) still flag.
+Handler 33,824 chars, all INSTR markers verified. Re-run list unchanged.
+
+### FMR page round 2 — spinner, Search region, KPI drilldowns, chart labels — 2026-09-02 (GL/db/37 re-run, APP_VERSION 1.100.0)
+
+Four user-requested enhancements to the Financial Performance Report page:
+
+1. **Loading spinner fixed** — `.bu-load-ov` was wired with a bare
+   `<div class="ojpc"></div>` (no child `<circle>`s, so nothing animated —
+   confirmed root cause of "no spinner displayed"). Presented 3 live animated
+   concepts as an artifact (Continuity/oj-progress-circle, Ledger Gem/brand
+   diamond, Bar Build); user picked **Bar Build** — 5 CSS bars in a staggered
+   rise/fall wave, brand teal + one gold accent bar, echoing the page's own
+   YTD Trend chart. New `.fmr-bars` CSS, `prefers-reduced-motion` respected.
+2. **Search region** — the bare Year/Period `<select>`s in the page header
+   became a proper collapsible `.bu-sec` Search region (own `gl_fmr_ui`
+   localStorage key, mirrors Budget Utilization's `bu-sec`/`toggleBuSec`
+   pattern exactly) with Search/Reset buttons + a **Generate Report**
+   placeholder (disabled, "coming soon" tooltip — user chose this over
+   building a full new Reporting-Platform report in the same round; real
+   report generation is a follow-up once the desired sections are confirmed).
+3. **KPI-tile drilldowns** — all 5 Entity-Level KPI tiles (Budget/Actual/
+   YTD Plan/Actual vs Plan %/Funds Available) are now `.bk-click` and open
+   the shared drill drawer. Backend: `/fmr/trend/lines` (GL/db/37) is now
+   general-purpose — `chapter` and the new `entity` param are BOTH optional;
+   omitting chapter spans all three FMR chapters at once (the KPI band's
+   "whole entity level" scope), a new `fundsavailable` metric branch reuses
+   the budget/actual query shape, and every row/leg now carries a resolved
+   `chapter` and sorts `chapter_code NULLS LAST` then account/GL-segment
+   ("sort by chapter then GL segment", user 2026-09-01) — unifying the
+   single-chapter trend-bar drill and the all-chapter KPI-tile drill behind
+   one query. "Actual vs Plan %" opens the Plan side (Actual already has its
+   own tile). Verified live: all 4 metrics reconcile exactly to `/fmr/entity`
+   overall (budget/actual/plan/fundsAvailable all matched to the cent), the
+   `entity=MUSEUMS` filter matched the entities[] breakdown exactly, sort
+   order confirmed Chapter-1-first ascending.
+4. **Chart value labels + hints** — every trend-chart bar now shows its
+   compact value (`buNum()`) permanently above the bar, plus a styled hover
+   tooltip (`.sp-b-tip`, brand-dark card with an arrow, replacing the bare
+   native `title=`) showing the full formatted amount + type/measure label.
+   `.sp-cols` padding-top raised 6px→26px for label headroom.
+
+Browser-verified end-to-end (local Playwright, 12/12 checks): spinner markup,
+Search region open/collapse + summary line, Generate Report disabled with
+hint, all 5 KPI tiles clickable and opening the drawer with a Chapter column
+sorted ascending, chart value labels present, hover tooltip visibility, zero
+console errors. `window.APP_VERSION` bumped to 1.100.0 (GL-only change, no
+`shared/` touched). Webtier GL-only overlay release **20260902002208**
+(rollback 20260901135751) — verified over HTTPS: current serves 1.100.0 with
+the `fmr-bars`/`fmrOpenKpiDrill` markers, previous release intact at 1.99.4,
+Admin untouched.
+
+### FMR page round 3 — Generate Report (PDF/XLSX/PPTX) + one-row KPIs + gauge icons + hint popovers — 2026-09-02 (NEW reporting/db/40 + GL/db/41 + render_pptx.py fleet-sync, APP_VERSION 1.101.0)
+
+Four user requests, all live:
+
+1. **Generate Report is REAL** — the placeholder button became the butil-style
+   **Generate Report ▾** `.gen` dropdown (Briefing Book PDF / Excel XLSX /
+   PowerPoint PPTX). ONE new Reporting-Platform definition **`GL_FMR_REPORT`**
+   (`reporting/db/40`, MULTI/PYTHON, landscape, params period REQUIRED +
+   entity optional): 5 sections in LOCK-STEP with the GL/db/37 handlers
+   (overall KPIs / entities / trend / sectors / notes — bg=1 regex, Chapters
+   1–3, entity carve-outs identical), plan-YTD via `pre_sql` GL_CTX.BUTIL_END
+   (`post_sql` always clears). PDF = NEW landscape book template
+   **`gl_fmr_book.html.j2`** (DB-stored via upload_template.py on vm180;
+   FMR_Dashboard layout — header band, 5 KPI cards, 4 entity SVG half-gauges,
+   CSS trend chart w/ value labels, commentary boxes, ranked sector table w/
+   pace bars; `.keep` wrapper stops the trend table splitting across pages).
+   XLSX = sheet per section (automatic). PPTX = NEW **`_fmr_deck`** in
+   `render_pptx.py` (cover w/ KPI ribbon · entity table+chart · trend chart ·
+   sector table · commentary; dispatches on report_code GL_FMR_REPORT;
+   **GOTCHA: `_band` part numbers must be STRINGS ("01") — an int reaches
+   python-pptx `r.text` and dies as `TypeError: expected string or bytes-like
+   object` with no traceback in the run row**; fleet-synced vm180-182 +
+   rpt-worker restart ×3). Bridge = NEW **`GL/db/41`** `POST /gl/fmr/report`
+   {period, format PDF|XLSX|PPTX} + `GET :id` + `GET :id/file` (single route
+   set, the format is a per-run parameter — unlike butil's 3 definitions);
+   gate `GL_RUN_BRIEFING_BOOK`. **GL post-05 re-run list = 07..41.**
+   E2E verified via the bridge: XLSX 10.8KB / PDF 77KB (3 pages, rendered +
+   visually checked) / PPTX 49KB — all magic-byte checked; plus a LIVE
+   in-browser run (menu click → poll → `Financial_Performance_Report_09-2026
+   .xlsx` download).
+2. **All 5 Entity-Level KPIs on ONE row** — `.bu-kpis.sp-kpis{grid-template-
+   columns:repeat(5,1fr)}` (double-class outranks the shared media rules;
+   own fallbacks 3-col @1100 / 1-col @760).
+3. **Gauge icons** — `.sp-gauge-ico` brand-tinted disc per entity gauge with
+   inline SVG (`fmrEntIcon`): DCT landmark · ALC open book · Museums columned
+   portico · Masterpieces framed artwork.
+4. **Professional hints on every KPI + chart** — `.fmr-hint` ⓘ hover/focus
+   popovers (brand-dark card + arrow, formula-first text, 8 new `fmrHint*`
+   keys EN+AR) on the 5 KPI tiles, each entity gauge, the YTD Trend header
+   and the Sector Level header; edge tiles anchor the popover inward so it
+   never clips; the ⓘ click is `clickBubble:false` so it never triggers the
+   tile drill.
+
+Deploys: reporting/db/40 + template via python-oracledb/upload_template on
+vm180 (SRC OK/SPEC OK verified); GL/db/41 via SQLcl `prod_mcp`; render_pptx
+scp'd to vm180-182 + rpt-worker restarted (all active). Webtier GL-only
+overlay release **20260902005826** (rollback 20260902002208), verified 1.101.0
++ `runFmrReport` over HTTPS, previous release intact. Tests: browser smoke
+**12/12 EN** (one-row KPIs incl. same-top assert, icons, hint hover +
+no-drill-on-ⓘ, 3-item menu, LIVE XLSX download) + AR/RTL pass (Arabic hint
+text, RTL grid, menu; NOTE: a hidden popover's `inner_text` is EMPTY — hover
+first before asserting its text).
+
+## TRV — Tax-rate-variance AP distributions join the AP actual — 2026-09-02
+
+**User rule:** a PO-matched AP distribution of type **"Tax rate variance"** is a real
+project/task/etype cost that the GRN leg never carries — the receipt is valued at PO price and
+the tax-rate delta exists only AP-side — so it must count in the butil AP actual, and its drill
+row must be identifiable as **TRV**. (The `DISTRIBUTION_TYPE` column was added to the AP
+distribution extract the same day; example: invoice AD2606-0073 line 2 dist 2, 9,961.66 AED on
+4511000245 / ManagementAdvice-N3, previously counted nowhere.)
+
+**The predicate change** (in lock-step across every butil-AP replica):
+`WHERE d.po_number IS NULL` → `WHERE (d.po_number IS NULL OR d.distribution_type = 'Tax rate variance')`
+- `db/v2/37` `f_ap` — the butil actual (2026 delta: **+36,146.10** across 15 lines)
+- `db/v2/122` `f_ap` — the Project Portfolio / 360 parity leg (verified equal after)
+- `db/v2/105` — the recon butil-AP replica (zero-residual invariant preserved)
+- `db/v2/123` `m_ap` — the sector-perf monthly identity view
+- `GL/db/07` `butil/lines` metric=ap drill — same predicate **+ a new `Type` column**
+  (`dtype`: `TRV` for tax-rate variance, else the raw distribution type). Deployed as a
+  **DEFINE_HANDLER-only patch of that one handler** — NEVER re-run 07 wholesale, its `butil`
+  GET is superseded by GL/db/35 (the documented handler race).
+
+**Deliberately NOT changed** (different business meaning — "AP Direct" = invoices with no PO):
+`db/v2/34` `ap_direct_actual_ytd`, `db/v2/45/47` `ap_direct_aed`, `db/v2/122` `direct_aed`,
+the AP module's `nopo` Direct-AP feature + `reporting/db/38`.
+
+**DECIDED + SHIPPED same day (user: "yes as long as the charge account same as project/task/etype")**
+â the rule is now GENERIC: a PO-matched variance dist (Tax rate / Invoice price / Conversion
+rate / Retainage) counts in the AP actual ONLY when its charge account IS the line's expense
+account (`cid.account_code = REGEXP_SUBSTR(d.expenditure_type,'^[0-9]{6}')`). Live 2026 data
+separates perfectly on that test: all 5 IPV dists post on the expense account â **counted
+(â113,626.29)**; all 102 Conversion-rate post to 360620 (FX gain/loss) and all 33 Retainage to
+230210 (retainage liability) â excluded by the account test, not by name (they will count the
+day Fusion posts one on the expense account). Deployed in lock-step: db/v2/37 Â· 122 Â· 105 Â· 123
+Â· db/v2/39 (`matched_trv_aed` â **`matched_var_aed`** + new **`variance_types`** LISTAGG of short
+codes TRV/IPV/CRV/RET) Â· GL/db/07 `butil/lines` ap drill (DEFINE_HANDLER-only patch again;
+dtype now maps all four short codes) Â· reporting/db/21+25 live defs (CLOB surgery round 2:
+register Line Type = Direct / TRV / IPV / â¦ / 'Direct + <types>'; book prefix `(<types>)`).
+Verified: 123t 30/30 Â· sectorperf API smoke 70/70 Â· recon residual 0 Â· portfolio parity Â·
+drill INV-00021 typed IPV reconciling to the butil cell Â· **register run 922** sheet 2 = 5 IPV
+(â113,626.29) + 12 TRV (+36,146.10) + 40 costadj rows, main total = live /gl/butil actualAp
+(costadj=N) to the cent at the same moment (the AP extracts reload HOURLY â never assert a
+figure captured minutes earlier; ~30K drifted between checks twice today).
+~~Also outstanding: the butil book/register "AP Invoices – Direct" section SQLs~~ —
+**CLOSED same day (user: "it should listed")**: `db/v2/39` `DCT_UNPAID_INVOICES_V` gained
+ADDITIVE splits `matched_direct_aed` / `matched_trv_aed` / `ap_actual_aed` (grain unchanged,
+so the other two consumers — GL/db/22 Project 360 invoice list + reporting/db/08a — are
+untouched), and the "AP Invoices - Direct" sections were repointed: register sheet 2
+(reporting/db/25) = amount `ap_actual_aed` + new **Line Type** column (Direct / TRV /
+Direct + TRV / Cost Adjustment for the (**) rows) with the `has_po` filter dropped; book
+(reporting/db/21) = same amount, TRV rows prefixed **`(TRV) `** on Invoice Number (fixed PDF
+template — no new column). Live definitions patched by CLOB REPLACE surgery (both seeds are
+MERGE-bearing — Linux SQLcl swallows them); INSTR pre/post counts all 1. **Verified on a real
+register run (run 921)**: sheet 2 = 5,299 rows Σ 1,442,587,598.48 = the butil AP actual to
+the cent (was trailing by 36,146.10), 12 TRV rows Σ 36,146.10, 40 Cost Adjustment rows
+Σ 3,118,877.54, AD2606-0073 listed typed TRV at 9,961.66; the book AP section SQL validated
+live (same totals, `(TRV)` prefix).
+
+### Same round — Sector Performance costadj parity + sample-generator hardening
+While verifying, the live `/gl/butil` (GL/db/35 owner) had gained the **default-ON costing-
+adjustment fold** (Include Cost Adjustment, +3,118,877.54 in 2026) which the sector-perf view
+lacked — the two tabs disagreed by exactly that. `DCT_SECTOR_PERF_V` now folds
+`DCT_PA_COST_ADJ_BUTIL_V` identically (budget +ovr, actual +adj, fund +ovr−adj; raw + component
+columns kept) and the trend handler adds the APPROVED adjustments per accounting period so the
+cumulative line still ties to the KPI. `123t`'s recon folds the same way.
+
+The REAL Finance expenditure plan (6,701 rows / 2026) landed in `DCT_PROJECT_CASHFLOW` — the
+sample generator's locks fired exactly as designed: purge removed only SAMPLE rows, regeneration
+**refused** (−20001). `generate_all` now generates each part independently (a refusal on the
+expenditure side no longer blocks the revenue sample, which has no real upload yet), and the
+123t harness is real-data-aware (12-row shape asserted on SAMPLE rows only; purge proven to
+leave every real row untouched).
+
+### Verified
+123t **30/30** · sectorperf API smoke **70/70** (RECON vs live /gl/butil ties again, full-year +
+period-cut + sector-filtered) · browser smoke **54/54** against the deployed 1.101.0 build ·
+drill for the example line returns exactly the TRV row, typed `TRV`, total 9,961.66 == the
+butil cell · portfolio == butil for the project (9,961.66 both).
+Pre-existing and unrelated: `PROD.ATD_AR_INVOICE_FULL_VW` is INVALID (references
+`H.TRANSACTION_TYPE_TAX_CALCU`, an AR-extract column its source no longer exposes).
+
+## FD Dashboard — Budget Status tab — 2026-09-03 (v1.102.0, NEW GL/db/42)
+
+**Ask:** an executive "Budget status" page from the user's notebook sketch
+(`final apps/BI/docs/FD Dashboard/Dashboard  FD.jpg`): a Sectors strip of clickable cards
+on top, then one band per Chapter with Budget / Actual / Encumbrance / Fund Available,
+across every business unit (DCT and MSS), sector filter off by default, one or more
+sectors selectable. Three mockups were built first (`final apps/BI/docs/FD Dashboard/
+mockups/` — A Ring Bands / B Consumption Bar / C Boardroom, interactive HTML + PNGs);
+the user picked **A · Ring Bands**, the **GL-balances basis**, the **GL app**, and
+**Year + YTD period selectors**.
+
+**Basis = the Financial Performance tab's rules, verbatim** (user decision — the two
+pages must agree): `prod.dct_budget_actual_period_v` at the period, Budget Group 1
+(`REGEXP_SUBSTR(cc_string,'[^.]+',1,4)='1'`), Chapters 1–3 only, entity from segment 6
+(4510700 → MSS, 4510600 → ALC, appropriation 301439 → Masterpieces, else DCT).
+Encumbrance = `encumbrance_ytd`, Fund = `funds_available_ytd` — verified on live 09-2026
+data that Budget − Actual − Encumbrance = Fund at every (sector × entity × chapter)
+row, so the four figures in a band always tie. What the bands leave out (Budget-Group-1
+rows with no chapter — appropriation '000000', AED 9.45B — and Chapters 4–6) ships as
+`excluded{}` and prints as a footnote; never silently dropped.
+
+**GL/db/42_gl_fd_ords.sql** (additive; **GL post-05 re-run list = 07..42**): ONE route
+`GET /gl/fd/status?period=MM-YYYY` → the whole (sector × entity × chapter) cube (≈ 100
+rows) + `sectors[]` LOV (budget-desc, Arabic name when the class value has one) +
+`chapters[]` (code/name/alt from DCT_GL_CLASS_VALUE) + `entities[]` + `excluded{}` +
+`totals{}`. Read = any valid session (same as `/fmr/entity`). Deployed via SQLcl
+`prod_mcp` (handler 6,188 chars — verified in user_ords_handlers).
+
+**Frontend (GL v1.102.0, GL-only change):** new General Ledger sub-tab **Budget Status**
+right after Financial Performance (`NAV_GROUPS` id `fd`, `#pg-fd`, `fd*` VM block placed
+before the FMR block in app.js, 36 `fd*` i18n keys EN+AR, `#pg-fd .fd-*` CSS). Search
+region = Budget Year + Accounting Period (YTD; default from `GET /actuals/filters`
+`defaultPeriod` like the FMR tab) + **Business unit** segmented toggle (All / DCT / MSS /
+ALC / Masterpieces, data-driven from `entities[]`) + the SHARED `buUnit` "Figures in".
+Sector cards = icon + name + budget + % used + utilisation bar, multi-select any-of,
+`{n} selected` + Clear, non-selected cards dim; a sector with nothing in the current
+business-unit scope (or all-zero figures — "Museums" has 7 empty combinations) gets no
+card. Chapter bands = three ring gauges (Budget full ring, Actual and Encumbrance rings =
+share of budget, `fdRingDash` = stroke-dasharray on r=38) + the green Fund Available
+square (red `.neg` when negative). **All filtering is client-side** — one request per
+period, cards and toggle recompute instantly. Footnote = basis + excluded amounts +
+grand total.
+
+**Verified:** `tests/fd_api_smoke.py` **47/47** (401/400 paths, envelope, rows==totals,
+Fund=Budget−Actual−Enc on every row, sectors[]==Σrows, **RECONCILIATION vs
+`/gl/fmr/entity` overall + all 4 entities to the cent**) · `tests/fd_browser_smoke.py`
+**55/55 EN+AR** (nav, defaults, 19→18 cards, rings, any-of select/unselect/Clear, MSS
+toggle, Figures-in, collapsed summary, RTL labels). Gotcha: `.fd-lab span` is
+`text-transform:uppercase` and Chrome's `inner_text` applies it — compare lower-case.
+
+**Deploys:** GL/db/42 via SQLcl `prod_mcp` (fresh session; single handler, 6,188 chars
+verified); webtier **GL-only overlay release 20260903110916** (rollback = re-point
+`/var/www/ifinance/current` to `20260902122830`; `cp -al` + `tar --unlink-first` of the 3 GL
+files, old release verified intact at 1.101.0, prune by NAME kept the last 5). Live check:
+`APP_VERSION = '1.102.0'` + `#pg-fd` served over HTTPS; browser smoke re-run against the
+deployed build. Frontend changes are GL-only (no `shared/` touched — no fleet bump).
+Mockups + the sketch stay in `final apps/BI/docs/FD Dashboard/` (not deployed).
+
+## Budget Status — figure drill-down + combination hint — 2026-09-03 (v1.103.0, NEW GL/db/43)
+
+**Ask (user, same day):** every figure on a chapter band drills into a drawer listing the
+detail by FULL GL code combination, with the same well-formatted GL-description hint the
+Budget Utilization drills show.
+
+**GL/db/43_gl_fd_drill_ords.sql** (additive; **GL post-05 re-run list = 07..43**):
+`GET /gl/fd/lines?period=&metric=budget|actual|encumbrance|fundsavailable[&chapter=][&entity=]
+[&sector=a|b]` — rows from `dct_budget_actual_period_v` under the SAME predicates as db/42's
+cube (Budget Group 1, Chapters 1–3, entity CASE, sector any-of on `sector_code`, `UNCLASSIFIED`
+= NULL), one row per 10-segment combination with ALL FOUR measures (the drilled one is the
+total; zero rows of it suppressed, totals still reconcile), sorted chapter → account → cost
+centre (the user's FMR-drill rule), cap 5,000, `fundsAvailable` column flagged `pn` (sign
+tint). `combos{}` side-map = every distinct combination resolved in ONE pass against
+`dct_gl_coa_snap` (GL/db/34 + 37 pattern) → the shared drawer's delegated Combination
+popover (`drillComboRow` now also consults `fdComboMap`). Deployed via SQLcl `prod_mcp`
+(handler 7,747 chars verified).
+
+**Frontend (v1.103.0):** the three rings + the Fund Available square are `role=button`
+(`.fd-click`: lift + ⤢ affordance, Enter/Space) → `fdOpenDrill(item, metric)` opens the SHARED
+drill drawer (`drillTitle` = "Chapter 2 · Opex — Budget", `drillSub` = period · business unit ·
+picked sectors by name) scoped exactly like the band, so the drawer total == the figure clicked;
+hover a Combination cell = the styled 10-segment code + description popover (`.combo-tip`). A
+one-line hint above the bands says so (`fdDrillHint`, EN+AR).
+
+**Verified:** `fd_api_smoke.py` **90/90** (drill 401/400s; for EVERY chapter × measure the drill
+total == the cube figure; entity-scoped, 2-sector any-of and entity+sector+chapter drills all
+reconcile; rows non-zero + sorted by account; `combos{}` covers ≥ 80% of the rows with the 10
+code+desc pairs; Fund = Budget − Actual − Enc on every drill row) · `fd_browser_smoke.py`
+**72/72 EN+AR** (4 drillable figures per band, drawer title/subtitle/columns, total == ring
+figure, first cell is a 10-segment combination, hover → popover with 10 segments incl.
+descriptions, close, sector-filtered Fund drill reconciles + subtitle names the sector).
+
+**Deploys:** GL/db/43 via SQLcl `prod_mcp` (fresh session, 7,747 chars verified); webtier
+**GL-only overlay release 20260903121501** (rollback = re-point `current` to
+`20260903110916`; old release verified intact at 1.102.0). Live check: `APP_VERSION =
+'1.103.0'` + `fdOpenDrill` served over HTTPS; browser smoke re-run against the deployed build.
+
+**Fix, same day (user report: "in fund available drilldown there are lines displayed with no
+fund"):** the drill suppressed rows with a drilled figure `<> 0`, but 88 combinations in scope
+carry sub-AED remainders (e.g. budget 145,210.00 vs actual 145,209.90 → Fund Available 0.10),
+which the drawer's whole-AED `money()` prints as **0**. GL/db/43 now suppresses rows whose
+drilled figure ROUNDS TO 0 at the displayed precision (`ROUND(x,0) <> 0`, i.e. |x| < 0.5) in
+both the row set and `count`; `total` still sums the whole scoped set so the drawer reconciles
+to the band figure unchanged. Redeployed via `prod_mcp` (7,777 chars). `fd_api_smoke.py`
+**94/94** (adds "no row displays as 0" per chapter × measure + the reported CH1/sector Fund
+Available drill: no sub-AED rows AND total == cube). No frontend change (still 1.103.0).
+GOTCHA: an interactive `cp` alias prompted "overwrite?" inside a chained deploy command and
+hung SQLcl for 5 min — use `\cp -f` in scripted deploys.
+
+## Budget Status — Departments (Cost Centres) region — 2026-09-03 (v1.104.0, db/42 + db/43 re-run)
+
+**Ask (user):** under Sectors, a second region "Departments (Cost Centres)" showing the related
+cost centres as clickable, filtered cards with multiple selection.
+
+**Backend:** GL/db/42's cube grain went from (sector × entity × chapter) to **(sector × cost
+centre × entity × chapter)** (rows carry `costCenter` + `costCenterName`; still a few hundred
+rows, one request) + a new `costCenters[]` LOV (code / name / sector attribution / budget,
+budget-desc) — the client recomputes per-scope figures from `rows[]` exactly as it does for
+sectors. GL/db/43's drill gained **`costcenter=CC|CC…`** (any-of on `cost_center_code`,
+`UNKNOWN` = NULL) in both the total and the row query, echoed back. Both redeployed via
+`prod_mcp` (7,719 + 8,095 chars). GL post-05 re-run list unchanged (07..43).
+
+**Frontend (v1.104.0):** new region right under Sectors — cards = the cost centres of the picked
+sectors (all sectors when none picked) with their sector's icon, `code · sector` line, name,
+budget + % used + utilisation bar; multi-select any-of (`fdCcSel`, `fdToggleDept`,
+`fdClearDepts`, `{n} selected` + Clear, `shown/total` counter); a header text box
+(`fdDeptQ`) filters the CARDS only, never the figures. Bands, footnote total and every drill
+now honour business unit ∩ sectors ∩ departments (`fdRows`; drill sends `costcenter=` and
+names the departments in the subtitle). Picks are pruned (`fdPruneDepts`) when a sector is
+deselected, the business unit changes or the period reloads, so a hidden card can never keep
+filtering silently. Reset clears both selections and the text filter.
+
+**Verified:** `fd_api_smoke.py` **104/104** (rows carry cost centre, grain unique, `costCenters[]`
+== Σrows per cost centre + one sector per cost centre + sorted, drill `costcenter=` any-of
+reconciles to the cube) · `fd_browser_smoke.py` **95/95 EN+AR** (region renders 90 cards, sector
+pick narrows them to that sector, department pick narrows the bands + the Actual drill
+reconciles and names the department, any-of, text filter narrows cards only, prune on sector
+change, Clear, Arabic header). Test gotcha: the Departments region reuses `.fd-card` /
+`.fd-sec-acts` — scope sector-region selectors with `.fd-cards:not(.fd-cards--dept)` / `.first`.
+
+**Deploys:** db/42 + db/43 via SQLcl `prod_mcp` (fresh session); webtier **GL-only overlay
+release 20260903140645** (rollback = re-point `current` to `20260903121501`; old release intact
+at 1.103.0). Live check `APP_VERSION = '1.104.0'` + the Departments region markup served;
+browser smoke re-run against the deployed build.
+
+## Budget Status — Sectors & Departments PRESENTATION switch — 2026-09-03 (v1.105.0, db/42 re-run)
+
+**Ask (user, same day):** "propose 3 different mockups to enhance the presentation of sectors and
+departments regions … executive level" → three studies built on the LIVE Sep-2026 cube
+(`final apps/BI/docs/FD Dashboard/mockups/FD_Regions_mockups.html` + `regions_{A,B,C}_{default,selected}.png`,
+artifact https://claude.ai/code/artifact/685dcbe5-a21d-4cd2-b74c-948e504b2a8c) → "Create all of them
+A,B,C where end users can switch between them from new Parameter in Search Region". Decisions
+(AskUserQuestion): default = **B Composition tiles**; the old card design is **replaced** (not kept as a
+4th option); the choice is remembered **in this browser** (`gl_fd_ui.layout`); Rows/Tiles show the
+**top N with "Show all"** (12 rows / 18 tiles).
+
+**DB (GL/db/42 re-run, handler 8,551 chars):** `GET /gl/fd/status` now also echoes
+`thresholds{near,over}` = the GL module settings `BUD_UTIL_NEAR_PCT` / `BUD_UTIL_OVER_PCT` (defaults
+90 / 100, same keys GL/db/35 reads) — the page's state pills and map heat reuse the platform's
+vs-Budget verdict, no new settings. Additive; GL post-05 re-run list unchanged (07..43).
+
+**Frontend (v1.105.0):** ONE Search-region parameter **Presentation** (`fdLayout`, `<select
+class="fd-layout-sel">`: Composition tiles · Ledger rows · Proportional map) drives BOTH regions:
+- **tiles** (default) — `.fd-card.fd-tile`: icon + name + check, budget as the one big Fraunces figure
+  (`fdBig` = compact under "Exact number", otherwise the chosen unit) + share of the scope total
+  (`fdShare`, 1 decimal below 1%), a **composition bar** in the bands' own Actual / Encumbrance / Fund
+  colours (`fdSeg`, segments clamped), `x% used · y% committed`, and a **state pill** `fdState` =
+  `over` (fund < 0 or consumed > over%) / `tight` (consumed ≥ near%) / `ok` showing `% free` + the
+  fund amount. Picked sectors show as header **chips** with × (`fdSelChips`). Department tiles add the
+  mono code + sector tag (`fdSectorNameOf`, localised) and a header **Sort** (`fdDeptSort`:
+  Budget / % used / % free).
+- **rows** — `.fd-lg-row` ledger: check · icon · name (+ share · % used / code · sector) · a
+  composition bar on ONE shared scale (`fdRowW` = budget ÷ the region's largest budget) · four
+  aligned figure columns (Budget with the exact value beneath; Actual / Encumbrance / Fund with
+  `% of budget`); brand spine on the selected row. Horizontal scroll under 900 px.
+- **map** — squarified treemap (`fdSquarify`, in-VM; width measured by the `fdMeasure` KO binding +
+  resize, `fdMapW`): sector tiles area = budget, fill = % consumed on a 5-step scale whose bands
+  are derived from the thresholds (`fdHeatBands` legend: <60 · 60–(near−10) · (near−10)–near ·
+  near–over · over committed = rust); labels degrade big → name-only → none (tooltip keeps the
+  figures). Departments = the same map **nested per sector group** (`fdDeptGroups`, 20-px sector
+  strip when the group is tall enough). Tiles use `inset-inline-start` so the map mirrors in RTL.
+  **Unbudgeted items** (a cost centre with actual/encumbrance but zero budget — 1 live: 4511020)
+  get a sliver (0.6% of the largest item) so they never vanish; a sliver GROUP (Unclassified,
+  17×3 px) drops its padding so its 5 departments still render (`pad` guard) — the browser smoke
+  asserts every department has a tile.
+- Departments list: `fdDeptsSorted` → `fdDeptsShown` (top N unless `fdDeptShowAll`; the map always
+  draws all) + `.fd-more` "Show all {n} departments" / "Show top {n} only"; header count =
+  "Showing a of b" or "{n} selected". Everything else (multi-select any-of, prune, drills, footnote)
+  unchanged — all three presentations share the same `fdSel` / `fdCcSel` state.
+- 30 new i18n keys (`fdLayout*`, `fdSectorsHintRows/Map`, `fdDeptsHintRows/Map`, `fdSector`,
+  `fdDept`, `fdColScale`, `fdOfTotal`, `fdOfBudget`, `fdCommitted`, `fdFree`, `fdFundShort`,
+  `fdSt*`, `fdShowing`, `fdShowAll`, `fdShowTop`, `fdSort*`, `fdTm*`) EN + AR.
+
+**Verified:** `fd_api_smoke.py` **105/105** (+ thresholds envelope) · `fd_browser_smoke.py`
+**129/129 EN+AR** — locally AND against the deployed build (Presentation select offers the 3;
+tiles = composition bars + pills + compact figure + sort by % used; rows = one row per sector,
+largest bar 100%, second bar ∝ budget, 4 figure columns, top-12 + Show all; map = one tile per
+sector, real measured width, area ∝ budget within 8%, no overflow, 5-swatch legend, nested groups
+== departments, sector pick re-draws the department map to that sector, department tile narrows
+the bands + drill reconciles; `gl_fd_ui.layout` survives a reload; Arabic option labels + RTL
+ledger header). Gotchas: the tile footer must NOT reuse `.fd-foot` (the page footnote's class —
+127 strict-mode matches); under tiles the header shows chips, not "n selected" — assert
+`fdSelSummary()` / `.fd-chip` counts; after `page.reload()` wait for `ko.dataFor(document.body).go`
+before evaluating.
+
+**Deploys:** db/42 via SQLcl `prod_mcp` (fresh session); webtier **GL-only overlay release
+20260903155452** (rollback = re-point `/var/www/ifinance/current` to `20260903140645`; old release
+intact at 1.104.0; prune by NAME kept the last 5). Live check `APP_VERSION = '1.105.0'` +
+`fd-layout-sel` served; browser smoke re-run against the deployed build 129/129. No `shared/`
+change — no fleet bump.
+
+## Budget Status — presentation radio cards, explicit sort, coloured hint strips — 2026-09-03 (v1.106.0, frontend-only)
+
+**Ask (user, same day):** ① Presentation → radio buttons with a useful, formatted hint;
+② sort Sectors/Departments by budget amount; ③ replace the region hint text with a well-formatted
+coloured hint for Sectors and Departments; ④ ADVISE ONLY (not implemented) on a balance-by-period
+horizontal bar-chart hint on the Budget / Actual / Encumbrance / Fund rings — 3 mockups + the
+performance impact.
+
+**Frontend (v1.106.0, no DB change):**
+- **Presentation = 3 radio option cards** (`.fd-pres-opt`, `fdPresOpts` {v,l,d}: name + one-line
+  description; KO `checked`/`checkedValue` on the radio, the card click sets `fdLayout`, the input is
+  `pointer-events:none` — never wrap a KO input in `<label>`) on their own Search row, followed by a
+  **formatted hint box** (`.fd-pres-hint`, `fdPresHint` = title + reading text for the picked
+  presentation + the state-pill rule with the LIVE thresholds "On track below 90% · Tight from 90% ·
+  Over committed above 100% or a negative fund" + the Actual / Encumbrance / Fund legend, or the 5 heat
+  swatches under the map).
+- **Sort on BOTH regions** (`.fd-sort` in each region header, `fdSecSort` + `fdDeptSort`,
+  `fdSortOpts` Budget amount [default, largest first] · % used · % free · Name; `fdSortList` ties
+  broken by budget). The map shows no sort control — its area IS the budget. Sectors + departments
+  were already budget-desc; the sort is now explicit and stated in the strip ("Sorted by budget amount,
+  largest first."). Reset restores both to budget.
+- **Coloured hint strips** (`.fd-hint`: brand-soft ground, brand-dark text, gold inline-start spine,
+  ⓘ disc) INSIDE each region replace the grey header hint: bold lead ("Pick one or more sectors" /
+  "Pick one or more departments") + body + the presentation-specific reading tip (`fdHintTip`) + the
+  sort statement + (departments) "Showing the top 18 — Show all lists the rest" (`fdDeptTopTxt`) +
+  the legend on the right. The map's separate under-map legend is gone (it lives in the strip).
+- 27 new / 4 removed i18n keys (`fdPresDesc*`, `fdPresHint*`, `fdPresState`, `fdSort*`,
+  `fdHint*`; the `fdSectorsHintRows/Map` + `fdDeptsHintRows/Map` header variants removed) EN + AR.
+- KO gotcha caught by the smoke: a `ko.computed` evaluates EAGERLY at creation — `fdPresHint` read
+  `self.fdThr()` before `fdThr` was defined ("self.fdThr is not a function" at boot); keep VM
+  blocks in dependency order (the presentation block now sits after `fdThr`/`fdScopeBudget`).
+
+**Advisory (item ④, NOT implemented) — `final apps/BI/docs/FD Dashboard/mockups/FD_RingHint_mockups.html`
++ `ring_hint_M1..M3.png` (artifact https://claude.ai/code/artifact/4d10a8a7-b1dc-4e65-802a-4ece9b284743),
+built on the real Chapter 2 Jan–Sep 2026 totals:** M1 YTD ladder (dark popover, bar = YTD balance vs
+that period's YTD budget, gold = selected period, month-over-month foot); M2 Monthly movement (light
+card, brought-forward pale + month's movement strong, one scale = current YTD); M3 always-on 9-bar
+rail under each figure + wide ladder on hover with Budget / Balance / % used per period (also the
+only one that works on touch). **Measured cost (SQLcl, PROD):** today's one-period cube 1.86 s DB /
+2.1–3.3 s end-to-end / 96 KB; the SAME scan over all 9 loaded periods at cube grain = 2.38 s for
+1,822 groups (+0.5 s); a chapter-only 9-period query = 2.34 s (the view scan dominates, not the
+period count) ⇒ a lazy per-hover `/fd/trend` would cost ~2.3 s on EVERY first hover per scope —
+unacceptable. Recommendation: extend the ONE `/fd/status` request with the year's periods
+(rows × period, ~2.5k rows ≈ 0.9 MB uncompressed, compactable to arrays) fetched once per YEAR, so
+hovers AND the period selector become instant (page load +≈0.5 s); if the payload grows,
+materialise `sector × cost centre × entity × chapter × period` into a snapshot refreshed by the
+hourly actuals job (<100 ms, at the price of staleness + one more object). Not built — awaiting the
+user's pick.
+
+**Verified:** `fd_browser_smoke.py` **140/140 EN+AR** locally and against the deployed build
+(3 radio cards, default tiles card `.on` + radio checked, hint follows the pick incl. the 90%/100%
+thresholds and the 3-swatch legend, 2 coloured strips with the sort statement + top-18 note, sort
+control on both regions [absent under map], sort by name re-orders and budget restores, Arabic
+options + strip). `fd_api_smoke.py` unchanged 105/105.
+
+**Deploys:** webtier **GL-only overlay release 20260903161739** (rollback = re-point `current` to
+`20260903155452`; prune by NAME kept the last 5). Live check `APP_VERSION = '1.106.0'` +
+`fd-pres-opt` served.
+
+## Budget Status — year series (approach A) + monthly-movement ring hint (Mockup 2) — 2026-09-03 (v1.107.0, db/42 re-run)
+
+**Ask (user):** Mockup 2 "Monthly movement" on the rings, fed by approach **A** = load the whole
+year once. Explained to the user as: one call brings Jan→Sep for every row; hover = no wait; period
+switch inside the year = no call.
+
+**DB (GL/db/42 re-run, handler 14,381 chars):** `GET /gl/fd/status?period=MM-YYYY` now runs **ONE scan
+of the period view for the whole year** and derives EVERYTHING from it: `series[]` streams straight
+off the cursor (one compact object per cube key: `{s,c,e,ch,m:{MM:[budget,actual,encumbrance,fund,
+combinations]}}` for every loaded period), `periods[]` (MM-YYYY asc), `excludedByPeriod{MM}`; the
+anchor period's `rows[]`, `sectors[]` (budget-desc, Arabic names from the class value), `costCenters[]`
+(budget-desc, sector = the largest-budget row's sector) and `excluded{}`/`totals{}` are COLLECTED
+from the same pass into PL/SQL maps (insertion-sorted, ≤ 100 keys) and written after it — JSON key
+order is free. **First cut kept the four single-period scans and ADDED the year scan = 6.6 s; the
+one-scan rewrite = 3.0 s / 221 KB (was 3.0 s / 96 KB for one period).** Envelope for the anchor
+period is byte-compatible (API smoke unchanged + 8 new checks: series at the anchor == rows key-for-
+key and == totals, excludedByPeriod == excluded, series at 01-2026 == a direct 01-2026 call's totals).
+GL post-05 re-run list unchanged (07..43).
+
+**Frontend (v1.107.0):**
+- `fdCurRows` = rows for the SELECTED period: the server rows for the anchor, else derived from
+  `series` (`fdRowsAt`, names from the LOV maps ∪ the anchor rows); `fdScopeRows`, `fdExcluded`,
+  `fdHasData` read it. `fdPeriod.subscribe`: a period inside `periods[]` = client-side (prune picks,
+  hide the hint, NO request); another year = `runFd`. `fdSectors`/`fdDeptsAll` union the LOV with
+  codes present in the derived rows so a sector/cost centre that exists only in an earlier month
+  still gets a card.
+- **Ring hint** (`.fd-trend`, fixed popover, `pointer-events:none`, z 80; `data-m` = measure → its
+  colour + pale tint): `mouseenter`/`focus` on the 3 rings + the Fund square → `fdTrOver(item,
+  metric, e)` → `fdTrend()` sums `series` for that chapter under the band's own scope (business unit
+  ∩ sectors ∩ departments) for every loaded period ≤ the selected one; rows = {label, ytd, mov = ytd −
+  previous ytd, bfW/movW/movStart on ONE scale = the largest YTD so far}; a negative movement is
+  drawn INSIDE the pale in red. Title "Actual — monthly movement" + chapter, subtitle with the
+  selected period's YTD, legend + average month. Placement below the ring, flipped above when there is
+  no room; **re-anchored on scroll (capture) — never hidden on scroll**: Playwright's `hover()`
+  scrolls the element into view and the first cut's scroll→hide listener made the popover vanish
+  before the assertion. The drill click hides it. 9 i18n keys EN+AR; the drill hint line gains
+  "hover a figure for its month-by-month movement".
+
+**Verified:** `fd_api_smoke.py` **113/113** · `fd_browser_smoke.py` **156/156 EN+AR** locally and
+against the deployed build (year series loaded with the page; hover Actual → popover with one bar
+per loaded period up to the selected one, last row == the ring figure and marked current, mov = YTD −
+prev, bars within 0–100, legend + avg, colour follows the measure, hides on leave, Fund square has
+its own ladder, stays glued while scrolling; switching to 01-2026 fires NO `/fd/status` request and
+re-derives bands + cards, the SERVER drill for that derived period reconciles to the derived band
+figure, back to the anchor = still no request).
+
+**Deploys:** db/42 via SQLcl `prod_mcp` (fresh session); webtier **GL-only overlay release
+20260903173502** (rollback = re-point `current` to `20260903161739`; prune by NAME kept the last 5).
+Live check `APP_VERSION = '1.107.0'` + `fd-trend` served. No `shared/` change.
+
+## Budget Status — monthly-movement hint on the SECTOR + DEPARTMENT cards — 2026-09-03 (v1.108.0, frontend only)
+
+**User ask:** "do the same for sectors and departments" after the performance check (no server
+impact — the year `series[]` already carries every sector × cost centre × unit × chapter × month).
+
+**Frontend (v1.108.0):**
+- `app.js`: `fdTrend` refactored onto ONE builder `fdTrBuild(metric, keep, bold, item)` — `keep(x)`
+  is the series predicate, `bold` the popover subject, `item` (cards only) adds a **4-measure chip
+  strip** (`metrics[]` = Budget / Actual / Encumbrance / Fund at the selected period, the ladder's
+  measure lit). Three scopes: `fdTrend` (chapter band: BU ∩ picked sectors ∩ picked departments,
+  unchanged), NEW `fdTrendSector(s, metric)` (**BU only** — a sector's figure ignores the department
+  picks, same as `fdSectors`) and NEW `fdTrendDept(c, metric)` (**BU ∩ picked sectors**, same as
+  `fdDeptsAll`) — so the last bar always equals the card figure. NEW `fdTrCard(kind, item, metric, e)`:
+  entering a card = Actual; a figure inside it (`.fd-fm`: big budget figure / "% used" /
+  "% committed" / free pill / Fund figure; ledger cells; map tile budget) = that measure. The popover
+  is ALWAYS anchored on the CARD (`closest('.fd-tile,.fd-lg-row,.fd-tm')`), never on the figure, so it
+  does not jump while the pointer crosses the card; the card's mouseleave/blur hides it.
+  `fdTrPlace` grows by 44 px when chips are present. i18n `fdTrCardHint` EN+AR.
+- `index.html`: card-level `mouseenter/mouseleave/focus/blur` + per-figure `mouseenter` hooks on the
+  sector and department cards in ALL THREE presentations; the cards' native `title` tooltips DROPPED
+  (they competed with the popover — the chip strip carries the four figures now); popover gains
+  `.fd-tr-mx` chips (`ko if: $data.metrics`, absent on the ring popover); both hint strips append
+  `fdTrCardHint`. APP_VERSION 1.108.0.
+- `app.css`: `.fd-tr-mx` chip strip (lit chip = `--tr-c` border + `--tr-pale` fill), `.fd-fm`
+  dotted-underline affordance on hover.
+
+**Performance (measured before building, PROD 09-2026):** status call unchanged 2.94 s / 226 KB;
+a card hover sums the 283 series keys once — ~0.07 ms in Python, faster in JS. No request, no
+payload growth. Anything outside the cube (per project) would need a new call (~2.3 s each).
+
+**Verified:** `fd_browser_smoke.py` **172/172 EN+AR** locally and against the deployed build
+(+16: sector tile hover → popover Actual by default, names the sector, 4 chips with Actual lit,
+last row == the tile Actual, no native title; budget figure → Budget ladder + first chip lit;
+free pill → Fund ladder; NO request; hides on leave; picked sector → department tile ladder
+"code · name" honouring the pick, committed figure → Encumbrance ladder; ledger Encumbrance cell →
+that sector's Encumbrance ladder; map tile hover → ladder with the full name; strips carry the
+card hint). `fd_api_smoke.py` untouched (no server change).
+Test gotchas: hover a tile on its `.fd-nm` — the tile's geometric centre lands on a figure hook and
+switches the measure; after a click the pointer still rests on the card, so move it away before
+asserting the popover is hidden; dept tile hooks are budget · used · COMMITTED · pill (nth(2)).
+
+**Deploys:** webtier **GL-only overlay release 20260903175814** (rollback = re-point `current` to
+`20260903173502`; prune by NAME kept the last 5). Live check `APP_VERSION = '1.108.0'` + 23
+`fdTrCard` bindings served. No `shared/` change, no DB change.
+
+## Budget Status — Presentation as a vertical stack at the end side + "Entity" label — 2026-09-04 (v1.109.0, frontend only)
+
+**User ask (screenshot):** ① Presentation parameter vertical, aligned to the far right; ② rename
+"Business unit" to "Entity".
+
+- `app.css`: `#pg-fd .filter-grid{align-items:start;grid-auto-flow:dense}`; `.fd-pres-field` =
+  `grid-column:-3 / -1; grid-row:1 / span 2; align-self:start` (the LAST two columns at every
+  breakpoint — negative lines follow the explicit grid: 7 cols → 6–7, 5 cols → 4–5 — and the end side
+  mirrors in RTL); `.fd-pres` = flex column; each option card = one line (title + muted description,
+  `.fd-pres-txt` row/baseline); `.fd-pres-hint{grid-column:1 / -3}` so the hint sits left of the stack.
+  ≤1100px: stack + hint go full-width (`grid-row:auto`). `dense` matters at 5 columns: the 2-wide
+  Entity toggle no longer fits row 1 after Year + Period, so "Figures in" backfills that cell instead
+  of leaving a hole. Verified at 1680 / 1400 / 1000 px + Arabic.
+- `app.js` i18n: `fdUnitL` Business unit → **Entity** (ar الجهة), `fdAllUnits` All units → **All
+  entities** (ar جميع الجهات), `fdSub` "… every entity". The code keeps `entity`/`fdEntity` naming
+  (it always was). APP_VERSION 1.109.0.
+- `fd_browser_smoke.py` **175/175 EN+AR** (local + deployed): + Entity label + "All entities" first
+  segment, + the three option cards stack vertically (same x, ascending y), + the stack is pinned to
+  the end side of the grid above the hint row; 'All units' asserts → 'All entities'.
+
+**Deploys:** webtier **GL-only overlay release 20260904044956** (rollback = re-point `current` to
+`20260903175814`). Live `APP_VERSION = '1.109.0'`, `grid-auto-flow:dense` served. No `shared/`, no DB.
+GOTCHA (this session): `pgrep -f "python3 dev-proxy.py 8212" | xargs kill` matches the calling
+`bash -c` wrapper and kills the tool shell itself (exit 144) — anchor it: `pkill -f "^python3 dev-proxy.py 8212$"`.
+
+## Chart of Accounts — classification ASSIGNMENT update was dead (HTTP 555) — 2026-09-04 (GL/db/46, DB only)
+
+**User report:** "can't delete or update sector" → "i update with end date". Reproduced on the live
+site: setting an end date on an assignment in the Classification-values row drawer (or editing one in
+the Manage CoA Mapping modal) → `PUT /gl/mappings/:id` → **HTTP 555**, nothing saved, the drawer shows
+"HTTP 555". Deleting a sector value that still has assignments is refused BY DESIGN (400 "Cannot
+delete: N assignment(s) use this value. Deactivate it instead." — a 2.6 s toast, easy to miss);
+updating the value itself (name/alt names/tag/order/active) worked all along.
+
+**Root cause:** the PUT handler (GL/db/05, unchanged since 2026-07-21 and broken since birth) used a
+scalar subquery INSIDE a PL/SQL expression — `l_cv := NVL(json, (SELECT class_value_id FROM
+dct_gl_seg_class_map WHERE map_id=:id))` (and the same for start_date). That is **PLS-00405** at
+compile time, so the block never runs and never reaches its EXCEPTION handler → uncatchable ORDS 555.
+**GOTCHA (add to the 555 list):** a `(SELECT …)` inside a PL/SQL assignment/argument = 555; read the
+row INTO locals first.
+
+**Fix — `GL/db/46_gl_mappings_put_fix.sql`** (DEFINE_HANDLER-only on `mappings/:id` PUT; **never
+DEFINE_TEMPLATE on the existing template — that drops its DELETE handler**; the `dh()` helper must
+REPLACE `[COLON]` in the PATTERN as well as the source or DEFINE_HANDLER throws ORA-01403): one
+`SELECT … INTO l_type, l_seg, l_cur_cv, l_cur_s` then `NVL(json, l_cur_*)`. Same source synced into 05
+so a 05 re-run reproduces it. **GL post-05 re-run list now ends at 46.** Deployed as `prod_mcp`
+(fresh session; `\cp -f` — an interactive `cp` prompt stalled the first chain). Live handler 1,373
+chars, `l_cur_cv` present; DELETE handler untouched (472).
+
+**Verified:** NEW `tests/mappings_api_smoke.py` **11/11** (self-cleaning throwaway value + bogus-segment
+assignment: PUT end date 200 + persisted, clear end date + notes, end < start = 400 with the rule,
+partial body keeps the class value, unknown id 404, no token 401, cleanup). Live drawer probe: MUSEUMS
+/ 4510202 end date 2099-12-31 saved (dirty cleared, no error) and reverted to blank — both PUTs 200.
+No frontend change (APP_VERSION stays 1.109.0).
+
+## Budget Status — Chapter bands moved to the FIRST region after Search — 2026-09-04 (v1.110.0, frontend only)
+
+**User ask (screenshot, "urgent"):** move the last region (the Chapter ring bands) to sit right after
+the Search region, then Sectors, then Departments.
+
+- `index.html`: the `fd-drill-hint` + `.fd-bands` block (one band per chapter) moved from the bottom of
+  `#pg-fd .sp-body` to the top, right after the `.bu-load-ov` overlay and BEFORE the Sectors `.bu-sec`.
+  Order is now Search → Chapters → Sectors → Departments → scope footnote (`.fd-foot` + the fixed
+  `.fd-trend` popover stay at the end — the footnote is page-level scope/grand total, not a band
+  element). No VM change: the bands still filter on the picked sectors/departments.
+- `app.css`: `#pg-fd .fd-bands` gains `margin-bottom:16px` (the `.bu-sec` regions carry their own
+  bottom margin; the bands had none because nothing followed them). APP_VERSION 1.110.0.
+- `fd_browser_smoke.py` **176/176 EN+AR**: + a region-order assert (children of `.sp-body`:
+  `fd-bands` first, then the two `.bu-sec` regions).
+
+**Deploys:** webtier **GL-only overlay release 20260904074820** (`cp -al` of `20260904044956` +
+`tar --unlink-first` of index.html + css/app.css; rollback = re-point `/var/www/ifinance/current` to
+`20260904044956`; prune by NAME kept the last 5). Live `APP_VERSION = '1.110.0'`, marker
+`Chapters FIRST` present in the new release and absent in the old. No `shared/`, no DB.
+
+## Budget Status — TOTAL band on top of the chapter rings — 2026-09-04 (v1.111.0, frontend only)
+
+**User ask (screenshot, "urgent"):** one row above the chapter rings with the total Budget / Actual /
+Encumbrance / Fund Available.
+
+- `app.js`: `fdTotalBand` computed = `fdSum(fdRows())` (the SAME business-unit ∩ sectors ∩ departments
+  scope the chapter bands use, so Total == Σ chapters by construction) with `code:''`, `total:true`,
+  name `fdGrand` ("Total") + NEW alt key `fdTotalAlt` ("Chapters 1–3" / "الأبواب 1–3"); null while no
+  chapters are loaded. Because `code` is empty, `fdOpenDrill` sends NO `chapter=` to `/fd/lines`
+  (GL/db/43 already treats NULL as CH1–CH3 — no DB change) and `fdTrend` matches every chapter
+  (`!item.code || x.ch === item.code`), so the drill total and the hover ladder both equal the band figure.
+- `index.html`: the band markup became ONE named KO template `fd-band-tpl` (`<script type="text/html">`)
+  rendered twice inside `.fd-bands` — `with: fdTotalBand` first, then `template:{foreach: fdChapters}`;
+  the band div adds `css:{'fd-band--total':!!$data.total}` + `data-ch="TOTAL"`. APP_VERSION 1.111.0.
+- `app.css`: `.fd-band--total` = brand border + soft brand gradient, label strip `--brand-dark` with white
+  text, figures 1.1em, a darker Fund square. Same column grid, so the Total figures line up with the
+  chapter figures below.
+- `fd_browser_smoke.py` **184/184 EN+AR**: chapter-band selectors now `.fd-band:not(.fd-band--total)`
+  (3 chapter bands unchanged) + 8 Total checks — first band, label, 3 rings + Fund, all 4 measures ==
+  Σ chapters, == `fdTotals` (foot), Actual drill total == band Actual, drill title, hover ladder opens.
+
+**Deploys:** webtier **GL-only overlay release 20260904080059** (`cp -al` of `20260904074820` + `tar --unlink-first` of
+index.html + css/app.css + js/app.js; rollback = re-point `/var/www/ifinance/current` to `20260904074820`; prune
+by NAME kept the last 5). Live `APP_VERSION = '1.111.0'`; `fdTotalBand` present in the new release's
+app.js and absent in the old. No `shared/`, no DB.
+
+## Budget Status — Chapter 4 + Chapter 5 bands — 2026-09-04 (v1.112.0, GL/db/42 + 43 re-run + frontend)
+
+**User ask ("urgent"):** two more chapter rows, Chapter 4 and Chapter 5, like the existing bands.
+
+**Data fact that shaped the rule (live 09-2026):** Chapter 4 (Subsidy) exists ONLY on budget group 3
+(5 combinations, 341.3M budget, 0 actual, 310.1M encumbrance) and Chapter 5 (Aids & Grants) ONLY on
+budget group 5 (27.9M, all encumbered); on Budget Group 1 there is one zero CH5 row and nothing for CH4.
+The bg-3 / bg-5 rows WITHOUT a chapter (341.3M / 27.9M — identical figures) are the 3xxxxx
+budgetary-control offsets. So widening the chapter list alone would have produced two empty bands.
+
+- **GL/db/42 (`GET /gl/fd/status`)**: band rule = chapter × budget-group PAIRS — CH1/CH2/CH3 on bg 1
+  (unchanged = the FMR basis), CH4 on bg 3, CH5 on bg 5 — applied in the `in_band` CASEs, the entity
+  CASE and the scan's WHERE (`bg = '1' OR CH4∧bg 3 OR CH5∧bg 5`, so the bg-3/5 offsets never enter).
+  `excluded{}` keeps its meaning (the Budget Group 1 remainder: no chapter / Chapter 6). `chapters[]`
+  LOV = CH1..CH5; `scope` = `budgetGroup '1|3|5'`, `chapters 'CH1|…|CH5'` + NEW `budgetGroupByChapter
+  'CH1:1|CH2:1|CH3:1|CH4:3|CH5:5'`. `series[]` carries the new keys automatically (same scan), so the
+  hover ladders and the client-side period switch work for the new bands with no other change.
+  Handler 16,063 chars (SQLcl `prod_mcp`, verified = source length after the [COLON] swap).
+- **GL/db/43 (`GET /gl/fd/lines`)**: `chapter=` accepts CH4/CH5 (CH6 → 400), both predicates carry the
+  same pairs in LOCK-STEP; no chapter = the five together (the Total band's drill). 8,421 chars.
+- Frontend: i18n `fdCH4`/`fdCH5` (الباب الرابع / الخامس), `fdAltCH4` Subsidy (الدعم), `fdAltCH5` Aids &
+  Grants (المساعدات والمنح), `fdTotalAlt` → Chapters 1–5, footnote basis/excluded texts rewritten;
+  **Budget sub-label is chapter-aware** (`fdBudgetSubOf` → "YTD · Budget Group 3" on Chapter 4, "Budget
+  Groups 1 / 3 / 5" on the Total band) from the server's `budgetGroupByChapter` — never hard-coded.
+  The bands render from the server LOV, so five bands needed no markup change. APP_VERSION 1.112.0.
+  Sector / department cards now include CH4/CH5 (e.g. Strategic Affairs +289.8M budget) — consistent
+  with the bands they filter.
+- Tests: `fd_api_smoke.py` **144/144** (scope/LOV = CH1..5, CH4/CH5 rows present, totals = CH1–5 rows,
+  **FMR reconciliation scoped to the CH1–3 rows** — FMR is bg-1/CH1–3 by definition, CH4 drill == cube,
+  CH5 drill == cube, no-chapter drill == totals, CH6 → 400); `fd_browser_smoke.py` **188/188 EN+AR**
+  (5 bands, labels/alts EN+AR, CH4 budget > 0, Total alt 1–5, budget-group sub-labels 1/1/1/3/5 + Total
+  1 / 3 / 5).
+
+**Deploys:** GL/db/42 then 43 as `prod_mcp` (fresh session each, runner file + EXIT; LF files deployed
+fine — lengths verified); webtier **GL-only overlay release 20260904081416** (`cp -al` of `20260904080059` +
+`tar --unlink-first` of index.html + css/app.css + js/app.js; rollback = re-point
+`/var/www/ifinance/current` to `20260904080059` AND re-run the 2026-09-03 versions of db/42+43 if the DB rule must
+go back). Live `APP_VERSION = '1.112.0'`. No `shared/` change. **GL post-05 re-run list = 07..46.**
+
+
+## Entity = a data-driven classification (rules on ANY GL segment) — 2026-09-06 (GL/db/47 + 48, 03/04 + db/v2/34 re-run, 37/42/43/45 re-run, reporting/db/40+41 patched, GL v1.114.0)
+
+**User ask (2026-09-04/06):** "where entity defined?" → "make it data-driven ... use all GL segments to
+confirm the flexibility". Decisions (asked): a combination must NEVER match two rules (overlaps are
+refused at save), unmatched = Unclassified, only Entity reads any segment (Sector/Chapter/Program stay
+single-segment), all four surfaces switch.
+
+**Model (GL/db/47):** `DCT_GL_SEGMENT` = the 10 canonical segments (key/position/width/names, seeded);
+`DCT_GL_SEG_CLASS_MAP.SEGMENT_KEY` (NULL = the dimension's own segment; stored for ENTITY rules only, FK
+to the segment table); `DCT_GL_CLASS_VALUE.IS_DEFAULT` (one per dimension via a function-based unique
+index — the value used when no rule matches; **Entity only**). Seed: type ENTITY (segment
+ENTITY_SPECIFIC, order 40), values DCT (**Default**) / MUSEUMS "MSS" / ALC / MASTERPIECES (EN+AR), and
+the 3 former hard-coded rules from 2000-01-01: entity-specific 4510700 → MSS, 4510600 → ALC,
+appropriation 301439 → Masterpieces. **Why DCT is a Default and not a rule:** the 4 Masterpieces
+combinations sit INSIDE entity-specific 4510000, so "4510000 = DCT" would overlap the Masterpieces rule
+and the user's one-rule-per-combination policy forbids that; un-flag the default to see gaps as
+Unclassified (the user's chosen bucket).
+
+**Package (03):** `validate_map(..., p_segment_key)` — Entity-only segment picking (-20001 otherwise),
+same-segment period overlap (-20090), and the **one-Entity-rule-per-combination guard**: any snapshot
+combination the new rule matches must not match another active Entity rule on ANY segment in an
+overlapping period (-20090 naming the other rule + the count — verified: ES 4510000 = DCT refused on 4
+combinations, ACCOUNT 452201 refused on 1 MSS combination, ACCOUNT 324566 accepted).
+`segment_value_of(cc_string, key)`; `entity_of(cc_string, date)` RESULT_CACHE (rule → default → NULL)
++ `entity_asof()`.
+**View (04):** `DCT_GL_COA_V` gains 4 columns LAST — `entity_class_value_id/_code/_name/_source`
+(RULE | DEFAULT) — via a `LEFT JOIN LATERAL` over the rules (one CASE per segment, earliest start/map_id
+tie-break as a safety net) + the flagged default; `DCT_GL_COA_SNAP` **and the db/v2/118 `DCT_GL_COA_STAGE`**
+get the same 4 columns (guarded ALTER in 04 — the positional refresh INSERT needs both).
+**db/v2/34:** `DCT_BUDGET_ACTUAL_PERIOD_V` gains `entity_class_code/_name` LAST (from the snapshot join it
+already had) — re-creating it invalidated 20 dependents; `DBMS_UTILITY.compile_schema(PROD, FALSE)`
+fixed all but `ATD_AR_INVOICE_FULL_VW` (pre-existing: references a column the AR extract dropped).
+
+**Surfaces:** every former CASE replaced — `NVL(p.entity_class_code,'UNCLASSIFIED')` for period-view
+rows (42 fd/status incl. `entities[]` from the values table + Unclassified only when an in-band row has
+it; 43 fd/lines gate against the values table; 37 fmr/entity + fmr/sector + fmr/trend/lines; 45;
+reporting/db/41), `entity_of(c.cc_string, TRUNC(SYSDATE))` for GL-cashflow rows, and for butil
+`budget_combination` rows a **snapshot join** `LEFT JOIN prod.dct_gl_coa_snap csb ON csb.cc_string =
+b.budget_combination` → `NVL(csb.entity_class_code,'UNCLASSIFIED')` (37/45/40). **GOTCHA:** a PL/SQL
+function in a predicate against `DCT_BUDGET_UTILIZATION_V` raises **ORA-00979 "PJ"."PROJECT_NUMBER"**
+(the optimizer pushes the function predicate into the view's GROUP BY block) — the join returns the
+identical figure (4,055,281,743.73) faster. **Perf:** `entity_of` costs ~60 µs/row even with the
+result cache (29k-row year scan 2.1 → 3.8 s), so page-scale reads use the snapshot columns, the
+function only for small plan tables. Live report definitions GL_FMR_REPORT / GL_BUDGET_STATUS patched by
+CLOB REPLACE (seeds 40/41 updated in lock-step; GL_BUDGET_STATUS already carried `entity_class_code`).
+Parity: snapshot entity vs the old CASE = **0 mismatches** on all 9,478 combinations; in-band 2026 period
+rows 22,814 / 0 mismatches; FD chapter 1-3 rows == FMR entity totals to the cent.
+
+**Routes (GL/db/48, additive; post-05 re-run list now ends at 48 — 48 supersedes 09's GET /mappings and
+46's PUT /mappings/:id):** NEW `GET /gl/segments`; `GET /gl/segments/:key/values` for ANY of the 10 keys
+(distinct codes + descriptions from the snapshot, dynamic column via DBMS_ASSERT, `?type=` for
+currentValueId); `GET /gl/mappings` + `segmentKey/segmentKeyName/segmentDesc` (10-branch UNION over the
+snapshot); `POST /gl/mappings` + `segmentKey` (padded to the segment width); `PUT /gl/mappings/:id` +
+`segmentKey`; `GET/POST/PUT class-values` + `isDefault`; `GET /gl/combinations` +
+`entityClassCode/Name/Source` + `?entity=` (UNCLASSIFIED = no rule, no default). **Every write fires
+both refresh jobs asynchronously** (`DBMS_SCHEDULER.run_job(..., use_current_session => FALSE)` on
+DCT_ACTUALS_REFRESH_JOB ~8 s + DCT_BUTIL_FILTER_CACHE_JOB ~2 s; already-running = ignored) so a
+classification edit reaches every page within seconds instead of the hourly :11 / :37 runs — the fix
+for the 2026-09-04 "changes not reflected" report; responses carry `refreshQueued: 'Y'`.
+
+**Frontend (v1.114.0; shipped in webtier release 20260905202533 together with the parallel session's
+1.115.0 bump — rollback 20260905201058):** Classification values gets the Entity dimension
+automatically (from boot); Default chip on the value + Default select in the editor (Entity only); the
+assignments drawer shows a GL-segment column, the one-rule hint, and a per-row segment picker (10
+segments) that reloads the value datalist for the picked segment; Manage CoA Mapping gets a segment
+picker for Entity; the Combinations explorer gets an Entity filter + column (chip, "· default");
+Budget Status / Financial Performance entity names come from the classification (EN/AR), incl.
+Unclassified; save toasts say the reports refresh in ~15 s. i18n +10 keys EN+AR.
+
+**Tests:** NEW `tests/entity_class_api_smoke.py` **30/30** (seed, segments, any-segment values, live-view
+resolution of a Cost-Centre rule, the three guards, FD == FMR per entity, snapshot back to normal after
+the queued refresh); NEW `tests/entity_class_browser_smoke.py` **23/23**; `fd_api_smoke.py` 144/144;
+`mappings_api_smoke.py` 11/11; browser regressions coa_tabs + fd_browser against the deployed build.
+Deploy order: 47 → 03 → 04 → `EXEC prod.dct_actuals_refresh` → db/v2/34 → compile_schema → 48 → 42, 43,
+37, 45 → report CLOB surgery → webtier overlay. All scripts via SQLcl `prod_mcp` (fresh session each).
+
+## Budget Status — compact search, Show Summary and Print — 2026-09-06 (v1.113.0)
+
+Approved by the user with “go ahead”. Search now uses three criteria columns with a
+250–300 px Presentation rail at the right (stacked responsively, descriptions wrap).
+Show Summary is unchecked on page load and Reset; formatted ring/fund hover/focus
+summaries are gated, while card summaries and drill actions remain available.
+Print exposes PDF/PPTX via the existing authenticated reporting queue workflow.
+
+- New **GL/db/49_gl_fd_report_ords.sql**: POST `fd/report`, GET `fd/report/:id`,
+  GET `fd/report/:id/file`; `GL_RUN_BRIEFING_BOOK` required throughout, status/file
+  additionally restricted to the requesting user. **Include 49 in the post-05 list**,
+  alongside independent 47/48/50 changes. Renamed from the review's 47 to avoid
+  collision with the independent ENTITY-classification migration.
+- New **reporting/db/41_rpt_gl_budget_status.sql**: MULTI definition, cube + thresholds
+  + global excluded balances. Explicit count/INSERT/UPDATE (avoids the Linux SQLcl
+  MERGE skip). Seed detects live `fd/status` entity semantics; re-run after an entity
+  handler rollout. Deployed with data-driven entity classification after that
+  independent rollout completed; report totals verified against the live dashboard.
+- Worker: `render_fd.py`, `templates/gl_budget_status.html.j2`, and narrow dispatch
+  hooks in render_pdf/render_pptx installed on vm180/181/182; all services active.
+  Backups `/opt/rpt-worker/backups/budget-status-20260906`. No recipients; no deliveries.
+  PPTX slides contain dashboard page images. Map adds full ledger pages for tiny
+  labels. Exports include all matching departments beyond the UI top-N.
+- Webtier: GL-only overlay **20260905201058** of **20260904081416**, cp -al +
+  tar --unlink-first, atomic symlink replacement; APP_VERSION **1.113.0**. Later
+  independent GL 1.114/1.115 releases preserve these changes. Do not revert a later
+  release wholesale to roll back this feature. No shared CSS/assets deployed.
+- Live validation: **190/190** browser regression EN/AR; **51/51** report API checks
+  (runs 1002–1007, PDF/PPT across all presentations, filtered totals reconcile);
+  **14/14** Print-menu/default-summary/responsive/Arabic checks with real downloads.
+  401/400/404 tested live; 403 recovery tested with local fixtures. No separate
+  cross-user live test account was created. UAT round2-06-09-2026 holds evidence.
+
+Full review/deployment details: [budget-status-review.md](budget-status-review.md).
+
+## Budget Status — Show Summary applies to all graphs — 2026-09-06 (v1.115.1)
+
+User correction: checkbox must cover sector and department cards as well as rings.
+`fdTrCard(kind,item,metric,e)` now returns `fdTrOut()` when `fdShowSummary()` is false,
+matching the existing ring/fund guard. Covers Composition tiles, Ledger rows and
+Proportional map, including nested figure events. Default remains unchecked; open
+summaries close immediately when cleared. Selection and drill handlers unchanged.
+
+Deployed only GL index.html (cache version 1.115.1) and app.js as overlay
+**20260906020630** over **20260905202533**; exact live hashes checked before activation.
+No CSS, DB, or report-worker changes. Rollback: restore previous symlink only if no
+later release exists; otherwise reverse this guard/version change in the newer release.
+Targeted staged browser verification 66/66; live verification **67/67**; results in UAT round3-06-09-2026.
+`fd_summary_scope_smoke.py` exercises every graph type in every presentation,
+checkbox off/on/immediate-close, selection still working and Arabic card summaries.
+
+## 2026-09-06 — Budget Status deep review, GL 1.116.1
+
+Deployed release `/var/www/ifinance-releases/20260906104833`, previous `/var/www/ifinance-releases/20260906061035`. Only Budget Status frontend hunks plus the version changed; concurrent GL work was preserved using the live baseline and hashes. Report workers vm180/181/182 were paused until idle, updated, restarted and verified active. Worker backups: `/opt/rpt-worker/backups/fd-deep-20260906`. Only `render_fd.py` and `templates/gl_budget_status.html.j2` changed. Fresh SQLcl deployed `GL/db/49_gl_fd_report_ords.sql`; handlers backed up in round-4 evidence.
+
+Fixes: recover invalid saved settings/storage failures; prevent stale search responses/errors; clear errors on cached-period selection; keyboard Search toggle and accessible criteria/entity state; hide hover instructions when Show Summary is off; configured Entity names in collapsed Search; active Entity classification validation for export; exact/automatic export numeric parity; measured continuation-page pagination retaining complete entries and correct page numbering. User-approved zero-budget behavior: Ledger rows with a No budget allocated notice instead of an empty map, independently for sectors/departments, on screen and in PDF/PPT.
+
+Verification: live browser 190/190, live Show Summary 67/67, six live PDF/PPT reports 51/51; local deep browser 40/40, export fidelity 85/85, reopened PDF/PPT artifacts 24/24, report unit tests 4/4; initial API baseline 144/144. Deployed deep browser checks passed 40/40; configured entity plus Unclassified exports passed 11/11. UAT: `UAT/UAT_GL_round4-06-09-2026/` workbook, Word results and evidence.
+
+Access tests: two temporary accounts verified owner downloads and cross-user 404 (including another privileged user); accounts/sessions removed. Current `FEATURE_SEC_ENFORCE_GL` compatibility behavior permits report submission without the dedicated privilege. This policy remains unchanged pending the user's explicit decision. Automatic approval review initially blocked the additional entity test; the user explicitly authorized the built-in quick login, and the test then passed 11/11 across all configured entities and Unclassified. Regular live PDF/PPT exports passed. No financial data changed and no reports were emailed.
+
+Rollback: reverse only this review's hunks if subsequent changes exist; otherwise the previous release above is available. Restore the two worker backup files and restart safely. ORDS source backup is retained with round-4 evidence. Do not revert unrelated GL changes.
+
+## 2026-09-06 — PLATFORM RULE: budget = expense side only; the funding side is never budget (GL 1.117.0, db/v2/32+110+34 + GL/db/04/18 + reporting/db/32)
+
+**User rule (critical, applies platform-wide):** whenever a budget figure is displayed, the FUNDING SIDE is
+ignored. Trigger: the Budget Status footnote "Not in the bands (Budget Group 1 rows with no chapter
+classification or Chapter 6): Budget 9,459,056,211 · Actual 0" — the user asked twice what it was. It was
+the funding side: Fusion budgetary control books each chapter budget twice, on the 4xxxxx expense
+combination (8,851M) AND on a 3270xx "Treasury Contribution towards Chapter-N" account (8,803M mirror,
+Actual always 0), plus the 656M revenue budget. EBS carries the same mirror (351xxx → 3270xx, budget ==
+expense budget every year 2017–2025, with the matching NEGATIVE actual = funds received).
+
+**DB (all deployed as ADMIN, fresh SQLcl sessions; deploy order matters):**
+1. `db/v2/32` `GL_BALANCES_CC` — WHERE gains `NOT LIKE '3270%'` next to the 452201 rule (the whole 327000
+   inter-entity-transfer node: 327011–18, 327021, 327031–35, 327050–52). `DCT_BUDGET_ACTUAL_V` gains a
+   final `WHERE NVL(SUBSTR(account,1,1),'4') = '4'` (expense only). Only these two view DDLs were re-run.
+2. `db/v2/110` `DCT_EBS_BALANCE_MAPPED_V` — `AND NVL(am.fusion_value,'x') NOT LIKE '3270%'` (mapped Fusion
+   account; unmapped rows stay for the coverage annex). View DDL only.
+3. `db/v2/34` `DCT_BUDGET_ACTUAL_PERIOD_V` — same expense-only WHERE on `k.cc_string`.
+4. `GL/db/04` `DCT_GL_COA_V` — **now the SINGLE SOURCE**: the 2026-09-05 Entity re-run of 04 had silently
+   REVERTED GL/db/38 (budget-only combinations UNION leg), 39 (Chapter only on 4xxxxx) and 40 (452201 never a
+   Chapter) — the snapshot had 0 budget-only combos and 3 non-expense combos with a Chapter, and that was the
+   "15.7M moved from the bands to the footnote". 38/39/40 are folded back in (with the Entity columns kept
+   LAST); their files carry a "FOLDED INTO 04 — never run after 04" banner. Order: 32 BEFORE 04, or the
+   restored 38 leg would pull the 3270xx budget-only combos into the snapshot (and the Sector Performance
+   revenue target would read 9.5B).
+5. `DBMS_UTILITY.compile_schema('PROD')` (only `ATD_AR_INVOICE_FULL_VW` stays INVALID — pre-existing) +
+   `prod.dct_actuals_refresh` (run 2301, 10,091 rows, 12.2 s).
+6. `GL/db/18` re-run — YoY EBS leg `e.fusion_account LIKE '4%'` + Fusion leg `f.account_code LIKE '4%'`
+   (DOF GL/db/17 already did; recon GL/db/14 already `account_type LIKE '%EXPENSE%'`).
+7. `reporting/db/32` EBS_GL_YOY_REGISTER — seed patched + live definition CLOB REPLACE surgery (INSTR
+   verified before/after: ebs4=894, fus4=1701).
+
+**Verified (SQL, 09-2026):** `GL_BALANCES_CC` 3270xx rows = 0; `DCT_BUDGET_ACTUAL_PERIOD_V` = 3,396 rows,
+all 4-series, budget **8,851,453,715 = the Budget Status bands total to the cent**; bg-1 remainder budget 0
+(49 zero rows → footnote hides itself); snapshot 10,091 rows / 611 budget-only combos restored / 0
+non-expense combos with a Chapter / 0 452201 with a Chapter / Entity parity 0 mismatches; EBS mapped
+3270xx rows 0 every year; Sector Performance revenue target = 976.8M (the full revenue budget — it read
+656M while 38 was reverted; unchanged by the treasury rule); recon page unaffected (handler already
+expense-scoped — its base view still holds revenue rows by design).
+
+**Frontend (GL 1.117.0, webtier GL-only overlay release 20260906111321 over 20260906104833; live tree
+diffed against local = only these hunks):** Budget Status basis footnote adds "Budget = expense accounts
+(4xxxxx) only — Treasury-contribution (funding) accounts are never counted" (EN/AR); the excluded
+footnote is now "Expense budget with no chapter classification (not in the bands — assign a Chapter in
+Settings › Chart of Accounts)" and only renders when a real classification gap exists.
+
+**Rule for every future surface:** any view/handler/report that shows a budget must scope to expense
+accounts (or read the expense-scoped fact views) — never `SUM(total_budget)` over all accounts. Revenue
+budgets are shown ONLY on revenue surfaces (db/v2/123 + GL/db/24 read `GL_BALANCES_CC` with
+`account_type='Revenue'`). Keep 452201 + 3270xx in lock-step in db/v2/32 and 110.
+
+**Also (GL/db/48 re-run, same day):** the post-save refresh kick in the Entity/classification routes is
+now a ONE-OFF `DBMS_SCHEDULER.create_job` (ADMIN-owned `DCT_GL_CLASS_KICK_<ts>`, auto-drop, +3 s) whose block
+retries `-20042` (db/v2/118 serializes the snapshot refresh) up to 6× every 20 s and then runs
+`prod.dct_butil_filter_cache_refresh`. The previous `run_job` kick was silently LOST whenever a refresh was
+already running (ORA-27478 swallowed) — `entity_class_api_smoke` caught it racing the hourly :11 job (48
+snapshot rows kept a deleted test entity). Trialled as ADMIN: SUCCEEDED in 11 s, job auto-dropped.
+Stale tests fixed: `dof_api_smoke` (DETAIL rows only — CHTOTAL/GRAND rows exist since v1.54.0),
+`legacy_browser_smoke` (mapping count = API total, not the literal 3,191 — the 73 appropriation identity
+rows count too), `entity_class_api_smoke` (45 s wait for the queued refresh; the MUSEUMS value name is data — it was renamed MSS → Museums in the UI — so the literal assertion is gone), `recon_browser_smoke` (the spinner check now waits for the overlay to lay out — `rcBusy` flips true before the KO view switch shows the page container, so an instant `bounding_box()` read None; probe: overlay visible ~2 s at 340 px) and its drill waits widened to 150 s — **FOLLOW-UP (pre-existing, not this change):** the Reconciliation KPI drill (`/gl/recon/drill?measure=all&bucket=matched`, server cap 5,000 rows) answers in 1.3 s but the shared drawer renders all 5,000 rows synchronously (~35 s freeze on the dev VM; the matched set is 15,206 docs today vs < 5,000 when the drill shipped on 2026-07-25). The other GL drill drawers cap at 1,000 with a top-N note — recon should either cap the same way or window the render.
+
+**Tests:** fd_api 144/144 · dof_api 31/31 (after the DETAIL fix) · entity_class_api 30/30 (after the kick fix) · mappings_api 11/11 · sectorperf_api 70/70 (incl. RECON vs /gl/butil) · fd_browser 190/190 · yoy_browser 24/24 (both legs expense-scoped) · legacy_browser 17/17 · recon_browser 27/29 (the 2 = the pre-existing 'no console errors' checks tripped by the shared shell's js/i18n 404 probes — the same 2 recorded on 2026-07-25; every functional check passes EN+AR) — all on the local tree with the new views; frontend release verified live (APP_VERSION 1.117.0 + footnote marker).
+
+## 2026-09-06 — LINE-GRAIN PO RULE: live butil/lines GRN-drill patch
+
+The GRN drill's invoiced/related-invoices linkage joined AP distributions to POs via the
+distribution-grain PO columns — but a Fusion PO-match CORRECTION updates only the invoice
+LINE (the accounted distributions keep the original PO), so corrected invoices showed on
+the wrong PO (9 invoices / 157K AED platform-wide; found via a −5,560 uninvoiced row).
+Fix per the platform LINE-GRAIN PO RULE (CLAUDE.md): the drill's inv CTE now joins
+prod.ap_invoice_lines and keys the pk join on COALESCE(line PO refs, dist PO refs).
+DEPLOYED as a DEFINE_HANDLER-only patch of the LIVE gl.rest GET butil/lines handler via
+python-oracledb on vm180 (fetch source → text replace → ords.define_handler with a CLOB
+bind — never re-run GL/db/07 wholesale); the file GL/db/07 carries the same text for the
+next legitimate rebuild. Verified live: the AD Burger receipt 4513076723 drill row now
+reads invoiced 4,800 / uninvoiced 0 / related invoice 140726-1 only — matching Fusion.
